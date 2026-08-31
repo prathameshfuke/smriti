@@ -26,7 +26,7 @@ export type DateOnly = string;
 /** 24-hour wall-clock time, `HH:MM[:SS]` (TIME). */
 export type TimeOfDay = string;
 
-export interface Caregiver {
+export type Caregiver = {
   id: string;
   auth_id: string;
   display_name: string;
@@ -38,7 +38,7 @@ export interface Caregiver {
   updated_at: Timestamptz;
 }
 
-export interface Patient {
+export type Patient = {
   id: string;
   caregiver_id: string;
   display_name: string;
@@ -52,7 +52,7 @@ export interface Patient {
   updated_at: Timestamptz;
 }
 
-export interface GameSession {
+export type GameSession = {
   id: string;
   patient_id: string;
   started_at: Timestamptz;
@@ -62,7 +62,7 @@ export interface GameSession {
 }
 
 /** Append-only and immutable once written. */
-export interface TelemetryEvent {
+export type TelemetryEvent = {
   id: string;
   session_id: string;
   patient_id: string;
@@ -77,7 +77,7 @@ export interface TelemetryEvent {
   sync_received_at: Timestamptz | null;
 }
 
-export interface DailySummary {
+export type DailySummary = {
   id: string;
   patient_id: string;
   summary_date: DateOnly;
@@ -93,7 +93,7 @@ export interface DailySummary {
   sync_received_at: Timestamptz | null;
 }
 
-export interface ReminderSchedule {
+export type ReminderSchedule = {
   id: string;
   patient_id: string;
   reminder_type: ReminderType;
@@ -106,7 +106,7 @@ export interface ReminderSchedule {
   updated_at: Timestamptz;
 }
 
-export interface ReminderAck {
+export type ReminderAck = {
   id: string;
   reminder_id: string;
   patient_id: string;
@@ -118,7 +118,7 @@ export interface ReminderAck {
 }
 
 /** Generated server-side during sync; see check_cognitive_alerts(). */
-export interface Alert {
+export type Alert = {
   id: string;
   patient_id: string;
   caregiver_id: string;
@@ -132,13 +132,52 @@ export interface Alert {
   resolved_at: Timestamptz | null;
 }
 
+/**
+ * Columns Postgres fills in itself. They are never part of an insert payload:
+ * `accuracy_pct` is a generated column, the timestamps have defaults.
+ */
+type ServerManaged = 'created_at' | 'updated_at' | 'sync_received_at' | 'accuracy_pct';
+
+/** Insert payload: server-managed columns dropped, `id` optional where defaulted. */
+type Insertable<T> = Omit<T, ServerManaged & keyof T>;
+type Updatable<T> = Partial<Insertable<T>>;
+
+interface TableShape<Row> {
+  Row: Row;
+  Insert: Insertable<Row>;
+  Update: Updatable<Row>;
+  /**
+   * Required by supabase-js's GenericTable constraint. Without it the schema
+   * fails the constraint silently and every query result degrades to `never`.
+   * Empty because these types are hand-written; `supabase gen types` would
+   * populate the foreign-key relationships here.
+   */
+  Relationships: [];
+}
+
+/**
+ * Shaped for the supabase-js client generic, which resolves rows through
+ * `Database['public']['Tables'][name]['Row']`. Passing this to
+ * createBrowserClient/createServerClient is what makes query results typed —
+ * without it every `.from(...).select()` returns `any`.
+ */
 export interface Database {
-  caregivers: Caregiver;
-  patients: Patient;
-  game_sessions: GameSession;
-  telemetry_events: TelemetryEvent;
-  daily_summaries: DailySummary;
-  reminder_schedules: ReminderSchedule;
-  reminder_acks: ReminderAck;
-  alerts: Alert;
+  public: {
+    Tables: {
+      caregivers: TableShape<Caregiver>;
+      patients: TableShape<Patient>;
+      game_sessions: TableShape<GameSession>;
+      telemetry_events: TableShape<TelemetryEvent>;
+      daily_summaries: TableShape<DailySummary>;
+      reminder_schedules: TableShape<ReminderSchedule>;
+      reminder_acks: TableShape<ReminderAck>;
+      alerts: TableShape<Alert>;
+    };
+    // Mapped-over-never, matching `supabase gen types` output. A plain
+    // Record<never, never> lacks an index signature and fails GenericSchema.
+    Views: { [_ in never]: never };
+    Functions: { [_ in never]: never };
+    Enums: { [_ in never]: never };
+    CompositeTypes: { [_ in never]: never };
+  };
 }

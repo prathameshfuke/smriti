@@ -1,5 +1,6 @@
 import { createBrowserClient as createSSRBrowserClient, createServerClient as createSSRServerClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
+import type { Database } from './types';
 
 /**
  * Supabase client factories.
@@ -32,7 +33,7 @@ export function isSupabaseConfigured(): boolean {
 /** Browser client for Client Components. */
 export function createBrowserClient() {
   const { url, anonKey } = readEnv();
-  return createSSRBrowserClient(url, anonKey);
+  return createSSRBrowserClient<Database>(url, anonKey);
 }
 
 /**
@@ -53,7 +54,7 @@ export function createServerClient(cookieStore: {
 }) {
   const { url, anonKey } = readEnv();
 
-  return createSSRServerClient(url, anonKey, {
+  return createSSRServerClient<Database>(url, anonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

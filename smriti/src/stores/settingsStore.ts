@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { DEFAULT_LANGUAGE, type UILanguage } from '@/lib/i18n/provider';
+import { DEFAULT_LANGUAGE, type UILanguage } from '@/lib/i18n/languages';
 
 /**
  * The caregiver PIN gates access to patient health data, so only a salted
@@ -32,6 +32,7 @@ export async function checkPin(pin: string, stored: string | null): Promise<bool
   return (await digest(pin, salt)) === expected;
 }
 
+/** Single source of truth for language; I18nProvider reads through to this. */
 interface SettingsState {
   language: UILanguage;
   isFirstLaunch: boolean;

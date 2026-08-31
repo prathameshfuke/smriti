@@ -1,6 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { I18nProvider, useTranslation } from '@/lib/i18n/provider';
+import { useSettingsStore } from '@/stores/settingsStore';
+
+/** Language is persisted by settingsStore's zustand persist middleware. */
+const SETTINGS_KEY = 'smriti.settings';
+const seedLanguage = async (language: string) => {
+  window.localStorage.setItem(
+    SETTINGS_KEY,
+    JSON.stringify({ state: { language, isFirstLaunch: true, caregiverPinHash: null }, version: 0 }),
+  );
+  await useSettingsStore.persist.rehydrate();
+};
 
 function Probe({ k }: { k: string }) {
   const { t, language, setLanguage } = useTranslation();
@@ -22,6 +33,7 @@ const renderWith = (k = 'home.greeting') =>
 
 beforeEach(() => {
   window.localStorage.clear();
+  useSettingsStore.setState(useSettingsStore.getInitialState(), true);
 });
 
 describe('i18n provider', () => {
@@ -44,9 +56,9 @@ describe('i18n provider', () => {
     expect(screen.getByTestId('value').textContent).toBe('nonexistent.key');
   });
 
-  it('falls back to the English string when a locale lacks a translation', () => {
+  it('falls back to the English string when a locale lacks a translation', async () => {
     // as.json intentionally carries English for untranslated keys.
-    window.localStorage.setItem('smriti.language', 'as');
+    await seedLanguage('as');
     renderWith('caregiver.dashboard');
     expect(screen.getByTestId('value').textContent).toBe('Dashboard');
   });
@@ -56,20 +68,34 @@ describe('i18n provider', () => {
     await act(async () => {
       screen.getByText('to-as').click();
     });
-    expect(window.localStorage.getItem('smriti.language')).toBe('as');
+    expect(window.localStorage.getItem(SETTINGS_KEY)).toContain('"language":"as"');
   });
 
-  it('loads a previously saved language on mount', () => {
-    window.localStorage.setItem('smriti.language', 'hi');
+  it('loads a previously saved language on mount', async () => {
+    await seedLanguage('hi');
     renderWith();
     expect(screen.getByTestId('lang').textContent).toBe('hi');
     expect(screen.getByTestId('value').textContent).toBe('नमस्ते');
   });
 
-  it('ignores an unsupported stored language and stays on the default', () => {
-    window.localStorage.setItem('smriti.language', 'fr');
+  it('reflects a language set through settingsStore', async () => {
+    // Regression guard: the provider previously kept its own localStorage key,
+    // so settingsStore.setLanguage() updated state but changed nothing on screen.
     renderWith();
-    expect(screen.getByTestId('lang').textContent).toBe('en');
+    await act(async () => {
+      useSettingsStore.getState().setLanguage('hi');
+    });
+    expect(screen.getByTestId('lang').textContent).toBe('hi');
+    expect(screen.getByTestId('value').textContent).toBe('नमस्ते');
+  });
+
+  it('keeps the provider and settingsStore in agreement after a UI change', async () => {
+    renderWith();
+    await act(async () => {
+      screen.getByText('to-as').click();
+    });
+    expect(useSettingsStore.getState().language).toBe('as');
+    expect(screen.getByTestId('lang').textContent).toBe('as');
   });
 });
 

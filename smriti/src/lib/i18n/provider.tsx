@@ -1,22 +1,16 @@
 'use client';
 
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { DEFAULT_LANGUAGE, type UILanguage } from './languages';
 import as from './locales/as.json';
 import en from './locales/en.json';
 import hi from './locales/hi.json';
 
-export const LANGUAGES = ['as', 'hi', 'en'] as const;
-export type UILanguage = (typeof LANGUAGES)[number];
-
-export const DEFAULT_LANGUAGE: UILanguage = 'en';
-export const LANGUAGE_STORAGE_KEY = 'smriti.language';
+export { LANGUAGES, DEFAULT_LANGUAGE, isUILanguage, type UILanguage } from './languages';
 
 type Messages = Record<string, unknown>;
 const CATALOGS: Record<UILanguage, Messages> = { as, hi, en };
-
-function isUILanguage(value: unknown): value is UILanguage {
-  return typeof value === 'string' && (LANGUAGES as readonly string[]).includes(value);
-}
 
 /** Resolves a dot-path such as `home.greeting` against a catalog. */
 function lookup(catalog: Messages, key: string): string | undefined {
@@ -28,43 +22,6 @@ function lookup(catalog: Messages, key: string): string | undefined {
   return typeof found === 'string' ? found : undefined;
 }
 
-/**
- * Language lives in localStorage and is read through useSyncExternalStore
- * rather than an on-mount effect. That keeps the server snapshot deterministic
- * (no hydration mismatch) while letting the client pick up the stored value on
- * its first render, and it satisfies React 19's set-state-in-effect rule.
- */
-const listeners = new Set<() => void>();
-
-function subscribe(onChange: () => void): () => void {
-  listeners.add(onChange);
-  // Keep other tabs on the same device in sync.
-  window.addEventListener('storage', onChange);
-  return () => {
-    listeners.delete(onChange);
-    window.removeEventListener('storage', onChange);
-  };
-}
-
-function getStoredLanguage(): UILanguage {
-  try {
-    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    return isUILanguage(stored) ? stored : DEFAULT_LANGUAGE;
-  } catch {
-    // Private mode or blocked storage.
-    return DEFAULT_LANGUAGE;
-  }
-}
-
-function persistLanguage(language: UILanguage): void {
-  try {
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
-  } catch {
-    // The choice still applies for this session even if it cannot be saved.
-  }
-  for (const listener of listeners) listener();
-}
-
 interface I18nContextValue {
   language: UILanguage;
   setLanguage: (language: UILanguage) => void;
@@ -74,6 +31,16 @@ interface I18nContextValue {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
+/**
+ * Language is owned by `settingsStore` — this provider is a read-through view
+ * of it, not a second copy. An earlier version kept its own localStorage key,
+ * which meant settingsStore.setLanguage() changed nothing on screen.
+ *
+ * It is read via useSyncExternalStore so the server snapshot stays
+ * deterministic: zustand's persist middleware rehydrates from localStorage
+ * synchronously on the client, which would otherwise disagree with the
+ * server-rendered markup.
+ */
 export function I18nProvider({
   children,
   initialLanguage = DEFAULT_LANGUAGE,
@@ -82,12 +49,14 @@ export function I18nProvider({
   initialLanguage?: UILanguage;
 }) {
   const language = useSyncExternalStore(
-    subscribe,
-    getStoredLanguage,
-    () => initialLanguage, // server render: no localStorage
+    useSettingsStore.subscribe,
+    () => useSettingsStore.getState().language,
+    () => initialLanguage,
   );
 
-  const setLanguage = useCallback((next: UILanguage) => persistLanguage(next), []);
+  const setLanguage = useCallback((next: UILanguage) => {
+    useSettingsStore.getState().setLanguage(next);
+  }, []);
 
   const t = useCallback(
     (key: string) => lookup(CATALOGS[language], key) ?? lookup(CATALOGS.en, key) ?? key,
