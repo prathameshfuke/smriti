@@ -5,6 +5,8 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // jsdom withholds localStorage for opaque origins; give it a real one.
+    environmentOptions: { jsdom: { url: 'http://localhost:3000' } },
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
   },
