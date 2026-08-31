@@ -57,7 +57,7 @@ describe('settingsStore', () => {
     const { caregiverPinHash } = useSettingsStore.getState();
     expect(caregiverPinHash).toBeTruthy();
     expect(caregiverPinHash).not.toContain('1234');
-    expect(caregiverPinHash).toMatch(/^[0-9a-f]{64}:[0-9a-f]{64}$/);
+    expect(caregiverPinHash).toMatch(/^pbkdf2\$\d+\$[0-9a-f]{32}\$[0-9a-f]{64}$/);
   });
 
   it('verifyPin accepts the correct PIN and rejects a wrong one', async () => {
@@ -92,7 +92,7 @@ describe('patientStore', () => {
       patient({ id: 'p2', displayName: 'Deuta' }),
       patient({ id: 'p3', isActive: false }),
     ]);
-    await usePatientStore.getState().loadPatients();
+    await usePatientStore.getState().loadPatients('c1');
     const ids = usePatientStore.getState().allPatients.map((p) => p.id);
     expect(ids.sort()).toEqual(['p1', 'p2']);
   });

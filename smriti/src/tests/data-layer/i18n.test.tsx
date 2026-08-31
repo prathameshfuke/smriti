@@ -40,7 +40,7 @@ describe('i18n provider', () => {
   it('defaults to English and resolves home.greeting', () => {
     renderWith();
     expect(screen.getByTestId('lang').textContent).toBe('en');
-    expect(screen.getByTestId('value').textContent).toBe('Namaste');
+    expect(screen.getByTestId('value').textContent).toBe('Hello');
   });
 
   it('resolves home.greeting in Assamese after switching language', async () => {

@@ -1,3 +1,7 @@
+// Workbox matches runtime routes with `regExp.exec(url.href)`, i.e. against the
+// full absolute URL. A `^` anchor here would only ever match a bare path, so
+// anchored patterns silently never fire and every audio and image request
+// falls through to the install-time precache — the worst case on 2G/3G.
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -5,12 +9,12 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
-      urlPattern: /^\/audio\/.*/,
+      urlPattern: /\/audio\/.*/,
       handler: 'CacheFirst',
       options: { cacheName: 'audio-assets', expiration: { maxEntries: 500 } }
     },
     {
-      urlPattern: /^\/images\/.*/,
+      urlPattern: /\/images\/.*/,
       handler: 'CacheFirst',
       options: { cacheName: 'game-images', expiration: { maxEntries: 200 } }
     },
