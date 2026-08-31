@@ -1,16 +1,10 @@
 import Link from 'next/link';
 import { LayoutDashboard, Users, Settings } from 'lucide-react';
-import SyncIndicator, { type SyncStatus } from '@/components/ui/SyncIndicator';
-
-export interface CaregiverNavProps {
-  syncStatus?: SyncStatus;
-  lastSyncedAt?: string | null;
-}
 
 /**
  * Caregiver chrome. Denser than the patient side — an ASHA worker managing 10+
- * patients scans this repeatedly — and it always carries sync state, since
- * stale data changes how the dashboard should be read.
+ * patients scans this repeatedly. Sync state is not repeated here: the
+ * SyncIndicator pill floats over every screen already.
  */
 const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
@@ -18,10 +12,7 @@ const ITEMS = [
   { href: '/caregiver/settings', label: 'Settings', Icon: Settings },
 ] as const;
 
-export default function CaregiverNav({
-  syncStatus = 'synced',
-  lastSyncedAt,
-}: CaregiverNavProps) {
+export default function CaregiverNav() {
   return (
     <header className="border-b border-surface-muted bg-surface-card">
       <div className="mx-auto flex max-w-dashboard flex-wrap items-center gap-4 px-4 py-3">
@@ -42,7 +33,6 @@ export default function CaregiverNav({
             </Link>
           ))}
         </nav>
-        <SyncIndicator status={syncStatus} lastSyncedAt={lastSyncedAt} />
       </div>
     </header>
   );

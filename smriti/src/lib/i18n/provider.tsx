@@ -73,3 +73,6 @@ export function useTranslation(): I18nContextValue {
   if (!ctx) throw new Error('useTranslation must be used inside <I18nProvider>');
   return ctx;
 }
+
+/** Spec name for the same provider. */
+export { I18nProvider as LanguageProvider };

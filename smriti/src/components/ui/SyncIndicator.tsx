@@ -10,25 +10,29 @@ export interface SyncIndicatorProps {
   lastSyncedAt?: string | null;
 }
 
-/**
- * Sync state must always be visible to the caregiver: on intermittent rural
- * connectivity, "is this data current?" changes how the numbers are read.
- */
 const PRESENTATION = {
-  synced: { text: 'Synced', className: 'text-success', Icon: Check },
-  offline: { text: 'Offline', className: 'text-ink-muted', Icon: CloudOff },
-  syncing: { text: 'Syncing', className: 'text-primary', Icon: RefreshCw },
-  pending: { text: 'Waiting to sync', className: 'text-warning', Icon: Clock },
+  synced: { text: 'Synced', className: 'bg-success text-ink-inverse', Icon: Check },
+  offline: { text: 'Offline', className: 'bg-ink text-ink-inverse', Icon: CloudOff },
+  syncing: { text: 'Syncing', className: 'bg-primary text-ink-inverse', Icon: RefreshCw },
+  pending: { text: 'Waiting to sync', className: 'bg-warning text-ink-inverse', Icon: Clock },
 } as const;
 
+/**
+ * Floating pill, always in the same corner. On intermittent rural
+ * connectivity "is this data current?" changes how every number on the screen
+ * should be read, so the answer is never more than a glance away.
+ */
 export default function SyncIndicator({ status, lastSyncedAt }: SyncIndicatorProps) {
   const { text, className, Icon } = PRESENTATION[status];
 
   return (
-    <span
-      className={`inline-flex items-center gap-2 text-caregiver-body ${className}`}
+    <div
       role="status"
       aria-live="polite"
+      className={
+        'fixed bottom-4 right-4 z-50 inline-flex items-center gap-2 rounded-full ' +
+        `px-4 py-2 text-caregiver-body shadow-lg ${className}`
+      }
     >
       <Icon
         size={18}
@@ -37,10 +41,10 @@ export default function SyncIndicator({ status, lastSyncedAt }: SyncIndicatorPro
       />
       <span>{text}</span>
       {status === 'offline' && lastSyncedAt ? (
-        <span className="text-ink-muted">
+        <span className="opacity-80">
           · last {new Date(lastSyncedAt).toLocaleDateString()}
         </span>
       ) : null}
-    </span>
+    </div>
   );
 }

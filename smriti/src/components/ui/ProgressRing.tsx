@@ -6,16 +6,21 @@ export interface ProgressRingProps {
 }
 
 const DIMENSIONS = {
-  sm: { box: 64, stroke: 6, text: 'text-patient-sm' },
-  md: { box: 96, stroke: 8, text: 'text-patient-body' },
-  lg: { box: 144, stroke: 10, text: 'text-patient-heading' },
+  sm: { box: 60, stroke: 6, text: 'text-patient-sm' },
+  md: { box: 80, stroke: 8, text: 'text-patient-body' },
+  lg: { box: 120, stroke: 10, text: 'text-patient-heading' },
 } as const;
 
+/**
+ * Session progress. The arc sweeps up from empty on mount: a static ring
+ * reads as decoration, a filling one reads as "this is your score today".
+ */
 export default function ProgressRing({ value, size = 'md', label }: ProgressRingProps) {
   const pct = Math.round(Math.min(100, Math.max(0, Number.isFinite(value) ? value : 0)));
   const { box, stroke, text } = DIMENSIONS[size];
   const radius = (box - stroke) / 2;
   const circumference = 2 * Math.PI * radius;
+
   const offset = circumference * (1 - pct / 100);
 
   return (
@@ -45,7 +50,13 @@ export default function ProgressRing({ value, size = 'md', label }: ProgressRing
           strokeDasharray={circumference}
           strokeDashoffset={offset}
           transform={`rotate(-90 ${box / 2} ${box / 2})`}
-          className="stroke-primary transition-[stroke-dashoffset] duration-500 motion-reduce:transition-none"
+          style={
+            {
+              '--ring-circumference': circumference,
+              '--ring-offset': offset,
+            } as React.CSSProperties
+          }
+          className="stroke-primary animate-ring-fill motion-reduce:animate-none"
         />
       </svg>
       <span className={`absolute font-semibold text-ink ${text}`}>{pct}%</span>

@@ -2,7 +2,7 @@
 
 import { useSettingsStore } from '@/stores/settingsStore';
 import { LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
-import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 
 /**
  * Language names are written in their own script, never translated: a patient
@@ -29,10 +29,12 @@ export default function LanguagePicker() {
             lang={code}
             onClick={() => setLanguage(code)}
             aria-pressed={active}
-            style={{ minHeight: TOUCH_TARGET_MIN_PX }}
+            style={{ minHeight: LANGUAGE_TARGET_MIN_PX }}
             className={
-              'flex-1 rounded-tile px-5 text-patient-body font-semibold transition-colors ' +
-              'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 ' +
+              'flex-1 rounded-tile px-5 text-patient-body font-semibold ' +
+              'transition-transform duration-100 active:scale-[0.97] ' +
+              'motion-reduce:active:scale-100 focus-visible:outline ' +
+              'focus-visible:outline-4 focus-visible:outline-offset-2 ' +
               'focus-visible:outline-primary-dark ' +
               (active
                 ? 'bg-primary text-ink-inverse'

@@ -1,27 +1,51 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
+/*
+ * Light palette only. The design tokens were contrast-checked against the
+ * #FAF7F2 surface for WCAG AA; a dark inversion was never checked, and on a
+ * shared low-end Android the OS theme is not the patient's choice anyway.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf7f2;
+  --foreground: #2d2a26;
+
+  /*
+   * System stack first: it is already on the device, costs no bytes on a 2G
+   * connection, and is the face the patient sees everywhere else. Noto
+   * Bengali and Devanagari follow as fallbacks because Assamese and Hindi
+   * render as tofu without them.
+   */
+  --font-smriti-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, var(--font-smriti-bengali), var(--font-smriti-devanagari), sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-smriti-latin);
+  --font-sans: var(--font-smriti-sans);
+  --animate-ring-fill: smriti-ring-fill 700ms ease-out both;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/*
+ * Progress rings sweep up from empty on mount. Done in CSS rather than state:
+ * a setState-in-effect would cascade a render on every ring on the screen.
+ */
+@keyframes smriti-ring-fill {
+  from {
+    stroke-dashoffset: var(--ring-circumference);
   }
+  to {
+    stroke-dashoffset: var(--ring-offset);
+  }
+}
+
+html {
+  color-scheme: light;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-smriti-latin), var(--font-smriti-bengali),
-    var(--font-smriti-devanagari), system-ui, sans-serif;
+  font-family: var(--font-smriti-sans);
 }

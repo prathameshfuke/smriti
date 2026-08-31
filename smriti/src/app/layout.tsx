@@ -1,18 +1,14 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans, Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
+import { Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
+import { LanguageProvider } from "@/lib/i18n/provider";
 import "./globals.css";
 
 /**
- * SMRITI ships Assamese (Bengali script) and Hindi (Devanagari) alongside
- * English, so the font stack must cover all three. A Latin-only face renders
- * those locales as tofu.
+ * Only the Indic faces are loaded. Latin comes from the system stack (see
+ * globals.css) — it is already on the device and costs nothing on 2G — but
+ * Assamese (Bengali script) and Hindi (Devanagari) render as tofu without a
+ * font that covers them.
  */
-const notoSans = Noto_Sans({
-  variable: "--font-smriti-latin",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 const notoSansBengali = Noto_Sans_Bengali({
   variable: "--font-smriti-bengali",
   subsets: ["bengali"],
@@ -28,22 +24,38 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
 export const metadata: Metadata = {
   title: "SMRITI - Cognitive Care",
   description:
-    "AI-powered cognitive gaming for elderly dementia care in Northeast India",
+    "Offline-first cognitive games and medication reminders for elderly dementia care in Northeast India",
   manifest: "/manifest.json",
+  applicationName: "SMRITI",
   appleWebApp: { capable: true, title: "SMRITI", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
+  icons: { apple: "/icons/icon-192.png" },
 };
 
 export const viewport: Viewport = {
   themeColor: "#8B6914",
+  width: "device-width",
+  initialScale: 1,
+  // Zoom stays enabled: low vision is the norm in this cohort, and locking
+  // scale would fail WCAG 1.4.4.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${notoSans.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} h-full antialiased`}
+      className={`${notoSansBengali.variable} ${notoSansDevanagari.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-surface text-ink">
+        <LanguageProvider>
+          <div className="flex flex-1 flex-col">{children}</div>
+          <footer className="px-4 py-3 text-center text-patient-sm text-ink-muted">
+            SMRITI supports cognitive wellness. It does not diagnose or treat
+            dementia, and it does not replace a doctor.
+          </footer>
+        </LanguageProvider>
+      </body>
     </html>
   );
 }
