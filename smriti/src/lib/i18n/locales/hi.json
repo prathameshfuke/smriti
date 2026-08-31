@@ -1,1 +1,56 @@
-{}
+{
+  "home": {
+    "greeting": "नमस्ते",
+    "startSession": "Start Playing",
+    "reminders": "My Reminders",
+    "myProgress": "My Progress"
+  },
+  "game": {
+    "objectHunt": {
+      "name": "Object Hunt",
+      "instruction": "Remember where each picture is hidden. Tap a tile to look."
+    },
+    "wordStream": {
+      "name": "Market List",
+      "instruction": "Remember these things. We will ask you later."
+    },
+    "quickTap": {
+      "name": "Quick Quick",
+      "instruction": "Tap the picture as soon as you see it."
+    },
+    "pathMatch": {
+      "name": "Path Match",
+      "instruction": "Join the numbers in order, from 1 onwards."
+    },
+    "correct": "Correct!",
+    "tryAgain": "Try again",
+    "sessionComplete": "Well done! You finished today's session.",
+    "stars": "Stars earned"
+  },
+  "reminder": {
+    "medication": "दवाई लेने का समय",
+    "hydration": "पानी पीने का समय",
+    "activity": "Time for your walk",
+    "done": "हो गया",
+    "snooze": "Later"
+  },
+  "caregiver": {
+    "dashboard": "Dashboard",
+    "patients": "Patients",
+    "alerts": "Alerts",
+    "lastSynced": "Last synced",
+    "syncNow": "Sync now"
+  },
+  "sync": {
+    "synced": "सिंक हो गया",
+    "offline": "ऑफलाइन",
+    "syncing": "Syncing",
+    "pending": "Waiting to sync"
+  },
+  "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
+  "lang": {
+    "as": "অসমীয়া",
+    "hi": "हिन्दी",
+    "en": "English"
+  }
+}
