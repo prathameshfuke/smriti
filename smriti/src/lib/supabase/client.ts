@@ -48,21 +48,29 @@ export function createBrowserClient() {
  * Server Components cannot write cookies; the setAll failure is swallowed
  * there, which is safe when middleware refreshes the session.
  */
-export function createServerClient(cookieStore: {
-  getAll(): { name: string; value: string }[];
-  set(name: string, value: string, options?: CookieOptions): void;
-}) {
+export function createServerClient(
+  cookieStore: {
+    getAll(): { name: string; value: string }[];
+    set(name: string, value: string, options?: CookieOptions): void;
+  },
+  options?: { authorization?: string },
+) {
   const { url, anonKey } = readEnv();
 
   return createSSRServerClient<Database>(url, anonKey, {
+    // API routes authenticate via Bearer token, not the cookie session — this
+    // makes RLS see the caller's identity on every `.from()` query too.
+    global: options?.authorization
+      ? { headers: { Authorization: options.authorization } }
+      : undefined,
     cookies: {
       getAll() {
         return cookieStore.getAll();
       },
       setAll(cookiesToSet) {
         try {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+          for (const { name, value, options: cookieOptions } of cookiesToSet) {
+            cookieStore.set(name, value, cookieOptions);
           }
         } catch {
           // Called from a Server Component, which cannot set cookies.
