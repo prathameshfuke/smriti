@@ -31,6 +31,7 @@
     "medication": "Time for your medicine",
     "hydration": "Time to drink water",
     "activity": "Time for your walk",
+    "appointment": "Time for your appointment",
     "done": "Done",
     "snooze": "Later"
   },
