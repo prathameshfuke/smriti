@@ -49,16 +49,8 @@ describe('H1 — service worker runtime caching', () => {
   });
 });
 
-describe('M2 — placeholder API routes', () => {
-  it.each(['alerts', 'health', 'patients', 'sync'])(
-    '/api/%s answers 501, not 200',
-    async (route) => {
-      const mod = await import(`@/app/api/${route}/route`);
-      const res = await mod.GET();
-      expect(res.status).toBe(501);
-    },
-  );
-});
+// M2's original placeholder-501 check was retired once alerts/health/patients/sync
+// got real handlers — see src/tests/sync.test.ts for their actual behavior.
 
 describe('M3/M4 — caregiver PIN', () => {
   it('stretches the PIN with PBKDF2 at 100k iterations', async () => {
