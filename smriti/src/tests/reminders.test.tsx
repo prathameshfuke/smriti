@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import type { ReactNode } from 'react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { db, type LocalReminderSchedule } from '@/lib/db/schema';
@@ -9,6 +10,11 @@ import {
 } from '@/lib/engine/reminders';
 import { playAudio } from '@/lib/audio/player';
 import ReminderCard from '@/components/ui/ReminderCard';
+import { I18nProvider } from '@/lib/i18n/provider';
+
+function withI18n(node: ReactNode) {
+  return <I18nProvider>{node}</I18nProvider>;
+}
 
 describe('generateDefaultHydrationSchedule', () => {
   it('returns exactly 8 reminders', () => {
@@ -37,33 +43,34 @@ function schedule(over: Partial<LocalReminderSchedule> = {}): LocalReminderSched
   };
 }
 
+// Real Date.now() throughout — fake timers block the real IndexedDB async
+// chain fake-indexeddb relies on and time out (see PBKDF2 lesson elsewhere
+// in this suite). Times are derived from the actual current moment instead.
+function nowHHMM(offsetMinutes = 0): string {
+  const d = new Date(Date.now() + offsetMinutes * 60_000);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 describe('getRemindersDueNow', () => {
   beforeEach(async () => {
     await db.reminderSchedules.clear();
     await db.reminderAcks.clear();
-    // Wednesday 2026-09-02 09:00 local time — matches every test schedule's default.
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 2, 9, 0, 0));
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('returns matching reminder when time is within 2-minute window', async () => {
-    await db.reminderSchedules.put(schedule({ id: 'due', timeOfDay: '09:01' }));
+    await db.reminderSchedules.put(schedule({ id: 'due', timeOfDay: nowHHMM(1) }));
     const due = await getRemindersDueNow('p1');
     expect(due.map((r) => r.id)).toContain('due');
   });
 
   it('excludes reminder already acknowledged today', async () => {
-    await db.reminderSchedules.put(schedule({ id: 'acked', timeOfDay: '09:00' }));
+    await db.reminderSchedules.put(schedule({ id: 'acked', timeOfDay: nowHHMM() }));
     await db.reminderAcks.add({
       id: 'ack1',
       reminderId: 'acked',
       patientId: 'p1',
-      scheduledAt: new Date(2026, 8, 2, 9, 0, 0).toISOString(),
-      acknowledgedAt: new Date(2026, 8, 2, 9, 0, 30).toISOString(),
+      scheduledAt: new Date().toISOString(),
+      acknowledgedAt: new Date().toISOString(),
       ackMethod: 'touch',
       synced: false,
     });
@@ -95,20 +102,26 @@ describe('ReminderCard', () => {
   const reminder = schedule({ reminderType: 'hydration', label: 'Drink water' });
 
   it('renders reminder.label text', () => {
-    render(<ReminderCard reminder={reminder} onAcknowledge={() => {}} onSnooze={() => {}} />);
+    render(withI18n(<ReminderCard reminder={reminder} onAcknowledge={() => {}} onSnooze={() => {}} />));
     expect(screen.getByText('Drink water')).toBeInTheDocument();
   });
 
   it('calls onAcknowledge when Done button is clicked', () => {
     const onAcknowledge = vi.fn();
-    render(<ReminderCard reminder={reminder} onAcknowledge={onAcknowledge} onSnooze={() => {}} />);
+    render(
+      withI18n(
+        <ReminderCard reminder={reminder} onAcknowledge={onAcknowledge} onSnooze={() => {}} />,
+      ),
+    );
     fireEvent.click(screen.getByText(/done/i));
     expect(onAcknowledge).toHaveBeenCalledTimes(1);
   });
 
   it('calls onSnooze when snooze link is clicked', () => {
     const onSnooze = vi.fn();
-    render(<ReminderCard reminder={reminder} onAcknowledge={() => {}} onSnooze={onSnooze} />);
+    render(
+      withI18n(<ReminderCard reminder={reminder} onAcknowledge={() => {}} onSnooze={onSnooze} />),
+    );
     fireEvent.click(screen.getByText(/remind me in 15 minutes/i));
     expect(onSnooze).toHaveBeenCalledTimes(1);
   });
