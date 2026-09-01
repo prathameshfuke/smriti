@@ -25,6 +25,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-smriti-sans);
   --animate-ring-fill: smriti-ring-fill 700ms ease-out both;
+  --animate-shake: smriti-shake 200ms ease-in-out 3;
+  --animate-pulse-ring: smriti-pulse-ring 1200ms ease-in-out infinite;
 }
 
 /*
@@ -37,6 +39,29 @@
   }
   to {
     stroke-dashoffset: var(--ring-offset);
+  }
+}
+
+@keyframes smriti-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes smriti-pulse-ring {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
   }
 }
 
