@@ -8,10 +8,26 @@ import { useGameStore } from '@/stores/gameStore';
 const getSession = vi.fn();
 const getUser = vi.fn();
 
+/** Chainable Postgrest-like fake: every filter method returns itself, `.single()`
+ * and `await` both resolve to the same canned `{ data, error }`. */
+function makeChain(result: { data: unknown; error: unknown }) {
+  const chain: Record<string, unknown> = {};
+  for (const method of ['select', 'eq', 'in', 'gte', 'order', 'limit', 'upsert', 'insert', 'update']) {
+    chain[method] = vi.fn(() => chain);
+  }
+  chain.single = vi.fn(() => Promise.resolve(result));
+  chain.then = (resolve: (v: typeof result) => unknown) => resolve(result);
+  return chain;
+}
+
+const fromMock = vi.fn((table: string) =>
+  makeChain(table === 'caregivers' ? { data: { id: 'c-default' }, error: null } : { data: [], error: null }),
+);
+
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: () => true,
   createBrowserClient: () => ({ auth: { getSession } }),
-  createServerClient: () => ({ auth: { getUser } }),
+  createServerClient: () => ({ auth: { getUser }, from: fromMock }),
 }));
 
 function setOnline(value: boolean) {
@@ -44,6 +60,10 @@ beforeEach(async () => {
   useGameStore.setState(useGameStore.getInitialState(), true);
   getSession.mockReset();
   getUser.mockReset();
+  fromMock.mockReset();
+  fromMock.mockImplementation((table: string) =>
+    makeChain(table === 'caregivers' ? { data: { id: 'c-default' }, error: null } : { data: [], error: null }),
+  );
   setOnline(true);
 });
 
@@ -236,5 +256,44 @@ describe('POST /api/sync', () => {
 
     const second = await POST(makeReq());
     expect(second.status).toBe(429);
+  });
+
+  it('does not read or write data for a patientId the caregiver does not own', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-owner-test' } }, error: null });
+
+    const telemetryChain = makeChain({ data: [], error: null });
+    const patientsOwnershipChain = makeChain({ data: [], error: null }); // caregiver owns nothing
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c-owner-test' }, error: null });
+      if (table === 'patients') return patientsOwnershipChain;
+      if (table === 'telemetry_events') return telemetryChain;
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          {
+            patientId: 'p-foreign',
+            sessions: [],
+            events: [{ id: 'evt-foreign' }],
+            dailySummaries: [],
+            reminderAcks: [],
+          },
+        ],
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.updates.patients).toEqual([]);
+    expect(telemetryChain.upsert).not.toHaveBeenCalled();
   });
 });
