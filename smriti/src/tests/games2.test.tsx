@@ -8,6 +8,7 @@ import SessionComplete from '@/components/games/SessionComplete';
 import type { LocalPatient } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { I18nProvider } from '@/lib/i18n/provider';
 
 const push = vi.fn();
 const router = { push, replace: vi.fn() };
@@ -139,7 +140,11 @@ describe('Path Match page tap handling', () => {
 
   it('correct tap (index matches currentTarget-1) advances currentTarget', async () => {
     const { default: PathMatchPage } = await import('@/app/games/path-match/page');
-    render(<PathMatchPage />);
+    render(
+      <I18nProvider>
+        <PathMatchPage />
+      </I18nProvider>,
+    );
 
     fireEvent.click(screen.getByText(/start/i));
 
@@ -161,7 +166,11 @@ describe('Path Match page tap handling', () => {
 
   it('wrong tap does NOT advance currentTarget', async () => {
     const { default: PathMatchPage } = await import('@/app/games/path-match/page');
-    render(<PathMatchPage />);
+    render(
+      <I18nProvider>
+        <PathMatchPage />
+      </I18nProvider>,
+    );
 
     fireEvent.click(screen.getByText(/start/i));
 
