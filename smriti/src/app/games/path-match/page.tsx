@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import PathCanvas, { type PathPoint } from '@/components/games/PathCanvas';
@@ -58,6 +59,14 @@ function generatePointLayout(numPoints: number, level: number): PathPoint[] {
 }
 
 export default function PathMatchPage() {
+  return (
+    <ErrorBoundary>
+      <PathMatchPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function PathMatchPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
@@ -227,7 +236,7 @@ export default function PathMatchPage() {
               {[1, 2, 3].map((n) => (
                 <span
                   key={n}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse animate-pulse"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse animate-pulse motion-reduce:animate-none"
                 >
                   {n}
                 </span>

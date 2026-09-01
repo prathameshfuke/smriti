@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
@@ -21,6 +22,14 @@ interface DashboardPatient {
 const STATUS_ORDER: Record<TriageStatus, number> = { red: 0, yellow: 1, green: 2 };
 
 export default function CaregiverDashboardPage() {
+  return (
+    <ErrorBoundary>
+      <CaregiverDashboardPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function CaregiverDashboardPageInner() {
   const router = useRouter();
   const { syncStatus, lastSynced, syncNow } = useSync();
 

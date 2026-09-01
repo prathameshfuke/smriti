@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import ObjectGrid from '@/components/games/ObjectGrid';
@@ -66,6 +67,14 @@ function layoutTiles(objects: SmritiObject[], totalTiles: number): (SmritiObject
 }
 
 export default function ObjectHuntPage() {
+  return (
+    <ErrorBoundary>
+      <ObjectHuntPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function ObjectHuntPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
@@ -227,7 +236,7 @@ export default function ObjectHuntPage() {
         {phase === 'instruction' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.objectHunt.instruction')}</p>
-            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30" />
+            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 motion-reduce:animate-none" />
           </div>
         ) : null}
 

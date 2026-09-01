@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
@@ -63,6 +64,14 @@ function generateSequence(target: SmritiObject, params: LevelParams): SequenceIt
 }
 
 export default function QuickTapPage() {
+  return (
+    <ErrorBoundary>
+      <QuickTapPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function QuickTapPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);

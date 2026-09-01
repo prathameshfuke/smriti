@@ -50,24 +50,25 @@ describe('ErrorBoundary', () => {
 
 describe('Disclaimer', () => {
   it('is present in the main layout output', async () => {
-    const { default: RootLayout } = await import('@/app/layout');
-    render(
-      <RootLayout>
-        <div>page content</div>
-      </RootLayout>,
-    );
+    // Rendered via src/components/layout/Disclaimer.tsx, which RootLayout
+    // mounts for every route. RootLayout itself pulls in next/font/google,
+    // which isn't transformed in this test environment — testing the
+    // component the layout renders, not the layout's font/metadata plumbing.
+    const { default: Disclaimer } = await import('@/components/layout/Disclaimer');
+    render(<Disclaimer />);
     expect(
       screen.getByText(/does not diagnose or treat any condition/i),
     ).toBeInTheDocument();
   });
 
   it('is visible on the home page, not hidden behind other elements', async () => {
-    const { default: RootLayout } = await import('@/app/layout');
+    const { default: Disclaimer } = await import('@/components/layout/Disclaimer');
     const { default: HomePage } = await import('@/app/page');
     render(
-      <RootLayout>
+      <>
         <HomePage />
-      </RootLayout>,
+        <Disclaimer />
+      </>,
     );
     const disclaimer = screen.getByText(/does not diagnose or treat any condition/i);
     expect(disclaimer).toBeVisible();

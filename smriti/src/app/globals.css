@@ -65,6 +65,17 @@
   }
 }
 
+/* Belt-and-braces for prefers-reduced-motion, on top of each animation's own
+   motion-reduce:animate-none — covers anything that ever slips through. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 html {
   color-scheme: light;
 }

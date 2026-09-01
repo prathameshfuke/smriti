@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
@@ -22,6 +23,14 @@ function objectFor(id: string): SmritiObject {
 }
 
 export default function WordStreamPage() {
+  return (
+    <ErrorBoundary>
+      <WordStreamPageInner />
+    </ErrorBoundary>
+  );
+}
+
+function WordStreamPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);

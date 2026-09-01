@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
 import { LanguageProvider } from "@/lib/i18n/provider";
+import Disclaimer from "@/components/layout/Disclaimer";
 import "./globals.css";
 
 /**
@@ -50,10 +51,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>
           <div className="flex flex-1 flex-col">{children}</div>
-          <footer className="px-4 py-3 text-center text-patient-sm text-ink-muted">
-            SMRITI supports cognitive wellness. It does not diagnose or treat
-            dementia, and it does not replace a doctor.
-          </footer>
+          <Disclaimer />
         </LanguageProvider>
       </body>
     </html>
