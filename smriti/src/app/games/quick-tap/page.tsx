@@ -101,8 +101,9 @@ export default function QuickTapPage() {
   }, [phase, t]);
 
   useEffect(() => {
+    const timers = timersRef.current;
     return () => {
-      timersRef.current.forEach(clearTimeout);
+      timers.forEach(clearTimeout);
     };
   }, []);
 
@@ -117,28 +118,7 @@ export default function QuickTapPage() {
   useEffect(() => {
     if (phase !== 'instruction') return;
     queueMicrotask(() => setTarget(pickObjects(1)[0] ?? null));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, round]);
-
-  useEffect(() => {
-    if (phase !== 'playing') return;
-    if (itemIndex >= sequence.length) {
-      queueMicrotask(() => setPhase('round_complete'));
-      return;
-    }
-
-    handledRef.current = false;
-    const timer = setTimeout(() => {
-      if (handledRef.current) return;
-      handledRef.current = true;
-      logRoundItem(itemIndex, false);
-      setItemIndex((i) => i + 1);
-    }, level.displayMs);
-    timersRef.current.push(timer);
-
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, itemIndex, sequence.length]);
 
   const logRoundItem = (index: number, tapped: boolean) => {
     setSequence((prev) => {
@@ -165,6 +145,26 @@ export default function QuickTapPage() {
       metadata: { objectId: item.object.id, isTarget: item.isTarget, tapped, isFalseAlarm },
     });
   };
+
+  useEffect(() => {
+    if (phase !== 'playing') return;
+    if (itemIndex >= sequence.length) {
+      queueMicrotask(() => setPhase('round_complete'));
+      return;
+    }
+
+    handledRef.current = false;
+    const timer = setTimeout(() => {
+      if (handledRef.current) return;
+      handledRef.current = true;
+      logRoundItem(itemIndex, false);
+      setItemIndex((i) => i + 1);
+    }, level.displayMs);
+    timersRef.current.push(timer);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase, itemIndex, sequence.length]);
 
   const onScreenTap = () => {
     if (phase !== 'playing' || handledRef.current) return;
