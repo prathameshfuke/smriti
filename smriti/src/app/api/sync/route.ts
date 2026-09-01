@@ -46,10 +46,33 @@ export async function POST(request: Request) {
     return Response.json({ error: 'missing_patients' }, { status: 400 });
   }
 
-  const { supabase } = auth;
+  const { supabase, userId } = auth;
+
+  const { data: caregiver } = await supabase
+    .from('caregivers')
+    .select('id')
+    .eq('auth_id', userId)
+    .single();
+  if (!caregiver) return Response.json({ error: 'caregiver_not_found' }, { status: 404 });
+
+  // A patientId the client sends is untrusted input: without this check any
+  // authenticated caller could read or write another caregiver's data by
+  // simply naming their patient's id in the request body.
+  const requestedIds = body.patients.map((p) => p.patientId);
+  let ownedIds = new Set<string>();
+  if (requestedIds.length) {
+    const { data: owned } = await supabase
+      .from('patients')
+      .select('id')
+      .eq('caregiver_id', caregiver.id)
+      .in('id', requestedIds);
+    ownedIds = new Set((owned ?? []).map((p) => p.id));
+  }
+  const ownedPatients = body.patients.filter((p) => ownedIds.has(p.patientId));
+
   let syncedEventCount = 0;
 
-  for (const patient of body.patients) {
+  for (const patient of ownedPatients) {
     if (patient.sessions?.length) {
       await supabase
         .from('game_sessions')
@@ -79,7 +102,7 @@ export async function POST(request: Request) {
   }
 
   const since = body.lastSyncTimestamp ?? new Date(0).toISOString();
-  const patientIds = body.patients.map((p) => p.patientId);
+  const patientIds = ownedPatients.map((p) => p.patientId);
 
   const [{ data: patients }, { data: reminders }, { data: alerts }] = await Promise.all([
     patientIds.length
