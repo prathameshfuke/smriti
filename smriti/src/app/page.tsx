@@ -9,6 +9,7 @@ import PinPad from '@/components/ui/PinPad';
 import ReminderCard from '@/components/ui/ReminderCard';
 import SyncIndicator from '@/components/ui/SyncIndicator';
 import { useReminders } from '@/hooks/useReminders';
+import { useSync } from '@/hooks/useSync';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -118,6 +119,7 @@ export default function HomePage() {
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const [showPin, setShowPin] = useState(false);
   const { pendingReminder, clearPendingReminder } = useReminders();
+  const { syncStatus, lastSynced } = useSync();
 
   const onAcknowledgeReminder = async () => {
     if (pendingReminder && currentPatient) {
@@ -176,7 +178,7 @@ export default function HomePage() {
 
       {showPin ? <PinDialog onClose={() => setShowPin(false)} /> : null}
 
-      <SyncIndicator status="synced" />
+      <SyncIndicator status={syncStatus} lastSyncedAt={lastSynced} />
     </main>
   );
 }

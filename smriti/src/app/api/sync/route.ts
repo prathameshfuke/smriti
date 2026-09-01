@@ -1,5 +1,7 @@
+import { v4 as uuid } from 'uuid';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { detectCognitiveDrop } from '@/lib/engine/alerts';
+import type { GameType } from '@/lib/supabase/types';
 
 const RATE_LIMIT_MS = 30_000;
 
@@ -72,7 +74,7 @@ export async function POST(request: Request) {
 
     const gameTypes = new Set(patient.dailySummaries?.map((s) => s.gameType) ?? []);
     for (const gameType of gameTypes) {
-      await checkCognitiveDropAlert(supabase, patient.patientId, gameType);
+      await checkCognitiveDropAlert(supabase, patient.patientId, gameType as GameType);
     }
   }
 
@@ -112,7 +114,7 @@ type AuthedSupabase = NonNullable<Awaited<ReturnType<typeof authenticateRequest>
 async function checkCognitiveDropAlert(
   supabase: AuthedSupabase,
   patientId: string,
-  gameType: string,
+  gameType: GameType,
 ): Promise<void> {
   const { data: history } = await supabase
     .from('daily_summaries')
@@ -146,6 +148,7 @@ async function checkCognitiveDropAlert(
   if (!patientRow) return;
 
   await supabase.from('alerts').insert({
+    id: uuid(),
     patient_id: patientId,
     caregiver_id: patientRow.caregiver_id,
     alert_type: 'cognitive_drop',
@@ -154,5 +157,6 @@ async function checkCognitiveDropAlert(
     description: `Today's ${gameType.replace('_', ' ')} accuracy is well below the recent average.`,
     is_read: false,
     is_resolved: false,
+    resolved_at: null,
   });
 }
