@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
+import { Lora, Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import Disclaimer from "@/components/layout/Disclaimer";
 import "./globals.css";
@@ -19,6 +19,13 @@ const notoSansBengali = Noto_Sans_Bengali({
 const notoSansDevanagari = Noto_Sans_Devanagari({
   variable: "--font-smriti-devanagari",
   subsets: ["devanagari"],
+  display: "swap",
+});
+
+/** Serif display face for the marketing/login pages' headlines only. */
+const lora = Lora({
+  variable: "--font-smriti-serif",
+  subsets: ["latin"],
   display: "swap",
 });
 
@@ -46,7 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${notoSansBengali.variable} ${notoSansDevanagari.variable} h-full antialiased`}
+      className={`${notoSansBengali.variable} ${notoSansDevanagari.variable} ${lora.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>

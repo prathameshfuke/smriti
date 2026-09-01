@@ -29,12 +29,21 @@ const config: Config = {
           active: '#D7CFC0',
         },
       },
+      fontFamily: {
+        'serif-display': ['var(--font-smriti-serif)', 'Lora', 'Georgia', 'serif'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
       fontSize: {
         'patient-sm': ['1rem', { lineHeight: '1.6' }],
         'patient-body': ['1.375rem', { lineHeight: '1.6' }],
         'patient-heading': ['2.25rem', { lineHeight: '1.3' }],
         'caregiver-body': ['1.125rem', { lineHeight: '1.6' }],
         'caregiver-heading': ['1.75rem', { lineHeight: '1.3' }],
+        hero: ['3.5rem', { lineHeight: '1.1', fontWeight: '600' }],
+        headline: ['2.25rem', { lineHeight: '1.2', fontWeight: '600' }],
+        subheadline: ['1.5rem', { lineHeight: '1.3', fontWeight: '500' }],
+        'body-lg': ['1.125rem', { lineHeight: '1.6' }],
+        body: ['1rem', { lineHeight: '1.6' }],
       },
       spacing: {
         touch: '64px',
