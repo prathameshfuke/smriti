@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/caregiver/dashboard',
+}));
+
 import BigButton from '@/components/ui/BigButton';
 import TrafficLight from '@/components/ui/TrafficLight';
 import ProgressRing from '@/components/ui/ProgressRing';

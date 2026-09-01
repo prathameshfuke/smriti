@@ -64,8 +64,8 @@ describe('Caregiver dashboard', () => {
       'fetch',
       mockFetchJson({
         patients: [
-          patient({ id: 'p1', alertStatus: 'yellow' }),
-          patient({ id: 'p2', alertStatus: 'green' }),
+          patient({ id: 'p1', displayName: 'Aai', alertStatus: 'yellow' }),
+          patient({ id: 'p2', displayName: 'Deuta', alertStatus: 'green' }),
         ],
       }),
     );

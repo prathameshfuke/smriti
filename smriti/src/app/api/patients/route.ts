@@ -25,15 +25,19 @@ export async function GET(request: Request) {
     .select('*')
     .eq('caregiver_id', caregiver.id);
 
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const results = await Promise.all(
     (patients ?? []).map(async (patient) => {
       const [{ data: summaries }, { data: alerts }] = await Promise.all([
+        // Last 7 rows, not just the latest: dashboard needs both "today's
+        // accuracy" and "distinct days played this week" from one query.
         supabase
           .from('daily_summaries')
           .select('*')
           .eq('patient_id', patient.id)
           .order('summary_date', { ascending: false })
-          .limit(1),
+          .limit(7),
         supabase
           .from('alerts')
           .select('severity, is_read')
@@ -44,9 +48,22 @@ export async function GET(request: Request) {
       const alertStatus = reduceAlertStatus((alerts ?? []).map((a) => a.severity));
       const unreadAlertCount = (alerts ?? []).filter((a) => !a.is_read).length;
 
+      const recentSummaries = summaries ?? [];
+      const accuracyToday =
+        recentSummaries.find((s) => s.summary_date === todayStr)?.accuracy_pct ?? 0;
+      const sessionsThisWeek = new Set(recentSummaries.map((s) => s.summary_date)).size;
+
       return {
-        ...patient,
-        latestSummary: summaries?.[0] ?? null,
+        id: patient.id,
+        caregiverId: patient.caregiver_id,
+        displayName: patient.display_name,
+        ageYears: patient.age_years,
+        gender: patient.gender,
+        primaryLanguage: patient.primary_language,
+        isActive: patient.is_active,
+        latestSummary: recentSummaries[0] ?? null,
+        accuracyToday,
+        sessionsThisWeek,
         alertStatus,
         unreadAlertCount,
       };

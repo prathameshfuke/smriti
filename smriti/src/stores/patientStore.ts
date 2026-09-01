@@ -9,6 +9,10 @@ interface PatientState {
   /** Loads one caregiver's active patients from IndexedDB. */
   loadPatients: (caregiverId: string) => Promise<void>;
   addPatient: (patient: LocalPatient) => Promise<void>;
+  /** Persists a new difficulty level for one game, keeping currentPatient in sync. */
+  updateDifficulty: (patientId: string, gameType: string, level: number) => Promise<void>;
+  /** Soft-deletes a patient (isActive: false) and syncs the change, per the reminders page's precedent. */
+  deactivatePatient: (patientId: string) => Promise<void>;
 }
 
 /**
@@ -21,7 +25,7 @@ async function activePatientsFor(caregiverId: string): Promise<LocalPatient[]> {
   return db.patients.where('caregiverId').equals(caregiverId).filter((p) => p.isActive).toArray();
 }
 
-export const usePatientStore = create<PatientState>()((set) => ({
+export const usePatientStore = create<PatientState>()((set, get) => ({
   currentPatient: null,
   allPatients: [],
 
@@ -39,5 +43,46 @@ export const usePatientStore = create<PatientState>()((set) => ({
       );
     });
     set({ allPatients: await activePatientsFor(patient.caregiverId) });
+  },
+
+  updateDifficulty: async (patientId, gameType, level) => {
+    const patient = await db.patients.get(patientId);
+    if (!patient) return;
+
+    const updated: LocalPatient = {
+      ...patient,
+      currentDifficulty: { ...patient.currentDifficulty, [gameType]: level },
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.transaction('rw', db.patients, db.syncQueue, async () => {
+      await db.patients.put(updated);
+      await db.syncQueue.put(buildQueueItem('patients', updated.id, 'update', { ...updated }));
+    });
+
+    if (get().currentPatient?.id === patientId) {
+      set({ currentPatient: updated });
+    }
+  },
+
+  deactivatePatient: async (patientId) => {
+    const patient = await db.patients.get(patientId);
+    if (!patient) return;
+
+    const updated: LocalPatient = {
+      ...patient,
+      isActive: false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await db.transaction('rw', db.patients, db.syncQueue, async () => {
+      await db.patients.put(updated);
+      await db.syncQueue.put(buildQueueItem('patients', updated.id, 'update', { ...updated }));
+    });
+
+    set({ allPatients: await activePatientsFor(patient.caregiverId) });
+    if (get().currentPatient?.id === patientId) {
+      set({ currentPatient: null });
+    }
   },
 }));
