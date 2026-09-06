@@ -9,6 +9,7 @@ import GameTile from '@/components/ui/GameTile';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
 import ReminderCard, { REMINDER_ICON } from '@/components/ui/ReminderCard';
+import Skeleton from '@/components/ui/Skeleton';
 import { useReminders } from '@/hooks/useReminders';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { getDeviceTrustToken, isTokenWellFormed } from '@/lib/auth/deviceTrust';
@@ -165,9 +166,25 @@ export default function HomePage() {
   // forcing a login (and worse, onboarding if that login path failed) for no
   // reason. This only restores what already exists locally; it never talks
   // to Supabase and never blocks the render.
+  //
+  // `restoring` gates the "No patient selected" fallback below: without it,
+  // a legitimate returning patient sees that screen (and its Caregiver Login
+  // button) flash for a moment on every cold start, before the restore
+  // above has had a chance to run.
+  const [restoring, setRestoring] = useState(!currentPatient);
+
   useEffect(() => {
-    if (currentPatient) return;
-    void restoreLocalSession();
+    if (currentPatient) {
+      setRestoring(false);
+      return;
+    }
+    let cancelled = false;
+    void restoreLocalSession().finally(() => {
+      if (!cancelled) setRestoring(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [currentPatient]);
 
   const onAcknowledgeReminder = async () => {
@@ -263,6 +280,10 @@ export default function HomePage() {
         <p className="text-center text-patient-heading text-ink">
           Hello, {currentPatient.displayName}!
         </p>
+      ) : restoring ? (
+        <div aria-busy="true" aria-label="Loading" className="flex flex-col items-center gap-2">
+          <Skeleton height={28} width="60%" />
+        </div>
       ) : (
         <div className="flex flex-col items-center gap-4">
           <p className="text-patient-body text-ink">No patient selected</p>
