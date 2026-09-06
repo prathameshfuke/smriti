@@ -47,6 +47,16 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+/** null by default — most tests never touch the device-trust token. */
+let deviceTrustToken: unknown = null;
+vi.mock('@/lib/auth/deviceTrust', async (importOriginal) => {
+  const actual = await importOriginal() as typeof import('@/lib/auth/deviceTrust');
+  return {
+    ...actual,
+    getDeviceTrustToken: () => Promise.resolve(deviceTrustToken),
+  };
+});
+
 import HomePage from '@/app/app/page';
 import CaregiverLoginPage from '@/app/caregiver/login/page';
 import CaregiverLayout from '@/app/caregiver/layout';
@@ -83,6 +93,7 @@ beforeEach(async () => {
   verifyOtp.mockReset();
   signOut.mockReset();
   isSupabaseConfigured.mockReturnValue(true);
+  deviceTrustToken = null;
   pathname = '/';
   await db.caregivers.clear();
   await db.patients.clear();
@@ -105,9 +116,14 @@ describe('Home page', () => {
     expect(screen.getByRole('link', { name: /path match/i })).toBeInTheDocument();
   });
 
-  it('renders "No patient selected" and a login button when there is no patient', () => {
+  it('renders "No patient selected" and a login button when there is no patient', async () => {
+    // No local caregiver/patient in Dexie, so the cold-start restore this
+    // page runs resolves to "nothing to restore" — but only after an async
+    // Dexie read. Until then the page shows a loading state, not this
+    // fallback, so a legitimate returning patient never sees a false
+    // "No patient selected" flash while restoration is still in flight.
     render(<HomePage />);
-    expect(screen.getByText(/no patient selected/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no patient selected/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /caregiver login/i })).toBeInTheDocument();
   });
 
@@ -125,10 +141,41 @@ describe('Home page', () => {
     await db.patients.put(patient());
 
     render(<HomePage />);
-    expect(screen.getByText(/no patient selected/i)).toBeInTheDocument();
+
+    // While restoration is in flight, neither the final "Hello" text nor the
+    // "No patient selected" / login fallback should be visible.
+    expect(screen.queryByText(/no patient selected/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
 
     expect(await screen.findByText(/hello, aai/i)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
+  });
+
+  it('restores the device-trust token\'s patient, not just any active patient of the caregiver', async () => {
+    // A kiosk device is trusted for exactly one patient (its device-trust
+    // token), but an ASHA worker's caregiver profile can carry more than one
+    // locally. Restoration must key off the token, not "whichever active
+    // patient happens to be first" — otherwise a shared device could wake up
+    // pointed at the wrong patient's games and reminders.
+    await db.caregivers.put({
+      id: 'c1',
+      authUserId: 'u1',
+      displayName: 'Test Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    await db.patients.put(patient({ id: 'p1', displayName: 'Aai' }));
+    await db.patients.put(patient({ id: 'p2', displayName: 'Baba' }));
+    deviceTrustToken = {
+      patientId: 'p2',
+      issuedAt: Date.now(),
+      issuedBy: 'c1',
+      signature: 'server-issued-signature-opaque-to-the-client',
+    };
+
+    render(<HomePage />);
+
+    expect(await screen.findByText(/hello, baba/i)).toBeInTheDocument();
   });
 
   it('shows a cooldown message after 3 wrong PIN attempts', async () => {
