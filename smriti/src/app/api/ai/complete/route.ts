@@ -42,6 +42,54 @@ function isGroundedAnswer(text: string): boolean {
   return !NOT_FOUND_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+/** Words too common to count as evidence an answer actually drew on a fact
+ * (English plus a few frequent Hindi/Assamese function words, since patients'
+ * memory-bank facts are often in the local language). */
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'is', 'was', 'are', 'were', 'and', 'or', 'to', 'of', 'in',
+  'on', 'at', 'for', 'with', 'your', 'you', 'he', 'she', 'they', 'it', 'his',
+  'her', 'their', 'this', 'that', 'i', 'not', 'sure', 'about', 'ask', 'my',
+  'me', 'we', 'us', 'ke', 'ki', 'ka', 'hai', 'aur', 'se', 'ko', 'ek',
+]);
+
+/** Lowercased, punctuation-stripped, stopword-filtered significant words. */
+function significantWords(text: string): Set<string> {
+  return new Set(
+    text
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((w) => w.length > 2 && !STOPWORDS.has(w)),
+  );
+}
+
+/** How many of a fact's key terms (title, relationship, detail) actually
+ * show up in the model's answer. */
+type Fact = { title: string; detail: string; relationship: string | null; category: string };
+
+/**
+ * A model given real facts can still fabricate an answer to a question those
+ * facts don't cover — the "say exactly ..." system-prompt line and the
+ * `isGroundedAnswer` pattern check above only catch the model admitting it
+ * doesn't know; they do nothing if it just invents a plausible-sounding
+ * answer instead. This checks the answer text for actual keyword/entity
+ * overlap with at least one of the facts that were put in the prompt, as a
+ * cheap proxy for "this answer was actually derived from a provided fact"
+ * without a second LLM call.
+ */
+function overlapsAnyFact(answerText: string, facts: Fact[]): boolean {
+  const answerWords = significantWords(answerText);
+  if (answerWords.size === 0) return false;
+  return facts.some((fact) => {
+    const factWords = significantWords(
+      [fact.title, fact.relationship ?? '', fact.detail].join(' '),
+    );
+    for (const word of factWords) {
+      if (answerWords.has(word)) return true;
+    }
+    return false;
+  });
+}
+
 type ServiceClient = ReturnType<typeof createServiceRoleClient>;
 
 async function logExchange(
@@ -180,16 +228,22 @@ export async function POST(request: Request) {
     `sentences, speak warmly and simply.\n\nFacts:\n${factLines}`;
 
   const result = await callLLM({ systemPrompt, userPrompt: body.question });
-  const grounded = result.grounded && isGroundedAnswer(result.text);
+  const grounded =
+    result.grounded && isGroundedAnswer(result.text) && overlapsAnyFact(result.text, facts);
+  // Facts existed, but the answer neither admitted "I don't know" nor
+  // actually referenced any of them — treat it as fabricated and swap in
+  // the same safe fallback used for the zero-facts case, rather than
+  // returning an answer nothing in the prompt actually supports.
+  const answerText = grounded ? result.text : EXACT_FALLBACK_TEXT;
 
   await logExchange(service, {
     patientId: pid,
     question: body.question,
-    answer: result.text,
+    answer: answerText,
     grounded,
     modelUsed: result.model,
     flaggedForFollowup: false,
   });
 
-  return respond(result.text, grounded, result.model);
+  return respond(answerText, grounded, result.model);
 }
