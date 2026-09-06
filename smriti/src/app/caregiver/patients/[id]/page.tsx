@@ -89,6 +89,7 @@ const CANONICAL_GAMES: GameType[] = [
   'memory_span',
   'fish_trace',
   'double_decision',
+  'reminiscence_quiz',
   'routine_recall',
 ];
 const GAME_LABELS: Record<GameType, string> = {
@@ -108,11 +109,12 @@ const GAME_LABELS: Record<GameType, string> = {
   reminiscence_quiz: 'Memory Match: Family & Life',
   routine_recall: 'Routine Recall',
 };
-// Partial — reminiscence_quiz has no difficulty progression (see
-// MAX_LEVEL.reminiscence_quiz) and so no meaningful entry in ScoreGraph's
-// own, narrower GameType union; it's never looked up here since it's also
-// excluded from CANONICAL_GAMES below.
-const SCORE_GAME_FOR: Partial<Record<GameType, ScoreGameType>> = {
+// reminiscence_quiz has no difficulty progression (see MAX_LEVEL.reminiscence_quiz)
+// and so no meaningful entry in ScoreGraph's own, narrower GameType union — it's
+// mapped to its own literal (not a ScoreGameType) purely so the per-game
+// breakdown card below can still show "last played", never plotted on
+// ScoreGraph's line chart.
+const SCORE_GAME_FOR: Partial<Record<GameType, ScoreGameType | 'reminiscence_quiz'>> = {
   object_hunt: 'object_hunt',
   word_stream: 'word_recall',
   quick_tap: 'quick_tap',
@@ -126,6 +128,7 @@ const SCORE_GAME_FOR: Partial<Record<GameType, ScoreGameType>> = {
   memory_span: 'memory_span',
   fish_trace: 'fish_trace',
   double_decision: 'double_decision',
+  reminiscence_quiz: 'reminiscence_quiz',
   routine_recall: 'routine_recall',
 };
 const REMINDER_TYPES: ReminderType[] = ['medication', 'hydration', 'activity', 'appointment'];

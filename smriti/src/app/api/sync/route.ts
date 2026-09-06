@@ -182,7 +182,9 @@ async function checkCognitiveDropAlert(
   if (!history || history.length < 8) return;
   if (!detectCognitiveDrop(history.map((h) => h.accuracy_pct))) return;
 
-  const today = history[0].summary_date;
+  // A true rolling 48h window, not a calendar-day boundary — two alerts
+  // ~minutes apart but on opposite sides of midnight must still dedup.
+  const windowStart = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
 
   const { data: existing } = await supabase
     .from('alerts')
@@ -190,7 +192,7 @@ async function checkCognitiveDropAlert(
     .eq('patient_id', patientId)
     .eq('alert_type', 'cognitive_drop')
     .eq('is_resolved', false)
-    .gte('created_at', `${today}T00:00:00.000Z`)
+    .gte('created_at', windowStart)
     .limit(1);
 
   if (existing && existing.length > 0) return;

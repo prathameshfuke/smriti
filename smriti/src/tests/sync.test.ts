@@ -50,6 +50,16 @@ async function seedUnsyncedEvent(id: string, patientId: string) {
   });
 }
 
+async function seedUnsyncedSession(id: string, patientId: string) {
+  await db.gameSessions.put({
+    id,
+    patientId,
+    startedAt: new Date().toISOString(),
+    endedAt: new Date().toISOString(),
+    synced: false,
+  });
+}
+
 beforeEach(async () => {
   await db.telemetryEvents.clear();
   await db.dailySummaries.clear();
@@ -154,6 +164,33 @@ describe('syncToServer', () => {
 
     const { syncToServer } = await import('@/lib/db/sync');
     await expect(syncToServer('p1')).resolves.toMatchObject({ success: false });
+  });
+
+  it('only marks the row categories the server actually accepted as synced, leaving rejected ones pending', async () => {
+    getSession.mockResolvedValue({ data: { session: { access_token: 'tok123' } } });
+    await seedUnsyncedEvent('e4', 'p1');
+    await seedUnsyncedSession('s4', 'p1');
+
+    // Server accepted the event but rejected the session for this patient.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          serverTimestamp: new Date().toISOString(),
+          syncedEventCount: 1,
+          syncErrors: { p1: { sessions: 'duplicate key value violates unique constraint' } },
+          updates: { patients: [], reminders: [], alerts: [] },
+        }),
+      }),
+    );
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    const result = await syncToServer('p1');
+
+    expect(result).toEqual({ success: false, error: 'sync rejected for patient(s): p1' });
+    expect((await db.telemetryEvents.get('e4'))?.synced).toBe(true);
+    expect((await db.gameSessions.get('s4'))?.synced).toBe(false);
   });
 });
 
@@ -295,5 +332,124 @@ describe('POST /api/sync', () => {
     const body = await res.json();
     expect(body.updates.patients).toEqual([]);
     expect(telemetryChain.upsert).not.toHaveBeenCalled();
+  });
+
+  it('reports a rejected upsert in syncErrors instead of silently counting it as synced', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-partial-fail-test' } }, error: null });
+
+    const telemetryChain = makeChain({ data: null, error: { message: 'check constraint violated' } });
+    telemetryChain.upsert = vi.fn(() => telemetryChain);
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c-partial-fail-test' }, error: null });
+      if (table === 'patients') return makeChain({ data: [{ id: 'p1' }], error: null });
+      if (table === 'telemetry_events') return telemetryChain;
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          {
+            patientId: 'p1',
+            sessions: [],
+            events: [{ id: 'evt-rejected' }],
+            dailySummaries: [],
+            reminderAcks: [],
+          },
+        ],
+      }),
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // A rejected upsert must never inflate the "successfully synced" count.
+    expect(body.syncedEventCount).toBe(0);
+    expect(body.syncErrors).toEqual({ p1: { events: 'check constraint violated' } });
+  });
+
+  it('dedups cognitive-drop alerts against a rolling 48h window, not a calendar-day boundary', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-alert-dedup-test' } }, error: null });
+
+    // Descending by date: today's accuracy is far below a flat 7-day baseline,
+    // so detectCognitiveDrop (2 stddev below mean) fires.
+    const history = [
+      { accuracy_pct: 20, summary_date: '2026-09-06' },
+      { accuracy_pct: 90, summary_date: '2026-09-05' },
+      { accuracy_pct: 90, summary_date: '2026-09-04' },
+      { accuracy_pct: 90, summary_date: '2026-09-03' },
+      { accuracy_pct: 90, summary_date: '2026-09-02' },
+      { accuracy_pct: 90, summary_date: '2026-09-01' },
+      { accuracy_pct: 90, summary_date: '2026-08-31' },
+      { accuracy_pct: 90, summary_date: '2026-08-30' },
+    ];
+
+    let patientsCallCount = 0;
+    const alertsChains: ReturnType<typeof makeChain>[] = [];
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      if (table === 'patients') {
+        patientsCallCount += 1;
+        // 1st call: ownership check (array). 2nd call: caregiver_id lookup
+        // inside checkCognitiveDropAlert (single object).
+        return patientsCallCount === 1
+          ? makeChain({ data: [{ id: 'p1' }], error: null })
+          : makeChain({ data: { caregiver_id: 'c1' }, error: null });
+      }
+      if (table === 'daily_summaries') {
+        // 1st call: the sync loop's upsert of this patient's dailySummaries.
+        // 2nd call: checkCognitiveDropAlert's 8-day history select.
+        const chain = makeChain({ data: history, error: null });
+        return chain;
+      }
+      if (table === 'alerts') {
+        const chain = makeChain({ data: [], error: null });
+        alertsChains.push(chain);
+        return chain;
+      }
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          {
+            patientId: 'p1',
+            sessions: [],
+            events: [],
+            dailySummaries: [{ id: 'sum1', gameType: 'object_hunt' }],
+            reminderAcks: [],
+          },
+        ],
+      }),
+    });
+
+    const before = Date.now();
+    await POST(req);
+
+    const dedupChain = alertsChains.find((chain) =>
+      (chain.gte as ReturnType<typeof vi.fn>).mock.calls.some((call: unknown[]) => call[0] === 'created_at'),
+    );
+    expect(dedupChain).toBeDefined();
+    const gteCall = (dedupChain!.gte as ReturnType<typeof vi.fn>).mock.calls.find(
+      (call: unknown[]) => call[0] === 'created_at',
+    );
+    const windowStartMs = Date.parse(gteCall![1] as string);
+
+    // A true rolling 48h window: within a few seconds of now-48h, not pinned
+    // to the start of today's calendar date (which would be ~hours off).
+    expect(Math.abs(windowStartMs - (before - 48 * 60 * 60 * 1000))).toBeLessThan(5000);
   });
 });
