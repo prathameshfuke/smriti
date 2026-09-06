@@ -1,0 +1,163 @@
+/** next-intl messages for the copied MemoryTestGame component — one object per UI language. */
+
+const WORD_BANK_EN = [
+  'River', 'Basket', 'Lamp', 'Bicycle', 'Umbrella', 'Kettle', 'Blanket', 'Mango',
+  'Window', 'Ladder', 'Candle', 'Pillow', 'Garden', 'Bridge', 'Mirror', 'Bucket',
+];
+const WORD_BANK_HI = [
+  'नदी', 'टोकरी', 'दीया', 'साइकिल', 'छाता', 'केतली', 'कंबल', 'आम',
+  'खिड़की', 'सीढ़ी', 'मोमबत्ती', 'तकिया', 'बगीचा', 'पुल', 'आईना', 'बाल्टी',
+];
+const WORD_BANK_AS = [
+  'নদী', 'পাচি', 'দীপ', 'চাইকেল', 'ছাটা', 'কেটলী', 'কম্বল', 'আম',
+  'খিৰিকী', 'জিনা', 'বন্তি', 'বিচনা', 'বাৰী', 'দলং', 'আইনা', 'বাল্টি',
+];
+
+const en = {
+  games: {
+    freeShortTermMemoryTest: {
+      wordBank: WORD_BANK_EN,
+      memorizeTheseWords: 'Memorize these words',
+      studyAtYourPace: 'Take your time. Tap Ready when you have looked at all of them.',
+      ready: 'Ready',
+      recall: {
+        title: 'What did you see?',
+        gridInstruction: 'Type as many words as you remember, in any order.',
+        inputLabel: 'Your answers',
+      },
+      submitRecall: 'Done recalling',
+      setup: {
+        title: 'A couple of questions',
+        description: 'This helps us understand your result.',
+        ageGroup: 'Age group',
+        ageUnder18: 'Under 18',
+        age18to25: '18–25',
+        age26to45: '26–45',
+        age46to65: '46–65',
+        age65plus: '65+',
+        gender: 'Gender',
+        male: 'Male',
+        female: 'Female',
+        other: 'Other',
+        submit: 'See my result',
+      },
+      results: {
+        title: 'Your result',
+        excellent: 'Excellent memory today!',
+        good: 'Good work today!',
+        keepPracticing: 'Every attempt helps your memory.',
+        performance: 'Performance',
+        wordsRecalled: 'Words remembered',
+        accuracy: 'Accuracy',
+        timeSpent: 'Time taken',
+        percentile: 'Percentile',
+        correctWords: 'Words you remembered',
+        noMatches: 'No matches this time — that is alright.',
+        missedWords: 'Words to notice next time',
+        encouragement: 'Well done for trying',
+        trainingTip: 'Playing this activity regularly can help keep your memory active.',
+      },
+      tryAgain: 'Play again',
+    },
+  },
+};
+
+const hi = {
+  games: {
+    freeShortTermMemoryTest: {
+      wordBank: WORD_BANK_HI,
+      memorizeTheseWords: 'इन शब्दों को याद करें',
+      studyAtYourPace: 'अपने समय से देखें। सब देख लेने पर तैयार दबाएँ।',
+      ready: 'तैयार हूँ',
+      recall: {
+        title: 'आपने क्या देखा था?',
+        gridInstruction: 'जितने शब्द याद हों, किसी भी क्रम में लिखें।',
+        inputLabel: 'आपके उत्तर',
+      },
+      submitRecall: 'याद करना पूरा हुआ',
+      setup: {
+        title: 'कुछ सवाल',
+        description: 'इससे आपका परिणाम समझने में मदद मिलती है।',
+        ageGroup: 'आयु वर्ग',
+        ageUnder18: '18 से कम',
+        age18to25: '18–25',
+        age26to45: '26–45',
+        age46to65: '46–65',
+        age65plus: '65+',
+        gender: 'लिंग',
+        male: 'पुरुष',
+        female: 'महिला',
+        other: 'अन्य',
+        submit: 'मेरा परिणाम देखें',
+      },
+      results: {
+        title: 'आपका परिणाम',
+        excellent: 'आज याददाश्त बहुत अच्छी रही!',
+        good: 'आज अच्छा प्रदर्शन रहा!',
+        keepPracticing: 'हर प्रयास याददाश्त में मदद करता है।',
+        performance: 'प्रदर्शन',
+        wordsRecalled: 'याद किए गए शब्द',
+        accuracy: 'सटीकता',
+        timeSpent: 'लिया गया समय',
+        percentile: 'प्रतिशतांक',
+        correctWords: 'आपने याद रखे शब्द',
+        noMatches: 'इस बार कोई मेल नहीं — कोई बात नहीं।',
+        missedWords: 'अगली बार ध्यान देने योग्य शब्द',
+        encouragement: 'प्रयास करने के लिए शाबाश',
+        trainingTip: 'यह गतिविधि नियमित रूप से खेलने से याददाश्त सक्रिय रहती है।',
+      },
+      tryAgain: 'फिर से खेलें',
+    },
+  },
+};
+
+const as = {
+  games: {
+    freeShortTermMemoryTest: {
+      wordBank: WORD_BANK_AS,
+      memorizeTheseWords: 'এই শব্দবোৰ মনত ৰাখক',
+      studyAtYourPace: 'নিজৰ সময়ত চাওক। সকলো চোৱাৰ পিছত সাজু টিপক।',
+      ready: 'সাজু আছোঁ',
+      recall: {
+        title: 'আপুনি কি দেখিছিল?',
+        gridInstruction: 'যিমান শব্দ মনত আছে, যিকোনো ক্ৰমত লিখক।',
+        inputLabel: 'আপোনাৰ উত্তৰ',
+      },
+      submitRecall: 'মনত পেলোৱা শেষ হ\'ল',
+      setup: {
+        title: 'কেইটামান প্ৰশ্ন',
+        description: 'ইয়াৰে আপোনাৰ ফলাফল বুজিবলৈ সহায় হয়।',
+        ageGroup: 'বয়সৰ গোট',
+        ageUnder18: '১৮ৰ তলত',
+        age18to25: '১৮–২৫',
+        age26to45: '২৬–৪৫',
+        age46to65: '৪৬–৬৫',
+        age65plus: '৬৫+',
+        gender: 'লিংগ',
+        male: 'পুৰুষ',
+        female: 'মহিলা',
+        other: 'অন্য',
+        submit: 'মোৰ ফলাফল চাওক',
+      },
+      results: {
+        title: 'আপোনাৰ ফলাফল',
+        excellent: 'আজি স্মৃতিশক্তি বহুত ভাল আছিল!',
+        good: 'আজি ভাল কাম কৰিলে!',
+        keepPracticing: 'প্ৰতিটো চেষ্টাই স্মৃতিশক্তিত সহায় কৰে।',
+        performance: 'কাৰ্যক্ষমতা',
+        wordsRecalled: 'মনত পেলোৱা শব্দ',
+        accuracy: 'সঠিকতা',
+        timeSpent: 'লোৱা সময়',
+        percentile: 'শতাংশ',
+        correctWords: 'আপুনি মনত ৰখা শব্দ',
+        noMatches: 'এইবাৰ কোনো মিল নাই — ঠিক আছে।',
+        missedWords: 'পিছৰবাৰ মনত ৰাখিবলগীয়া শব্দ',
+        encouragement: 'চেষ্টা কৰাৰ বাবে বাহ',
+        trainingTip: 'এই কাৰ্যকলাপ নিয়মিতভাৱে খেলিলে স্মৃতিশক্তি সক্ৰিয় থাকে।',
+      },
+      tryAgain: 'পুনৰ খেলক',
+    },
+  },
+};
+
+export const MEMORY_SPAN_MESSAGES = { en, hi, as };

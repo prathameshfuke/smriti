@@ -17,10 +17,10 @@ export interface GameTileProps {
 }
 
 const TILE_CLASS =
-  'flex flex-col items-center justify-center gap-2 rounded-tile bg-game-tile p-6 ' +
-  'text-center text-patient-body font-semibold text-ink ' +
-  'transition-transform duration-100 active:scale-[0.97] motion-reduce:active:scale-100 ' +
-  'hover:bg-game-active focus-visible:outline focus-visible:outline-4 ' +
+  'flex flex-col items-center justify-center gap-2 rounded-tile border border-gray-300 ' +
+  'bg-white p-6 shadow-sm text-center text-patient-body font-semibold text-ink ' +
+  'transition-all duration-100 active:scale-[0.97] motion-reduce:active:scale-100 ' +
+  'hover:shadow-md hover:border-teal/40 focus-visible:outline focus-visible:outline-4 ' +
   'focus-visible:outline-offset-2 focus-visible:outline-primary';
 
 /**

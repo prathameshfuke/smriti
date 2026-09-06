@@ -70,7 +70,6 @@ function PathMatchPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
-  const isSessionActive = useGameStore((s) => s.isSessionActive);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
@@ -195,7 +194,7 @@ function PathMatchPageInner() {
   const stars = starsFromRate(score);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'path_match', score * 100);
+    const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
@@ -205,7 +204,7 @@ function PathMatchPageInner() {
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'path_match', score * 100);
+    const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
@@ -218,14 +217,17 @@ function PathMatchPageInner() {
       await buildDailySummary(currentPatient.id, new Date().toISOString().slice(0, 10), 'path_match');
     }
     await endSession();
-    router.push('/');
+    router.push('/app');
   };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
       <PatientNav
         title={t('game.pathMatch.name')}
-        onBack={isSessionActive ? undefined : () => router.push('/')}
+        onBack={() => {
+          void endSession();
+          router.push('/app');
+        }}
       />
 
       <main className="flex flex-1 flex-col items-center gap-4 px-4 py-6">
@@ -236,7 +238,7 @@ function PathMatchPageInner() {
               {[1, 2, 3].map((n) => (
                 <span
                   key={n}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse animate-pulse motion-reduce:animate-none"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse shadow-sm animate-pulse motion-reduce:animate-none"
                 >
                   {n}
                 </span>
@@ -280,7 +282,7 @@ function PathMatchPageInner() {
               {'★'.repeat(stars)}
               {'☆'.repeat(5 - stars)}
             </p>
-            <p className="text-patient-heading text-ink">
+            <p className="font-serif-display text-patient-heading text-ink">
               {completedPairs.length} out of {totalConnections} connected!
             </p>
             <BigButton label="Another Round" variant="primary" onClick={keepGoing} />

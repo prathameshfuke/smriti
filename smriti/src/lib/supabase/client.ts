@@ -1,4 +1,5 @@
 import { createBrowserClient as createSSRBrowserClient, createServerClient as createSSRServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import type { CookieOptions } from '@supabase/ssr';
 import type { Database } from './types';
 
@@ -28,6 +29,24 @@ function readEnv(): { url: string; anonKey: string } {
 /** True when Supabase credentials are present. Lets callers degrade to offline-only. */
 export function isSupabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+/**
+ * Service-role client — bypasses RLS entirely. Server-only, and only for
+ * routes that have already authorized the caller themselves (e.g. validating
+ * a kiosk device-trust token, which has no Supabase session for RLS to key
+ * off). Never import this from client code; the key must never reach the
+ * browser bundle.
+ */
+export function createServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error('Supabase service role is not configured. Set SUPABASE_SERVICE_ROLE_KEY.');
+  }
+  return createClient<Database>(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
 }
 
 /** Browser client for Client Components. */

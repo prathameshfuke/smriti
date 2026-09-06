@@ -75,7 +75,6 @@ function QuickTapPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
-  const isSessionActive = useGameStore((s) => s.isSessionActive);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
@@ -202,7 +201,7 @@ function QuickTapPageInner() {
   const stars = starsFromRate(hitRate);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100);
+    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
@@ -212,7 +211,7 @@ function QuickTapPageInner() {
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100);
+    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
@@ -225,14 +224,17 @@ function QuickTapPageInner() {
       await buildDailySummary(currentPatient.id, new Date().toISOString().slice(0, 10), 'quick_tap');
     }
     await endSession();
-    router.push('/');
+    router.push('/app');
   };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
       <PatientNav
         title={t('game.quickTap.name')}
-        onBack={isSessionActive ? undefined : () => router.push('/')}
+        onBack={() => {
+          void endSession();
+          router.push('/app');
+        }}
       />
 
       <main className="flex flex-1 flex-col items-center gap-4 px-4 py-6">
@@ -242,24 +244,23 @@ function QuickTapPageInner() {
             <span className="text-[96px] leading-none" aria-hidden="true">
               {target.emoji}
             </span>
-            <p className="text-patient-heading text-ink">{target.name.en}</p>
+            <p className="font-serif-display text-patient-heading text-ink">{target.name.en}</p>
             <BigButton label="Start!" variant="primary" onClick={startRound} />
           </div>
         ) : null}
 
         {phase === 'playing' ? (
-          <div className="relative flex w-full flex-1 flex-col">
-            <p className="px-1 text-patient-sm text-ink-muted">
-              Item {Math.min(itemIndex + 1, sequence.length)} of {sequence.length}
-            </p>
-            {target ? (
-              <span
-                className="absolute right-2 top-8 text-[48px] leading-none"
-                aria-hidden="true"
-              >
-                {target.emoji}
-              </span>
-            ) : null}
+          <div className="flex w-full flex-1 flex-col">
+            <div className="flex items-center justify-between gap-2 px-1">
+              <p className="text-patient-sm text-ink-muted">
+                Item {Math.min(itemIndex + 1, sequence.length)} of {sequence.length}
+              </p>
+              {target ? (
+                <span className="shrink-0 text-[48px] leading-none" aria-hidden="true">
+                  {target.emoji}
+                </span>
+              ) : null}
+            </div>
 
             <div
               role="button"
@@ -270,7 +271,7 @@ function QuickTapPageInner() {
               {currentItem ? (
                 <div
                   className={
-                    'flex h-[140px] w-[140px] items-center justify-center rounded-card bg-game-tile text-6xl ' +
+                    'flex h-[140px] w-[140px] items-center justify-center rounded-card bg-game-tile shadow-sm text-6xl transition-shadow ' +
                     (ring === 'hit'
                       ? 'ring-4 ring-success'
                       : ring === 'false_alarm'
@@ -291,7 +292,7 @@ function QuickTapPageInner() {
               {'★'.repeat(stars)}
               {'☆'.repeat(5 - stars)}
             </p>
-            <p className="text-patient-heading text-ink">
+            <p className="font-serif-display text-patient-heading text-ink">
               {summary.hits} targets tapped correctly!
             </p>
             <p className="text-patient-sm text-ink-muted">d&apos; {dPrime.toFixed(2)}</p>

@@ -150,11 +150,13 @@ export default function RemindersPage() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
-      <PatientNav title="Reminders" onBack={() => router.push('/')} />
+      <PatientNav title="Reminders" onBack={() => router.push('/app')} />
 
       <main className="flex flex-1 flex-col gap-8 px-4 py-6">
         <section className="flex flex-col gap-3">
-          <h2 className="text-caregiver-heading font-semibold text-ink">Today</h2>
+          <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+            Today
+          </h2>
           {todaysSchedules.length === 0 ? (
             <p className="text-caregiver-body text-ink-muted">No reminders scheduled today.</p>
           ) : (
@@ -164,7 +166,7 @@ export default function RemindersPage() {
                 return (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card bg-surface-card p-3"
+                    className="flex items-center justify-between rounded-card border border-gray-100 bg-surface-card p-3 shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl" aria-hidden="true">
@@ -198,7 +200,7 @@ export default function RemindersPage() {
         {hasSession ? (
           <>
             <section className="flex flex-col gap-3">
-              <h2 className="text-caregiver-heading font-semibold text-ink">
+              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
                 {editingId ? 'Edit Reminder' : 'Add Reminder'}
               </h2>
 
@@ -218,14 +220,14 @@ export default function RemindersPage() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Morning red pill"
-                className="h-14 w-full rounded-card border border-surface-muted px-4 text-caregiver-body"
+                className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <input
                 type="time"
                 value={timeOfDay}
                 onChange={(e) => setTimeOfDay(e.target.value)}
-                className="h-14 w-full rounded-card border border-surface-muted px-4 text-caregiver-body"
+                className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <div className="flex gap-2">
@@ -237,8 +239,10 @@ export default function RemindersPage() {
                     aria-pressed={days[i]}
                     style={{ height: 40, width: 40 }}
                     className={
-                      'rounded-full text-caregiver-body font-semibold ' +
-                      (days[i] ? 'bg-primary text-ink-inverse' : 'bg-surface-muted text-ink-muted')
+                      'rounded-full text-caregiver-body font-semibold transition-colors duration-150 ' +
+                      (days[i]
+                        ? 'bg-primary text-ink-inverse'
+                        : 'bg-surface-muted text-ink-muted hover:bg-gray-200')
                     }
                   >
                     {letter}
@@ -250,7 +254,9 @@ export default function RemindersPage() {
             </section>
 
             <section className="flex flex-col gap-3">
-              <h2 className="text-caregiver-heading font-semibold text-ink">Quick setup</h2>
+              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+                Quick setup
+              </h2>
               <BigButton
                 label="Add morning medication reminder at 8:00 AM"
                 variant="secondary"
@@ -264,12 +270,14 @@ export default function RemindersPage() {
             </section>
 
             <section className="flex flex-col gap-2">
-              <h2 className="text-caregiver-heading font-semibold text-ink">All reminders</h2>
+              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+                All reminders
+              </h2>
               <ul className="flex flex-col gap-2">
                 {activeSchedules.map((s) => (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card bg-surface-card p-3"
+                    className="flex items-center justify-between rounded-card border border-gray-100 bg-surface-card p-3 shadow-sm"
                   >
                     <p className="text-caregiver-body text-ink">
                       {TYPE_ICON[s.reminderType]} {s.timeOfDay} — {s.label}

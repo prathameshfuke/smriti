@@ -24,4 +24,15 @@ const withPWA = require('next-pwa')({
     }
   ]
 });
-module.exports = withPWA({ reactStrictMode: true });
+module.exports = withPWA({
+  reactStrictMode: true,
+  webpack: (config) => {
+    // Confetti is explicitly out of scope for patient screens per the app's
+    // accessibility spec — alias the bare specifier to a local no-op instead
+    // of installing (and firing) the real celebratory-particle library.
+    config.resolve.alias['canvas-confetti'] = require.resolve(
+      './src/lib/stubs/canvas-confetti.ts',
+    );
+    return config;
+  },
+});

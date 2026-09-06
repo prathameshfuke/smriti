@@ -20,6 +20,14 @@ interface PatientSyncPayload {
   reminderAcks: Array<Record<string, unknown> & { id: string }>;
 }
 
+/** Which of one patient's row categories Supabase actually rejected this sync. */
+interface PatientSyncErrors {
+  sessions?: string;
+  events?: string;
+  dailySummaries?: string;
+  reminderAcks?: string;
+}
+
 interface SyncRequestBody {
   deviceId: string;
   lastSyncTimestamp: string | null;
@@ -71,31 +79,54 @@ export async function POST(request: Request) {
   const ownedPatients = body.patients.filter((p) => ownedIds.has(p.patientId));
 
   let syncedEventCount = 0;
+  // Keyed by patientId: which of this patient's row categories a Supabase
+  // upsert actually rejected (e.g. a game_type CHECK-constraint violation).
+  // None of these upserts were previously checked for `error` at all, so a
+  // rejected batch still returned HTTP 200 with no way for the client to
+  // know which rows never made it to the server — it just marked everything
+  // "synced" off the response status alone.
+  const syncErrors: Record<string, PatientSyncErrors> = {};
 
   for (const patient of ownedPatients) {
+    const errors: PatientSyncErrors = {};
+
     if (patient.sessions?.length) {
-      await supabase
+      const { error } = await supabase
         .from('game_sessions')
         .upsert(patient.sessions as never[], { onConflict: 'id', ignoreDuplicates: true });
+      if (error) errors.sessions = error.message;
     }
     if (patient.events?.length) {
-      await supabase
+      const { error } = await supabase
         .from('telemetry_events')
         .upsert(patient.events as never[], { onConflict: 'id', ignoreDuplicates: true });
-      syncedEventCount += patient.events.length;
+      if (error) errors.events = error.message;
+      else syncedEventCount += patient.events.length;
     }
     if (patient.dailySummaries?.length) {
-      await supabase
+      const { error } = await supabase
         .from('daily_summaries')
         .upsert(patient.dailySummaries as never[], { onConflict: 'id' });
+      if (error) errors.dailySummaries = error.message;
     }
     if (patient.reminderAcks?.length) {
-      await supabase
+      const { error } = await supabase
         .from('reminder_acks')
         .upsert(patient.reminderAcks as never[], { onConflict: 'id', ignoreDuplicates: true });
+      if (error) errors.reminderAcks = error.message;
     }
 
-    const gameTypes = new Set(patient.dailySummaries?.map((s) => s.gameType) ?? []);
+    if (Object.keys(errors).length > 0) {
+      syncErrors[patient.patientId] = errors;
+      console.error('SMRITI: sync upsert rejected', patient.patientId, errors);
+    }
+
+    // Cognitive-drop alerts read from daily_summaries, which the loop above
+    // just proved may not actually contain this patient's rows — skip a
+    // check that would otherwise query the row it knows just failed to write.
+    const gameTypes = new Set(
+      patient.dailySummaries?.filter(() => !errors.dailySummaries).map((s) => s.gameType) ?? [],
+    );
     for (const gameType of gameTypes) {
       await checkCognitiveDropAlert(supabase, patient.patientId, gameType as GameType);
     }
@@ -123,6 +154,7 @@ export async function POST(request: Request) {
   return Response.json({
     serverTimestamp: new Date().toISOString(),
     syncedEventCount,
+    syncErrors,
     updates: { patients: patients ?? [], reminders: reminders ?? [], alerts: alerts ?? [] },
   });
 }

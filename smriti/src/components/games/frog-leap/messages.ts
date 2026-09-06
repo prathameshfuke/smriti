@@ -1,0 +1,55 @@
+/** next-intl messages for the copied frog-memory-leap GameComponent. */
+
+const gameUI = {
+  en: {
+    level: 'Level {level}',
+    watch: 'jumps to watch',
+    repeat: 'Now you jump the same way',
+    correct: 'Well jumped!',
+    gameOver: 'Not quite — try again',
+    start: 'Start',
+    score: 'Score: {score}',
+    highScore: 'Best: {score}',
+    tryAgain: 'Try again',
+    settings: 'Settings',
+    startLevel: 'Starting level',
+    cancel: 'Cancel',
+    save: 'Save',
+  },
+  hi: {
+    level: 'स्तर {level}',
+    watch: 'छलांगें देखें',
+    repeat: 'अब उसी तरह छलांग लगाएं',
+    correct: 'बढ़िया छलांग!',
+    gameOver: 'ठीक नहीं — फिर कोशिश करें',
+    start: 'शुरू करें',
+    score: 'स्कोर: {score}',
+    highScore: 'सर्वश्रेष्ठ: {score}',
+    tryAgain: 'फिर कोशिश करें',
+    settings: 'सेटिंग्स',
+    startLevel: 'शुरुआती स्तर',
+    cancel: 'रद्द करें',
+    save: 'सहेजें',
+  },
+  as: {
+    level: 'স্তৰ {level}',
+    watch: 'জাঁপবোৰ চাওক',
+    repeat: 'এতিয়া একেদৰে জাঁপ মাৰক',
+    correct: 'ভাল জাঁপ!',
+    gameOver: 'ঠিক নহয় — পুনৰ চেষ্টা কৰক',
+    start: 'আৰম্ভ কৰক',
+    score: 'স্ক\'ৰ: {score}',
+    highScore: 'সৰ্বোত্তম: {score}',
+    tryAgain: 'পুনৰ চেষ্টা কৰক',
+    settings: 'ছেটিংছ',
+    startLevel: 'আৰম্ভণিৰ স্তৰ',
+    cancel: 'বাতিল কৰক',
+    save: 'ছেভ কৰক',
+  },
+};
+
+export const FROG_LEAP_MESSAGES = {
+  en: { games: { frogMemoryLeap: { gameUI: gameUI.en } } },
+  hi: { games: { frogMemoryLeap: { gameUI: gameUI.hi } } },
+  as: { games: { frogMemoryLeap: { gameUI: gameUI.as } } },
+};

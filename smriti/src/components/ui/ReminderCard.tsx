@@ -13,12 +13,14 @@ export interface ReminderCardProps {
   onSnooze: () => void;
 }
 
-const ICON: Record<ReminderType, { emoji: string; bg: string }> = {
+/** Exported so other reminder-driven surfaces (e.g. Routine Recall) reuse the same icons rather than inventing new ones. */
+export const REMINDER_ICON: Record<ReminderType, { emoji: string; bg: string }> = {
   medication: { emoji: '💊', bg: 'bg-primary/20' },
   hydration: { emoji: '💧', bg: 'bg-blue-100' },
   activity: { emoji: '🚶', bg: 'bg-green-100' },
   appointment: { emoji: '📅', bg: 'bg-orange-100' },
 };
+const ICON = REMINDER_ICON;
 
 const DONE_LABEL = 'Done ✓';
 

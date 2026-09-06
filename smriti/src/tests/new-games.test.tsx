@@ -1,0 +1,120 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import 'fake-indexeddb/auto';
+import type { ReactElement } from 'react';
+import { render, screen } from '@testing-library/react';
+import type { LocalPatient } from '@/lib/db/schema';
+import { usePatientStore } from '@/stores/patientStore';
+import { useGameStore } from '@/stores/gameStore';
+import { db } from '@/lib/db/schema';
+import { LanguageProvider } from '@/lib/i18n/provider';
+
+function renderPage(ui: ReactElement) {
+  return render(<LanguageProvider>{ui}</LanguageProvider>);
+}
+
+const push = vi.fn();
+const replace = vi.fn();
+
+// jsdom has no real WebGL context; Counting Boxes' Three.js scene only needs
+// to construct without throwing for this smoke test, not actually render.
+vi.mock('three', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('three')>();
+  return {
+    ...actual,
+    WebGLRenderer: class {
+      domElement = document.createElement('canvas');
+      setSize() {}
+      setPixelRatio() {}
+      render() {}
+      dispose() {}
+      getPixelRatio() {
+        return 1;
+      }
+    },
+  };
+});
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push, replace }),
+  usePathname: () => '/games',
+}));
+
+import MemoryBlocksPage from '@/app/games/memory-blocks/page';
+import FrogLeapPage from '@/app/games/frog-leap/page';
+import CountingBoxesPage from '@/app/games/counting-boxes/page';
+import LargerNumberPage from '@/app/games/larger-number/page';
+import MemorySpanPage from '@/app/games/memory-span/page';
+import FishTracePage from '@/app/games/fish-trace/page';
+import DoubleDecisionPage from '@/app/games/double-decision/page';
+import NBackPage from '@/app/games/n-back/page';
+
+const patient = (over: Partial<LocalPatient> = {}): LocalPatient => ({
+  id: 'p1',
+  caregiverId: 'c1',
+  displayName: 'Aai',
+  ageYears: 72,
+  gender: 'female',
+  educationYears: 4,
+  primaryLanguage: 'en',
+  sessionDurationMinutes: 10,
+  isActive: true,
+  currentDifficulty: {},
+  updatedAt: '2026-08-31T00:00:00.000Z',
+  syncedAt: null,
+  ...over,
+});
+
+beforeEach(async () => {
+  push.mockClear();
+  replace.mockClear();
+  usePatientStore.setState(usePatientStore.getInitialState(), true);
+  useGameStore.setState(useGameStore.getInitialState(), true);
+  await db.patients.clear();
+  usePatientStore.getState().setCurrentPatient(patient());
+});
+
+describe('New games — smoke render + PatientNav back always present', () => {
+  it('Memory Blocks renders its start control', () => {
+    renderPage(<MemoryBlocksPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+  });
+
+  it('Frog Leap renders its start control', () => {
+    renderPage(<FrogLeapPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /start/i }).length).toBeGreaterThan(0);
+  });
+
+  it('Counting Boxes renders its start control', () => {
+    renderPage(<CountingBoxesPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+  });
+
+  it('Larger Number renders its start control', () => {
+    renderPage(<LargerNumberPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument();
+  });
+
+  it('Memory Span renders its presentation phase', () => {
+    renderPage(<MemorySpanPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+  });
+
+  it('Fish Trace renders its start control', () => {
+    renderPage(<FishTracePage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+  });
+
+  it('Double Decision renders its practice-start control, not the timed activity directly', () => {
+    renderPage(<DoubleDecisionPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /try one practice round/i })).toBeInTheDocument();
+  });
+
+  it('N-Back renders its start control', () => {
+    renderPage(<NBackPage />);
+    expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+  });
+});

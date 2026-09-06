@@ -11,27 +11,27 @@ describe('tailwind design tokens', () => {
     string | Record<string, string>
   >;
 
-  it('defines primary brand gold as #8B6914', () => {
-    expect((colors.primary as Record<string, string>).DEFAULT).toBe('#8B6914');
+  it('defines primary brand teal as #06B6D4', () => {
+    expect((colors.primary as Record<string, string>).DEFAULT).toBe('#06B6D4');
   });
 
   it('defines the primary light and dark ramp', () => {
     const primary = colors.primary as Record<string, string>;
-    expect(primary.light).toBe('#C4A445');
-    expect(primary.dark).toBe('#5C4510');
+    expect(primary.light).toBe('#67E8F9');
+    expect(primary.dark).toBe('#0E7490');
   });
 
   it('defines the surface palette used by patient screens', () => {
     const surface = colors.surface as Record<string, string>;
-    expect(surface.DEFAULT).toBe('#FAF7F2');
+    expect(surface.DEFAULT).toBe('#FFFFFF');
     expect(surface.card).toBe('#FFFFFF');
-    expect(surface.muted).toBe('#F0EDE6');
+    expect(surface.muted).toBe('#F9FAFB');
   });
 
   it('defines traffic-light alert colours for the caregiver dashboard', () => {
-    expect(colors.success).toBe('#2E7D32');
-    expect(colors.warning).toBe('#E65100');
-    expect(colors.danger).toBe('#B71C1C');
+    expect(colors.success).toBe('#059669');
+    expect(colors.warning).toBe('#D97706');
+    expect(colors.danger).toBe('#DC2626');
   });
 
   it('sizes patient body text at 22px and headings at 36px', () => {

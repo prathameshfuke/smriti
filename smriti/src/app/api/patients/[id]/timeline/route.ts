@@ -7,6 +7,17 @@ const GAME_TYPE_MAP: Record<GameType, string> = {
   word_stream: 'word_recall',
   quick_tap: 'quick_tap',
   path_match: 'path_trace',
+  memory_match: 'memory_match',
+  memory_blocks: 'memory_blocks',
+  frog_leap: 'frog_leap',
+  counting_boxes: 'counting_boxes',
+  n_back: 'n_back',
+  larger_number: 'larger_number',
+  memory_span: 'memory_span',
+  fish_trace: 'fish_trace',
+  double_decision: 'double_decision',
+  reminiscence_quiz: 'reminiscence_quiz',
+  routine_recall: 'routine_recall',
 };
 
 const RANGE_DAYS: Record<string, number> = { '30d': 30, '90d': 90, '180d': 180 };

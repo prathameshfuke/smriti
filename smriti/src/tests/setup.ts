@@ -43,3 +43,17 @@ function installLocalStorage() {
 }
 
 installLocalStorage();
+
+/**
+ * jsdom does not implement ResizeObserver. Several copied game components
+ * use it for responsive canvas sizing — a no-op stub is enough for tests
+ * that only check initial render, since real layout never happens in jsdom.
+ */
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  globalThis.ResizeObserver = ResizeObserverStub;
+}

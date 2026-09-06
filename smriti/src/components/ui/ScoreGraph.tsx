@@ -11,7 +11,21 @@ import {
   YAxis,
 } from 'recharts';
 
-export type GameType = 'object_hunt' | 'word_recall' | 'path_trace' | 'quick_tap';
+export type GameType =
+  | 'object_hunt'
+  | 'word_recall'
+  | 'path_trace'
+  | 'quick_tap'
+  | 'memory_match'
+  | 'memory_blocks'
+  | 'frog_leap'
+  | 'counting_boxes'
+  | 'n_back'
+  | 'larger_number'
+  | 'memory_span'
+  | 'fish_trace'
+  | 'double_decision'
+  | 'routine_recall';
 
 export interface ScorePoint {
   /** ISO date, YYYY-MM-DD. */
@@ -31,6 +45,16 @@ const GAME_COLOR: Record<GameType, string> = {
   word_recall: '#2E7D32',
   path_trace: '#1565C0',
   quick_tap: '#6A1B9A',
+  memory_match: '#0E7490',
+  memory_blocks: '#BE3A34',
+  frog_leap: '#059669',
+  counting_boxes: '#C2410C',
+  n_back: '#7C3AED',
+  larger_number: '#0284C7',
+  memory_span: '#BE185D',
+  fish_trace: '#0D9488',
+  double_decision: '#B45309',
+  routine_recall: '#65A30D',
 };
 
 const GAME_LABEL: Record<GameType, string> = {
@@ -38,6 +62,16 @@ const GAME_LABEL: Record<GameType, string> = {
   word_recall: 'Word Recall',
   path_trace: 'Path Trace',
   quick_tap: 'Quick Tap',
+  memory_match: 'Memory Match',
+  memory_blocks: 'Memory Blocks',
+  frog_leap: 'Frog Leap',
+  counting_boxes: 'Counting Boxes',
+  n_back: 'N-Back',
+  larger_number: 'Larger Number',
+  memory_span: 'Memory Span',
+  fish_trace: 'Fish Trace',
+  double_decision: 'Double Decision',
+  routine_recall: 'Routine Recall',
 };
 
 const RANGES = [

@@ -42,11 +42,13 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="mx-auto flex max-w-patient flex-col items-center gap-4 bg-surface px-4 py-16 text-center">
+      <div className="mx-auto flex min-h-dvh max-w-patient flex-col items-center justify-center gap-5 bg-surface px-4 py-16 text-center">
         <span className="text-6xl" aria-hidden="true">
           😔
         </span>
-        <p className="text-patient-heading text-ink">Something went wrong. Let us go back home.</p>
+        <p className="font-serif-display text-patient-heading text-ink">
+          Something went wrong. Let us go back home.
+        </p>
         <BigButton label="Go Home" variant="primary" onClick={this.goHome} />
       </div>
     );
@@ -55,5 +57,5 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
 
 export default function ErrorBoundary({ children }: { children: ReactNode }) {
   const router = useRouter();
-  return <ErrorBoundaryClass onGoHome={() => router.push('/')}>{children}</ErrorBoundaryClass>;
+  return <ErrorBoundaryClass onGoHome={() => router.push('/app')}>{children}</ErrorBoundaryClass>;
 }

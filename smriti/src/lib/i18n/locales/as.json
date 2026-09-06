@@ -7,25 +7,45 @@
   },
   "game": {
     "objectHunt": {
-      "name": "Object Hunt",
-      "instruction": "Remember where each picture is hidden. Tap a tile to look."
+      "name": "বস্তু বিচাৰ",
+      "instruction": "প্ৰতিটো ছবি ক'ত লুকাই আছে মনত ৰাখক। চাবলৈ টাইলত টিপক।",
+      "whereWasThe": "ক'ত আছিল"
     },
     "wordStream": {
-      "name": "Market List",
-      "instruction": "Remember these things. We will ask you later."
+      "name": "বজাৰ তালিকা",
+      "instruction": "এই বস্তুবোৰ মনত ৰাখক। আমি পিছত সোধিম।",
+      "rememberLater": "এইবোৰ পিছৰ বাবে মনত ৰাখক।",
+      "okRemember": "ঠিক আছে, মোৰ মনত আছে!",
+      "whichItems": "আমি আপোনাক কি বস্তু দেখুৱাইছিলো?",
+      "imDone": "হ'ল!"
     },
     "quickTap": {
-      "name": "Quick Quick",
-      "instruction": "Tap the picture as soon as you see it."
+      "name": "সোনকালে টিপক",
+      "instruction": "ছবিটো দেখাৰ লগে লগে তাত টিপক।"
     },
     "pathMatch": {
-      "name": "Path Match",
-      "instruction": "Join the numbers in order, from 1 onwards."
+      "name": "পথ মিলাওক",
+      "instruction": "সংখ্যাবোৰ ক্ৰমে ক্ৰমে যোগ কৰক, ১ৰ পৰা আৰম্ভ কৰি।",
+      "good": "বহুত ভাল!"
     },
-    "correct": "Correct!",
-    "tryAgain": "Try again",
-    "sessionComplete": "Well done! You finished today's session.",
-    "stars": "Stars earned"
+    "memoryMatch": {
+      "name": "স্মৃতি মিলাওক",
+      "instruction": "দুখন কাৰ্ডত টিপক। মিল থাকিলে সেয়া খোলাই থাকিব।",
+      "goodMatch": "ভাল মিল!",
+      "tryAnotherOne": "আৰু এবাৰ চেষ্টা কৰোঁ আহক"
+    },
+    "memoryBlocks": { "name": "স্মৃতি খণ্ড" },
+    "frogLeap": { "name": "ভেকুলী জাঁপ" },
+    "countingBoxes": { "name": "বাকচ গণনা" },
+    "nBack": { "name": "এন-বেক" },
+    "largerNumber": { "name": "ডাঙৰ সংখ্যা" },
+    "memorySpan": { "name": "স্মৃতি বিস্তাৰ" },
+    "fishTrace": { "name": "মাছ অনুসৰণ" },
+    "doubleDecision": { "name": "দ্বৈত সিদ্ধান্ত" },
+    "correct": "শুদ্ধ!",
+    "tryAgain": "পুনৰ চেষ্টা কৰক",
+    "sessionComplete": "বাহ! আপুনি আজিৰ অনুশীলন সম্পূৰ্ণ কৰিলে।",
+    "stars": "অৰ্জিত তৰা"
   },
   "reminder": {
     "medication": "Time for your medicine",

@@ -395,3 +395,266 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 ```
+
+---
+
+## 4. Memory Bank + AI Conversation Log
+
+```sql
+-- =============================================
+-- MIGRATION 004: Memory Bank + AI Conversation Log
+-- =============================================
+
+-- Caregiver-supplied facts the AI companion may answer from. Nothing else.
+CREATE TABLE memory_bank_entries (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  category TEXT NOT NULL CHECK (category IN ('person', 'schedule', 'life_fact', 'medication')),
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL,
+  photo_url TEXT,             -- data-URL string for now; no Storage bucket set up yet
+  relationship TEXT,          -- only meaningful for category='person'
+  active BOOLEAN NOT NULL DEFAULT true,
+  created_by UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Retained for the caregiver digest and safety audit — never surfaced to the
+-- patient as a chat history.
+CREATE TABLE ai_conversation_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  grounded BOOLEAN NOT NULL,        -- true if the answer came from Memory Bank facts
+  model_used TEXT NOT NULL,         -- e.g. 'groq/llama-3.1-8b-instant', for debugging
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_memory_bank_patient_active ON memory_bank_entries(patient_id, active);
+CREATE INDEX idx_ai_log_patient_date ON ai_conversation_log(patient_id, created_at);
+
+CREATE TRIGGER trg_memory_bank_updated_at BEFORE UPDATE ON memory_bank_entries
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE memory_bank_entries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_conversation_log ENABLE ROW LEVEL SECURITY;
+
+-- Caregivers manage their own patients' Memory Bank entries.
+CREATE POLICY caregiver_memory_bank ON memory_bank_entries
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+-- Caregivers can read the conversation log (for the digest/safety-audit
+-- feature). No patient-facing policy: the kiosk device has no Supabase
+-- session to key RLS off (see src/lib/auth/deviceTrust.ts) — writes for that
+-- path go through POST /api/ai/complete using the service-role key instead,
+-- after the route validates the device-trust token itself.
+CREATE POLICY caregiver_read_ai_log ON ai_conversation_log
+  FOR SELECT USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 005: Companion distress flag
+-- =============================================
+
+-- Set true when a question short-circuited on a distress keyword (the
+-- Tele-MANAS safety response) instead of reaching the LLM — a stronger
+-- signal than an ordinary ungrounded question, surfaced separately to the
+-- caregiver rather than folded into `grounded = false`.
+ALTER TABLE ai_conversation_log ADD COLUMN flagged_for_followup BOOLEAN NOT NULL DEFAULT false;
+
+CREATE INDEX idx_ai_log_followup ON ai_conversation_log(patient_id, flagged_for_followup)
+  WHERE flagged_for_followup;
+```
+
+```sql
+-- =============================================
+-- MIGRATION 006: Reminiscence Quiz
+-- =============================================
+
+-- One cached quiz per patient, regenerated in place by a caregiver's
+-- "Refresh Quiz" action — never generated on the fly per play, so the game
+-- loads instantly and works offline. `questions` is validated server-side
+-- before this row is ever written (see POST /api/ai/generate-reminiscence-quiz);
+-- a failed regeneration leaves the previous row untouched.
+CREATE TABLE reminiscence_quizzes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
+  questions JSONB NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE reminiscence_quizzes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY caregiver_reminiscence_quizzes ON reminiscence_quizzes
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 007: Caregiver Weekly Digest
+-- =============================================
+
+-- One row per patient per week; regenerating the same week replaces it
+-- rather than accumulating duplicates.
+CREATE TABLE caregiver_digests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  week_of DATE NOT NULL,
+  summary_text TEXT NOT NULL,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (patient_id, week_of)
+);
+
+CREATE INDEX idx_caregiver_digests_patient ON caregiver_digests(patient_id, week_of DESC);
+
+ALTER TABLE caregiver_digests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY caregiver_own_digests ON caregiver_digests
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 008: Widen game_type CHECK to cover all shipped games
+-- =============================================
+
+-- Migration 001's game_type CHECK only ever listed the first 4 games
+-- (object_hunt, word_stream, quick_tap, path_match). 10 games shipped since
+-- then — memory_match, memory_blocks, frog_leap, counting_boxes, n_back,
+-- larger_number, memory_span, fish_trace, double_decision, reminiscence_quiz
+-- — and every one of them has been silently failing to sync its
+-- telemetry_events/daily_summaries rows to Supabase (INSERT rejected by the
+-- CHECK constraint) since launch. This does not affect local/offline play —
+-- Dexie has no such constraint — only the caregiver-dashboard server-side
+-- view of these games' history.
+ALTER TABLE telemetry_events DROP CONSTRAINT telemetry_events_game_type_check;
+ALTER TABLE telemetry_events ADD CONSTRAINT telemetry_events_game_type_check
+  CHECK (game_type IN (
+    'object_hunt', 'word_stream', 'quick_tap', 'path_match',
+    'memory_match', 'memory_blocks', 'frog_leap', 'counting_boxes',
+    'n_back', 'larger_number', 'memory_span', 'fish_trace',
+    'double_decision', 'reminiscence_quiz'
+  ));
+
+ALTER TABLE daily_summaries DROP CONSTRAINT daily_summaries_game_type_check;
+ALTER TABLE daily_summaries ADD CONSTRAINT daily_summaries_game_type_check
+  CHECK (game_type IN (
+    'object_hunt', 'word_stream', 'quick_tap', 'path_match',
+    'memory_match', 'memory_blocks', 'frog_leap', 'counting_boxes',
+    'n_back', 'larger_number', 'memory_span', 'fish_trace',
+    'double_decision', 'reminiscence_quiz'
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 009: Add routine_recall game type
+-- =============================================
+
+-- Routine Recall (see feature plan) reuses reminder_acks — no new table —
+-- but its telemetry/summary rows need the 15th game_type value accepted.
+-- Kept as its own migration, separate from 008, because it is new-feature
+-- scope rather than a fix to already-shipped games.
+ALTER TABLE telemetry_events DROP CONSTRAINT telemetry_events_game_type_check;
+ALTER TABLE telemetry_events ADD CONSTRAINT telemetry_events_game_type_check
+  CHECK (game_type IN (
+    'object_hunt', 'word_stream', 'quick_tap', 'path_match',
+    'memory_match', 'memory_blocks', 'frog_leap', 'counting_boxes',
+    'n_back', 'larger_number', 'memory_span', 'fish_trace',
+    'double_decision', 'reminiscence_quiz', 'routine_recall'
+  ));
+
+ALTER TABLE daily_summaries DROP CONSTRAINT daily_summaries_game_type_check;
+ALTER TABLE daily_summaries ADD CONSTRAINT daily_summaries_game_type_check
+  CHECK (game_type IN (
+    'object_hunt', 'word_stream', 'quick_tap', 'path_match',
+    'memory_match', 'memory_blocks', 'frog_leap', 'counting_boxes',
+    'n_back', 'larger_number', 'memory_span', 'fish_trace',
+    'double_decision', 'reminiscence_quiz', 'routine_recall'
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 010: Family sharing (read-only digest access + one-way notes)
+-- =============================================
+
+-- One row per family member a caregiver has invited. `signature` is an
+-- HMAC over (id, patient_id, expires_at) computed server-side with
+-- FAMILY_SHARE_SECRET (see lib/family/familyShareServer.ts) — never
+-- computable by the client, same scheme as device_trust tokens. The token
+-- handed to the family member is `id` (opaque, unguessable UUID); the row
+-- itself, not a JWT, is the source of truth for expiry/revocation so a
+-- revoke is an immediate DB write, not dependent on token TTL alone.
+CREATE TABLE family_shares (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
+  label TEXT NOT NULL,
+  signature TEXT NOT NULL,
+  review_required BOOLEAN NOT NULL DEFAULT true,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- One-directional (family -> patient) encouragement notes. `surfaced_at`
+-- being NULL is what the patient-home rate-limit query keys off; the
+-- 1-per-day cap is enforced in application code (POST
+-- /api/patients/[id]/surface-note), not here, since "has a note already
+-- surfaced today" needs a same-day comparison a CHECK constraint can't
+-- express cleanly.
+CREATE TABLE family_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  family_share_id UUID NOT NULL REFERENCES family_shares(id) ON DELETE CASCADE,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'surfaced')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  surfaced_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_family_shares_patient ON family_shares(patient_id);
+CREATE INDEX idx_family_notes_patient_status ON family_notes(patient_id, status);
+
+ALTER TABLE family_shares ENABLE ROW LEVEL SECURITY;
+ALTER TABLE family_notes ENABLE ROW LEVEL SECURITY;
+
+-- Caregiver-side management (list/revoke shares, approve/reject notes) goes
+-- through the caregiver's own Supabase session, same ownership pattern as
+-- every other table here.
+CREATE POLICY caregiver_family_shares ON family_shares
+  FOR ALL USING (caregiver_id IN (
+    SELECT id FROM caregivers WHERE auth_id = auth.uid()
+  ));
+
+CREATE POLICY caregiver_family_notes ON family_notes
+  FOR ALL USING (family_share_id IN (
+    SELECT id FROM family_shares WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+-- The unauthenticated family-facing routes (GET the digest view, POST a
+-- note) use the service-role client after verifying the HMAC token
+-- themselves in application code — RLS above only ever needs to authorize
+-- the caregiver's own session, never an anonymous family-member request.
+```

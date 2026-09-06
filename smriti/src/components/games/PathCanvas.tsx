@@ -105,7 +105,10 @@ export default function PathCanvas({
               y={point.y}
               textAnchor="middle"
               dominantBaseline="central"
-              className="pointer-events-none select-none text-patient-body font-bold fill-ink-inverse"
+              // `fill-ink` (dark), not `fill-ink-inverse`: unstarted and
+              // current-target circles are pale fills (game-tile, primary-light)
+              // — near-white text there fell under 2:1 contrast, unreadable.
+              className="pointer-events-none select-none text-patient-body font-bold fill-ink"
             >
               {point.label}
             </text>

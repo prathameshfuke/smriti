@@ -8,10 +8,27 @@ import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
 import ScoreGraph, { type GameType as ScoreGameType } from '@/components/ui/ScoreGraph';
 import { authedFetch } from '@/lib/api/client';
+import { createBrowserClient } from '@/lib/supabase/client';
 import { MAX_LEVEL } from '@/lib/engine/difficulty';
 import type { GameType, ReminderType } from '@/lib/supabase/types';
 
-type Tab = 'cognitive' | 'reminders' | 'history';
+type Tab = 'cognitive' | 'reminders' | 'history' | 'companion' | 'family';
+
+interface FamilyShareRow {
+  id: string;
+  label: string;
+  review_required: boolean;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+}
+
+interface FamilyNoteRow {
+  id: string;
+  text: string;
+  status: string;
+  created_at: string;
+}
 type RangeOption = '30d' | '90d' | '180d';
 
 interface DetailPatient {
@@ -42,18 +59,74 @@ interface AdherenceResponse {
   missed: Array<{ date: string; time: string; label: string }>;
 }
 
-const CANONICAL_GAMES: GameType[] = ['object_hunt', 'word_stream', 'quick_tap', 'path_match'];
+interface CompanionQuestion {
+  id: string;
+  question: string;
+  answer: string;
+  grounded: boolean;
+  flaggedForFollowup: boolean;
+  createdAt: string;
+}
+
+interface DigestEntry {
+  id: string;
+  weekOf: string;
+  summaryText: string;
+  generatedAt: string;
+}
+
+const CANONICAL_GAMES: GameType[] = [
+  'object_hunt',
+  'word_stream',
+  'quick_tap',
+  'path_match',
+  'memory_match',
+  'memory_blocks',
+  'frog_leap',
+  'counting_boxes',
+  'n_back',
+  'larger_number',
+  'memory_span',
+  'fish_trace',
+  'double_decision',
+  'routine_recall',
+];
 const GAME_LABELS: Record<GameType, string> = {
   object_hunt: 'Object Hunt',
   word_stream: 'Word Stream',
   quick_tap: 'Quick Tap',
   path_match: 'Path Match',
+  memory_match: 'Memory Match',
+  memory_blocks: 'Memory Blocks',
+  frog_leap: 'Frog Leap',
+  counting_boxes: 'Counting Boxes',
+  n_back: 'N-Back',
+  larger_number: 'Larger Number',
+  memory_span: 'Memory Span',
+  fish_trace: 'Fish Trace',
+  double_decision: 'Double Decision',
+  reminiscence_quiz: 'Memory Match: Family & Life',
+  routine_recall: 'Routine Recall',
 };
-const SCORE_GAME_FOR: Record<GameType, ScoreGameType> = {
+// Partial — reminiscence_quiz has no difficulty progression (see
+// MAX_LEVEL.reminiscence_quiz) and so no meaningful entry in ScoreGraph's
+// own, narrower GameType union; it's never looked up here since it's also
+// excluded from CANONICAL_GAMES below.
+const SCORE_GAME_FOR: Partial<Record<GameType, ScoreGameType>> = {
   object_hunt: 'object_hunt',
   word_stream: 'word_recall',
   quick_tap: 'quick_tap',
   path_match: 'path_trace',
+  memory_match: 'memory_match',
+  memory_blocks: 'memory_blocks',
+  frog_leap: 'frog_leap',
+  counting_boxes: 'counting_boxes',
+  n_back: 'n_back',
+  larger_number: 'larger_number',
+  memory_span: 'memory_span',
+  fish_trace: 'fish_trace',
+  double_decision: 'double_decision',
+  routine_recall: 'routine_recall',
 };
 const REMINDER_TYPES: ReminderType[] = ['medication', 'hydration', 'activity', 'appointment'];
 const REMINDER_ICON: Record<ReminderType, string> = {
@@ -72,6 +145,16 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const [points, setPoints] = useState<TimelinePoint[] | null>(null);
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [adherence, setAdherence] = useState<AdherenceResponse | null>(null);
+  const [companionQuestions, setCompanionQuestions] = useState<CompanionQuestion[] | null>(null);
+  const [familyShares, setFamilyShares] = useState<FamilyShareRow[] | null>(null);
+  const [familyNotes, setFamilyNotes] = useState<FamilyNoteRow[] | null>(null);
+  const [newShareLabel, setNewShareLabel] = useState('');
+  const [creatingShare, setCreatingShare] = useState(false);
+  const [digests, setDigests] = useState<DigestEntry[] | null>(null);
+  const [digestGenerating, setDigestGenerating] = useState(false);
+  const [quizStatus, setQuizStatus] = useState<
+    { kind: 'idle' } | { kind: 'loading' } | { kind: 'done' } | { kind: 'needs_facts'; have: number; needed: number } | { kind: 'error' }
+  >({ kind: 'idle' });
   const [error, setError] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -105,6 +188,129 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       .then(setAdherence)
       .catch(() => setError(true));
   }, [patientId, tab, adherence]);
+
+  useEffect(() => {
+    if (!patientId || tab !== 'companion' || companionQuestions) return;
+    authedFetch<{ questions: CompanionQuestion[] }>(`/api/patients/${patientId}/companion-activity`)
+      .then((body) => setCompanionQuestions(body.questions))
+      .catch(() => setError(true));
+  }, [patientId, tab, companionQuestions]);
+
+  const loadFamilyTabData = () => {
+    if (!patientId) return;
+    authedFetch<{ shares: FamilyShareRow[] }>(`/api/family-share?patientId=${patientId}`)
+      .then((body) => setFamilyShares(body.shares))
+      .catch(() => setFamilyShares((prev) => prev ?? []));
+    authedFetch<{ notes: FamilyNoteRow[] }>(`/api/patients/${patientId}/family-notes`)
+      .then((body) => setFamilyNotes(body.notes))
+      .catch(() => setFamilyNotes((prev) => prev ?? []));
+  };
+
+  useEffect(() => {
+    if (!patientId || tab !== 'family' || familyShares) return;
+    loadFamilyTabData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, tab, familyShares]);
+
+  const createFamilyShare = () => {
+    if (!patientId || !newShareLabel.trim()) return;
+    setCreatingShare(true);
+    authedFetch<{ id: string; expiresAt: string }>('/api/family-share', {
+      method: 'POST',
+      body: JSON.stringify({ patientId, label: newShareLabel.trim() }),
+    })
+      .then(() => {
+        setNewShareLabel('');
+        setFamilyShares(null);
+        loadFamilyTabData();
+      })
+      .catch(() => setError(true))
+      .finally(() => setCreatingShare(false));
+  };
+
+  const revokeFamilyShare = (shareId: string) => {
+    authedFetch(`/api/family-share/${shareId}`, { method: 'DELETE' })
+      .then(() => {
+        setFamilyShares(null);
+        loadFamilyTabData();
+      })
+      .catch(() => setError(true));
+  };
+
+  const moderateFamilyNote = (noteId: string, action: 'approve' | 'reject') => {
+    if (!patientId) return;
+    authedFetch(`/api/patients/${patientId}/family-notes`, {
+      method: 'PATCH',
+      body: JSON.stringify({ noteId, action }),
+    })
+      .then(() => {
+        setFamilyNotes((prev) => (prev ? prev.filter((n) => n.id !== noteId) : prev));
+      })
+      .catch(() => setError(true));
+  };
+
+  const generateDigest = () => {
+    if (!patientId) return;
+    setDigestGenerating(true);
+    authedFetch<{ summary: string; generatedAt: string }>('/api/ai/generate-digest', {
+      method: 'POST',
+      body: JSON.stringify({ patientId }),
+    })
+      .then(() =>
+        authedFetch<{ digests: DigestEntry[] }>(`/api/patients/${patientId}/digests`).then((body) =>
+          setDigests(body.digests),
+        ),
+      )
+      // A digest failure is never page-breaking — the rest of the tab still
+      // works, it just shows "No digest yet" instead of a summary.
+      .catch(() => setDigests((prev) => prev ?? []))
+      .finally(() => setDigestGenerating(false));
+  };
+
+  useEffect(() => {
+    if (!patientId || tab !== 'cognitive' || digests) return;
+    authedFetch<{ digests: DigestEntry[] }>(`/api/patients/${patientId}/digests`)
+      .then((body) => {
+        setDigests(body.digests);
+        const latest = body.digests[0];
+        if (!latest || Date.now() - new Date(latest.generatedAt).getTime() >= 7 * 24 * 60 * 60 * 1000) {
+          generateDigest();
+        }
+      })
+      .catch(() => setDigests([]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId, tab, digests]);
+
+  const refreshQuiz = async () => {
+    if (!patientId) return;
+    setQuizStatus({ kind: 'loading' });
+    // Not authedFetch here — it discards the response body on a non-2xx,
+    // and the not-enough-facts case needs that body (`needed`/`have`) to
+    // show the right prompt instead of a generic failure.
+    const { data } = await createBrowserClient().auth.getSession();
+    const token = data.session?.access_token;
+    if (!token) {
+      setQuizStatus({ kind: 'error' });
+      return;
+    }
+    try {
+      const res = await fetch('/api/ai/generate-reminiscence-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ patientId }),
+      });
+      const body = await res.json();
+      if (res.ok) {
+        setQuizStatus({ kind: 'done' });
+      } else if (body.error === 'not_enough_facts') {
+        setQuizStatus({ kind: 'needs_facts', have: body.have, needed: body.needed });
+      } else {
+        setQuizStatus({ kind: 'error' });
+      }
+    } catch {
+      setQuizStatus({ kind: 'error' });
+    }
+  };
 
   const resolveAlert = async (alertId: string) => {
     await authedFetch(`/api/alerts/${alertId}`, {
@@ -164,29 +370,74 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-dashboard flex-col">
+    <div className="mx-auto flex min-h-dvh max-w-dashboard flex-col bg-canvas">
       <PatientNav
         title={patient ? patient.displayName : 'Patient'}
         onBack={() => router.push('/caregiver/patients')}
       />
       {patient ? (
-        <div className="flex items-center gap-2 px-4 py-2">
-          <TrafficLight status={patient.alertStatus} size="sm" />
-          <span className="text-caregiver-body text-ink-muted">
-            {patient.ageYears} · {patient.primaryLanguage}
-          </span>
+        <div className="flex items-center justify-between gap-2 bg-white px-4 py-3">
+          <div className="flex items-center gap-2">
+            <TrafficLight status={patient.alertStatus} size="sm" />
+            <span className="text-caregiver-body text-gray-600">
+              {patient.ageYears} · {patient.primaryLanguage}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => void refreshQuiz()}
+              disabled={quizStatus.kind === 'loading'}
+              className="text-sm font-semibold text-teal hover:text-primary-dark disabled:opacity-50"
+            >
+              {quizStatus.kind === 'loading' ? 'Refreshing…' : 'Refresh Quiz'}
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/caregiver/memory-bank')}
+              className="text-sm font-semibold text-teal hover:text-primary-dark"
+            >
+              Memory Bank
+            </button>
+          </div>
         </div>
       ) : null}
 
-      <div className="flex border-b border-surface-muted">
-        {(['cognitive', 'reminders', 'history'] as Tab[]).map((t) => (
+      {quizStatus.kind === 'done' ? (
+        <p className="bg-success/10 px-4 py-2 text-patient-sm text-success">
+          Memory quiz updated.
+        </p>
+      ) : null}
+      {quizStatus.kind === 'needs_facts' ? (
+        <div className="flex items-center justify-between gap-2 bg-teal/5 px-4 py-2">
+          <p className="text-patient-sm text-ink">
+            Add at least {quizStatus.needed} people or life facts to the Memory Bank first
+            ({quizStatus.have} so far) to generate a quiz.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/caregiver/memory-bank')}
+            className="whitespace-nowrap text-sm font-semibold text-teal hover:text-primary-dark"
+          >
+            Memory Bank
+          </button>
+        </div>
+      ) : null}
+      {quizStatus.kind === 'error' ? (
+        <p className="bg-danger/10 px-4 py-2 text-patient-sm text-danger">
+          Could not refresh the quiz. Try again in a moment.
+        </p>
+      ) : null}
+
+      <div className="flex border-b border-gray-300 bg-white">
+        {(['cognitive', 'reminders', 'history', 'companion', 'family'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={
-              'flex-1 py-3 text-caregiver-body capitalize ' +
-              (tab === t ? 'border-b-2 border-primary text-primary' : 'text-ink-muted')
+              'flex-1 py-3 text-caregiver-body font-semibold capitalize ' +
+              (tab === t ? 'border-b-2 border-muga text-navy' : 'text-gray-600')
             }
           >
             {t}
@@ -194,21 +445,64 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         ))}
       </div>
 
-      <main className="flex-1 px-4 py-4">
+      <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
         {tab === 'cognitive' ? (
           <div className="flex flex-col gap-4">
+            <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+              <div className="h-1.5 bg-teal" />
+              <div className="flex flex-col gap-2 p-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-serif-display text-lg font-semibold text-navy">This week</p>
+                  <button
+                    type="button"
+                    onClick={generateDigest}
+                    disabled={digestGenerating}
+                    className="text-sm font-semibold text-teal hover:text-primary-dark disabled:opacity-50"
+                  >
+                    {digestGenerating ? 'Refreshing…' : 'Refresh'}
+                  </button>
+                </div>
+                {digests === null || (digestGenerating && digests.length === 0) ? (
+                  <Skeleton height={60} />
+                ) : digests.length === 0 ? (
+                  <p className="text-caregiver-body text-ink-muted">No digest yet.</p>
+                ) : (
+                  <>
+                    <p className="text-caregiver-body text-gray-700">{digests[0].summaryText}</p>
+                    <p className="text-patient-sm text-gray-600">
+                      Generated {new Date(digests[0].generatedAt).toLocaleDateString()} — not medical advice.
+                    </p>
+                  </>
+                )}
+                {digests && digests.length > 1 ? (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-sm font-semibold text-teal">Past weeks</summary>
+                    <ul className="mt-2 flex flex-col gap-3">
+                      {digests.slice(1).map((d) => (
+                        <li key={d.id} className="border-t border-gray-100 pt-2">
+                          <p className="text-patient-sm text-gray-600">{new Date(d.generatedAt).toLocaleDateString()}</p>
+                          <p className="text-caregiver-body text-gray-700">{d.summaryText}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                ) : null}
+              </div>
+            </div>
+
             {alerts.map((alert) => (
               <div
                 key={alert.id}
                 className={
-                  'rounded-card p-3 ' + (alert.severity === 'red' ? 'bg-danger/10' : 'bg-warning/10')
+                  'rounded-card border p-3 ' +
+                  (alert.severity === 'red' ? 'border-danger bg-danger/10' : 'border-warning bg-warning/10')
                 }
               >
                 <div className="flex items-center gap-2">
                   <TrafficLight status={alert.severity} size="sm" />
-                  <span className="font-bold text-ink">{alert.title}</span>
+                  <span className="font-bold text-navy">{alert.title}</span>
                 </div>
-                <p className="line-clamp-2 text-caregiver-body text-ink-muted">{alert.description}</p>
+                <p className="line-clamp-2 text-caregiver-body text-gray-600">{alert.description}</p>
                 <BigButton
                   label="Mark Resolved"
                   variant="secondary"
@@ -225,8 +519,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   onClick={() => setRange(r)}
                   aria-pressed={range === r}
                   className={
-                    'rounded-card px-3 py-2 text-caregiver-body ' +
-                    (range === r ? 'bg-primary text-ink-inverse' : 'bg-surface-muted text-ink')
+                    'rounded-card px-3 py-2 text-caregiver-body font-semibold ' +
+                    (range === r ? 'bg-teal text-white' : 'bg-white text-gray-600 border border-gray-300')
                   }
                 >
                   {r}
@@ -237,17 +531,23 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             {points === null ? (
               <Skeleton height={240} />
             ) : (
-              <div data-testid="score-graph">
-                <ScoreGraph data={points} />
+              <div data-testid="score-graph" className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+                <div className="h-1.5 bg-muga" />
+                <div className="p-4">
+                  <ScoreGraph data={points} />
+                </div>
               </div>
             )}
 
             {velocity ? (
-              <div className="mt-4 rounded-card bg-surface-card p-4">
-                <p className="text-caregiver-body text-ink-muted">Cognitive Trend</p>
-                <p className={`text-caregiver-heading font-bold ${velocity.className}`}>
-                  {velocity.label}
-                </p>
+              <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+                <div className="h-1.5 bg-muga" />
+                <div className="p-4">
+                  <p className="text-caregiver-body text-gray-600">Cognitive Trend</p>
+                  <p className={`font-serif-display text-2xl font-bold ${velocity.className}`}>
+                    {velocity.label}
+                  </p>
+                </div>
               </div>
             ) : null}
 
@@ -255,13 +555,13 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               {CANONICAL_GAMES.map((game) => {
                 const info = difficultyByGame.get(game);
                 return (
-                  <div key={game} className="rounded-card bg-surface-card p-3">
-                    <p className="font-bold text-ink">{GAME_LABELS[game]}</p>
-                    <p className="text-caregiver-body text-ink-muted">
+                  <div key={game} className="rounded-card border border-gray-300 bg-white p-3 shadow-sm">
+                    <p className="font-bold text-navy">{GAME_LABELS[game]}</p>
+                    <p className="text-caregiver-body text-gray-600">
                       {info ? `Level ${info.level} / ${MAX_LEVEL[game]}` : 'No sessions yet'}
                     </p>
                     {info ? (
-                      <p className="text-patient-sm text-ink-muted">Last played {info.lastPlayed}</p>
+                      <p className="text-patient-sm text-gray-600">Last played {info.lastPlayed}</p>
                     ) : null}
                   </div>
                 );
@@ -275,8 +575,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             {adherence === null ? (
               <Skeleton height={120} />
             ) : (
-              <>
-                <p className="text-patient-heading font-bold text-primary">
+              <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+                <div className="h-1.5 bg-teal" />
+                <div className="flex flex-col gap-4 p-4">
+                <p className="font-serif-display text-patient-heading font-bold text-teal">
                   {adherence.overallPct}% reminders acknowledged this week
                 </p>
                 <div className="flex flex-col gap-3">
@@ -285,15 +587,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     const pct = stat.total > 0 ? (stat.acked / stat.total) * 100 : 0;
                     return (
                       <div key={type} className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-caregiver-body text-ink">
+                        <div className="flex items-center gap-2 text-caregiver-body text-navy">
                           <span aria-hidden="true">{REMINDER_ICON[type]}</span>
                           <span className="capitalize">{type}</span>
-                          <span className="ml-auto text-ink-muted">
+                          <span className="ml-auto text-gray-600">
                             {stat.acked}/{stat.total}
                           </span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-surface-muted">
-                          <div className="h-2 rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                        <div className="h-2 w-full rounded-full bg-gray-100">
+                          <div className="h-2 rounded-full bg-teal" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -301,29 +603,30 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 </div>
 
                 <section>
-                  <h2 className="text-caregiver-body font-semibold text-ink">Missed Reminders</h2>
+                  <h2 className="text-caregiver-body font-semibold text-navy">Missed Reminders</h2>
                   {adherence.missed.length === 0 ? (
-                    <p className="text-patient-sm text-ink-muted">None this week.</p>
+                    <p className="text-patient-sm text-gray-600">None this week.</p>
                   ) : (
                     <ul className="flex flex-col gap-1">
                       {adherence.missed.map((m, i) => (
-                        <li key={i} className="text-patient-sm text-ink-muted">
+                        <li key={i} className="text-patient-sm text-gray-600">
                           {m.date} {m.time} — {m.label}
                         </li>
                       ))}
                     </ul>
                   )}
                 </section>
-              </>
+                </div>
+              </div>
             )}
           </div>
         ) : null}
 
         {tab === 'history' ? (
-          <div>
+          <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
             <div className="grid grid-cols-7 gap-1 text-center">
               {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                <span key={i} className="text-patient-sm text-ink-muted">
+                <span key={i} className="text-patient-sm text-gray-600">
                   {d}
                 </span>
               ))}
@@ -367,7 +670,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
             {selectedDay ? (
               <div
-                className="fixed inset-x-0 bottom-16 z-40 rounded-t-tile bg-surface-card p-4 shadow-2xl transition-transform duration-300"
+                className="fixed inset-x-0 bottom-16 z-40 rounded-t-tile bg-surface-card p-4 shadow-2xl transition-transform duration-300 md:bottom-4 md:mx-auto md:max-w-md md:rounded-tile"
                 role="dialog"
                 aria-label={`Details for ${selectedDay}`}
               >
@@ -388,6 +691,146 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   ))}
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {tab === 'companion' ? (
+          <div className="flex flex-col gap-3">
+            {companionQuestions === null ? <Skeleton height={120} /> : null}
+
+            {companionQuestions && companionQuestions.length === 0 ? (
+              <p className="text-caregiver-body text-ink-muted">
+                No questions asked yet.
+              </p>
+            ) : null}
+
+            {(companionQuestions ?? []).map((q) => {
+              const isSuggestion = !q.grounded && !q.flaggedForFollowup;
+              const cardClass = q.flaggedForFollowup
+                ? 'border-warning bg-warning/10'
+                : isSuggestion
+                  ? 'border-teal bg-teal/5'
+                  : 'border-gray-300 bg-white';
+              return (
+                <div key={q.id} className={`rounded-card border p-3 shadow-sm ${cardClass}`}>
+                  <p className="font-bold text-navy">{q.question}</p>
+                  <p className="text-caregiver-body text-gray-700">{q.answer}</p>
+                  {q.flaggedForFollowup ? (
+                    <p className="mt-1 text-patient-sm font-semibold text-warning">
+                      Follow-up suggested — this question may need your attention.
+                    </p>
+                  ) : isSuggestion ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push('/caregiver/memory-bank')}
+                      className="mt-1 text-patient-sm font-semibold text-teal hover:text-primary-dark"
+                    >
+                      Consider adding this to the Memory Bank
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {tab === 'family' ? (
+          <div className="flex flex-col gap-6">
+            <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
+              <p className="font-serif-display text-lg font-semibold text-navy">Share with family</p>
+              <p className="mt-1 text-patient-sm text-gray-600">
+                Read-only weekly summary, plus this week&apos;s engagement. No raw session data, Memory
+                Bank, or companion conversations are ever shared. Links expire after 30 days and can be
+                revoked any time.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <label htmlFor="family-share-label" className="sr-only">
+                  Family member label
+                </label>
+                <input
+                  id="family-share-label"
+                  value={newShareLabel}
+                  onChange={(e) => setNewShareLabel(e.target.value)}
+                  placeholder="e.g. Son in Delhi"
+                  className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={createFamilyShare}
+                  disabled={creatingShare || !newShareLabel.trim()}
+                  className="rounded-control bg-primary px-4 text-caregiver-body font-semibold text-ink-inverse disabled:opacity-50"
+                >
+                  {creatingShare ? 'Creating…' : 'Create link'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="font-serif-display text-lg font-semibold text-navy">Active shares</p>
+              {familyShares === null ? <Skeleton height={80} /> : null}
+              {familyShares && familyShares.length === 0 ? (
+                <p className="text-caregiver-body text-ink-muted">No family shares yet.</p>
+              ) : null}
+              {(familyShares ?? []).map((share) => {
+                const revoked = Boolean(share.revoked_at);
+                const expired = !revoked && new Date(share.expires_at).getTime() < Date.now();
+                return (
+                  <div
+                    key={share.id}
+                    className="flex items-center justify-between rounded-card border border-gray-300 bg-white p-3 shadow-sm"
+                  >
+                    <div>
+                      <p className="font-bold text-navy">{share.label}</p>
+                      <p className="text-patient-sm text-gray-600">
+                        {revoked
+                          ? 'Revoked'
+                          : expired
+                            ? 'Expired'
+                            : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
+                      </p>
+                    </div>
+                    {!revoked && !expired ? (
+                      <button
+                        type="button"
+                        onClick={() => revokeFamilyShare(share.id)}
+                        className="text-caregiver-body font-semibold text-danger"
+                      >
+                        Revoke
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="font-serif-display text-lg font-semibold text-navy">Notes awaiting review</p>
+              {familyNotes === null ? <Skeleton height={80} /> : null}
+              {familyNotes && familyNotes.length === 0 ? (
+                <p className="text-caregiver-body text-ink-muted">Nothing waiting for review.</p>
+              ) : null}
+              {(familyNotes ?? []).map((note) => (
+                <div key={note.id} className="rounded-card border border-gray-300 bg-white p-3 shadow-sm">
+                  <p className="text-caregiver-body text-gray-800">&ldquo;{note.text}&rdquo;</p>
+                  <div className="mt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => moderateFamilyNote(note.id, 'approve')}
+                      className="text-caregiver-body font-semibold text-success"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moderateFamilyNote(note.id, 'reject')}
+                      className="text-caregiver-body font-semibold text-danger"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : null}
       </main>

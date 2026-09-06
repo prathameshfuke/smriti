@@ -1,15 +1,29 @@
 import type { Metadata, Viewport } from "next";
-import { Lora, Noto_Sans_Bengali, Noto_Sans_Devanagari } from "next/font/google";
+import {
+  Atkinson_Hyperlegible,
+  Fraunces,
+  Noto_Sans_Bengali,
+  Noto_Sans_Devanagari,
+} from "next/font/google";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import Disclaimer from "@/components/layout/Disclaimer";
 import "./globals.css";
 
 /**
- * Only the Indic faces are loaded. Latin comes from the system stack (see
- * globals.css) — it is already on the device and costs nothing on 2G — but
- * Assamese (Bengali script) and Hindi (Devanagari) render as tofu without a
- * font that covers them.
+ * Atkinson Hyperlegible is the body/UI face for every screen — patient,
+ * caregiver and marketing alike. It's purpose-built for low-vision readers
+ * (large x-height, disambiguated l/I/1/0), which matches this cohort
+ * directly. Noto Bengali and Devanagari follow as fallbacks (see
+ * globals.css) because Assamese (Bengali script) and Hindi (Devanagari)
+ * render as tofu without a font that covers them.
  */
+const atkinsonHyperlegible = Atkinson_Hyperlegible({
+  variable: "--font-smriti-atkinson",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+  display: "swap",
+});
+
 const notoSansBengali = Noto_Sans_Bengali({
   variable: "--font-smriti-bengali",
   subsets: ["bengali"],
@@ -22,10 +36,17 @@ const notoSansDevanagari = Noto_Sans_Devanagari({
   display: "swap",
 });
 
-/** Serif display face for the marketing/login pages' headlines only. */
-const lora = Lora({
+/**
+ * Fraunces: editorial display serif (design doc §3.2) for every heading,
+ * hero, testimonial and metric app-wide — high-contrast, open counters,
+ * graceful italics for the emphasis word in a headline. Variable weight +
+ * italic axis, self-hosted at build time (next/font) so it works offline.
+ */
+const fraunces = Fraunces({
   variable: "--font-smriti-serif",
   subsets: ["latin"],
+  style: ["normal", "italic"],
+  weight: ["400", "500", "600"],
   display: "swap",
 });
 
@@ -37,11 +58,11 @@ export const metadata: Metadata = {
   applicationName: "SMRITI",
   appleWebApp: { capable: true, title: "SMRITI", statusBarStyle: "default" },
   formatDetection: { telephone: false },
-  icons: { apple: "/icons/icon-192.png" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#8B6914",
+  themeColor: "#B3452D",
   width: "device-width",
   initialScale: 1,
   // Zoom stays enabled: low vision is the norm in this cohort, and locking
@@ -53,7 +74,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${notoSansBengali.variable} ${notoSansDevanagari.variable} ${lora.variable} h-full antialiased`}
+      className={`${atkinsonHyperlegible.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} ${fraunces.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>

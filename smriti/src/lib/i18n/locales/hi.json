@@ -7,25 +7,45 @@
   },
   "game": {
     "objectHunt": {
-      "name": "Object Hunt",
-      "instruction": "Remember where each picture is hidden. Tap a tile to look."
+      "name": "वस्तु खोज",
+      "instruction": "याद रखें कि हर तस्वीर कहाँ छिपी है। देखने के लिए टाइल पर टैप करें।",
+      "whereWasThe": "कहाँ था"
     },
     "wordStream": {
-      "name": "Market List",
-      "instruction": "Remember these things. We will ask you later."
+      "name": "बाज़ार सूची",
+      "instruction": "इन चीज़ों को याद रखें। हम आपसे बाद में पूछेंगे।",
+      "rememberLater": "इन्हें बाद के लिए याद रखें।",
+      "okRemember": "ठीक है, मुझे याद है!",
+      "whichItems": "हमने आपको कौन सी चीज़ें दिखाई थीं?",
+      "imDone": "हो गया!"
     },
     "quickTap": {
-      "name": "Quick Quick",
-      "instruction": "Tap the picture as soon as you see it."
+      "name": "जल्दी जल्दी",
+      "instruction": "तस्वीर दिखते ही उस पर टैप करें।"
     },
     "pathMatch": {
-      "name": "Path Match",
-      "instruction": "Join the numbers in order, from 1 onwards."
+      "name": "पथ मिलान",
+      "instruction": "संख्याओं को क्रम में जोड़ें, 1 से शुरू करें।",
+      "good": "बहुत बढ़िया!"
     },
-    "correct": "Correct!",
-    "tryAgain": "Try again",
-    "sessionComplete": "Well done! You finished today's session.",
-    "stars": "Stars earned"
+    "memoryMatch": {
+      "name": "याददाश्त मिलान",
+      "instruction": "दो कार्ड पर टैप करें। यदि वे मेल खाते हैं, तो वे खुले रहेंगे।",
+      "goodMatch": "अच्छा मेल!",
+      "tryAnotherOne": "एक और कोशिश करते हैं"
+    },
+    "memoryBlocks": { "name": "याददाश्त खंड" },
+    "frogLeap": { "name": "मेंढक छलांग" },
+    "countingBoxes": { "name": "बक्से गिनें" },
+    "nBack": { "name": "एन-बैक" },
+    "largerNumber": { "name": "बड़ी संख्या" },
+    "memorySpan": { "name": "स्मृति विस्तार" },
+    "fishTrace": { "name": "मछली अनुसरण" },
+    "doubleDecision": { "name": "दोहरा निर्णय" },
+    "correct": "सही!",
+    "tryAgain": "फिर कोशिश करें",
+    "sessionComplete": "शाबाश! आपने आज का सत्र पूरा किया।",
+    "stars": "अर्जित सितारे"
   },
   "reminder": {
     "medication": "दवाई लेने का समय",

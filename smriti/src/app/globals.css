@@ -7,26 +7,48 @@
  * shared low-end Android the OS theme is not the patient's choice anyway.
  */
 :root {
-  --background: #faf7f2;
-  --foreground: #2d2a26;
+  --background: #ffffff;
+  --foreground: #1f2937;
 
   /*
-   * System stack first: it is already on the device, costs no bytes on a 2G
-   * connection, and is the face the patient sees everywhere else. Noto
-   * Bengali and Devanagari follow as fallbacks because Assamese and Hindi
-   * render as tofu without them.
+   * Ported games use shadcn's semantic color vocabulary (muted, destructive,
+   * border, primary-foreground) which this app never defined — those classes
+   * generated zero CSS, so text/fills/borders using them were fully invisible,
+   * not just low-contrast. Mapped to this app's existing equivalents.
    */
-  --font-smriti-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, var(--font-smriti-bengali), var(--font-smriti-devanagari), sans-serif;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+  --destructive: #dc2626;
+  --border: #d1d5db;
+  --primary-foreground: #ffffff;
+
+  /*
+   * Atkinson Hyperlegible first: purpose-built for low-vision readers (large
+   * x-height, disambiguated l/I/1/0), which is exactly this cohort. Noto
+   * Bengali and Devanagari follow as fallbacks because Assamese and Hindi
+   * render as tofu without them; system-ui is the last resort if the web
+   * font fails to load on a slow connection.
+   */
+  --font-smriti-sans: var(--font-smriti-atkinson), var(--font-smriti-bengali),
+    var(--font-smriti-devanagari), system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-primary-foreground: var(--primary-foreground);
   --font-sans: var(--font-smriti-sans);
   --animate-ring-fill: smriti-ring-fill 700ms ease-out both;
   --animate-shake: smriti-shake 200ms ease-in-out 3;
   --animate-pulse-ring: smriti-pulse-ring 1200ms ease-in-out infinite;
+  --animate-rise-in: smriti-rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-stripe-drift: smriti-stripe-drift 90s linear infinite;
+  --animate-reveal: smriti-reveal 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /*
@@ -62,6 +84,53 @@
   }
   50% {
     opacity: 0.55;
+  }
+}
+
+/* Landing hero entrance: headline, subhead and CTA rise + fade in, staggered
+   via each element's own animation-delay utility class. */
+@keyframes smriti-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scroll-reveal for sections entering the viewport (toggled by an
+   IntersectionObserver adding/removing a class — see Reveal.tsx). */
+@keyframes smriti-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.smriti-reveal-pending {
+  opacity: 0;
+  transform: translateY(24px);
+}
+
+.smriti-reveal-visible {
+  animation: var(--animate-reveal);
+}
+
+/* Ambient gamosa-stripe drift behind the landing hero — a slow, barely
+   perceptible pan, not a spectacle. Background-position only, so it never
+   affects layout or triggers reflow. */
+@keyframes smriti-stripe-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 400px 400px;
   }
 }
 

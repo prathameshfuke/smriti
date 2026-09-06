@@ -13,11 +13,27 @@ export type Language = 'as' | 'hi' | 'en' | 'mni' | 'brx';
 export type PatientLanguage = Language | 'kha' | 'lus';
 export type CaregiverRole = 'family' | 'asha_worker' | 'nurse' | 'clinician';
 export type Gender = 'male' | 'female' | 'other';
-export type GameType = 'object_hunt' | 'word_stream' | 'quick_tap' | 'path_match';
+export type GameType =
+  | 'object_hunt'
+  | 'word_stream'
+  | 'quick_tap'
+  | 'path_match'
+  | 'memory_match'
+  | 'memory_blocks'
+  | 'frog_leap'
+  | 'counting_boxes'
+  | 'n_back'
+  | 'larger_number'
+  | 'memory_span'
+  | 'fish_trace'
+  | 'double_decision'
+  | 'reminiscence_quiz'
+  | 'routine_recall';
 export type ReminderType = 'medication' | 'hydration' | 'activity' | 'appointment';
 export type AckMethod = 'touch' | 'voice' | 'caregiver';
 export type AlertType = 'cognitive_drop' | 'missed_sessions' | 'low_adherence';
 export type AlertSeverity = 'red' | 'yellow' | 'green';
+export type MemoryBankCategory = 'person' | 'schedule' | 'life_fact' | 'medication';
 
 /** ISO-8601 timestamp string (TIMESTAMPTZ). */
 export type Timestamptz = string;
@@ -132,6 +148,76 @@ export type Alert = {
   resolved_at: Timestamptz | null;
 }
 
+export type MemoryBankEntry = {
+  id: string;
+  patient_id: string;
+  category: MemoryBankCategory;
+  title: string;
+  detail: string;
+  photo_url: string | null;
+  relationship: string | null;
+  active: boolean;
+  created_by: string;
+  updated_at: Timestamptz;
+}
+
+/**
+ * Retained for the caregiver digest and safety audit — never shown to the
+ * patient as a chat history.
+ */
+export type ReminiscenceQuiz = {
+  id: string;
+  patient_id: string;
+  questions: Array<{ question: string; options: string[]; correctIndex: number; entryTitle: string }>;
+  generated_at: Timestamptz;
+}
+
+export type CaregiverDigest = {
+  id: string;
+  patient_id: string;
+  week_of: DateOnly;
+  summary_text: string;
+  generated_at: Timestamptz;
+}
+
+export type AiConversationLog = {
+  id: string;
+  patient_id: string;
+  question: string;
+  answer: string;
+  grounded: boolean;
+  /** True when a distress keyword short-circuited to the Tele-MANAS response
+   * instead of reaching the LLM — surfaced to the caregiver separately from
+   * an ordinary ungrounded question. */
+  flagged_for_followup: boolean;
+  model_used: string;
+  created_at: Timestamptz;
+}
+
+export type FamilyShareStatus = 'pending' | 'approved' | 'rejected' | 'surfaced';
+
+export type FamilyShare = {
+  id: string;
+  patient_id: string;
+  caregiver_id: string;
+  label: string;
+  signature: string;
+  review_required: boolean;
+  expires_at: Timestamptz;
+  revoked_at: Timestamptz | null;
+  created_at: Timestamptz;
+}
+
+export type FamilyNote = {
+  id: string;
+  family_share_id: string;
+  patient_id: string;
+  text: string;
+  status: FamilyShareStatus;
+  created_at: Timestamptz;
+  surfaced_at: Timestamptz | null;
+}
+
 /**
  * Columns Postgres fills in itself. They are never part of an insert payload:
  * `accuracy_pct` is a generated column, the timestamps have defaults.
@@ -172,6 +258,12 @@ export interface Database {
       reminder_schedules: TableShape<ReminderSchedule>;
       reminder_acks: TableShape<ReminderAck>;
       alerts: TableShape<Alert>;
+      memory_bank_entries: TableShape<MemoryBankEntry>;
+      ai_conversation_log: TableShape<AiConversationLog>;
+      reminiscence_quizzes: TableShape<ReminiscenceQuiz>;
+      caregiver_digests: TableShape<CaregiverDigest>;
+      family_shares: TableShape<FamilyShare>;
+      family_notes: TableShape<FamilyNote>;
     };
     // Mapped-over-never, matching `supabase gen types` output. A plain
     // Record<never, never> lacks an index signature and fails GenericSchema.

@@ -45,9 +45,14 @@ export default function CaregiverPatientsPage() {
   };
 
   return (
-    <main className="mx-auto max-w-dashboard px-4 py-6">
-      <header className="mb-4 flex items-center justify-between">
-        <h1 className="text-caregiver-heading text-ink">Patients</h1>
+    <main className="mx-auto max-w-dashboard px-4 py-6 md:px-8 md:py-10">
+      <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b-2 border-muga/30 pb-5">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-wide text-muga-dark">Caregiver</p>
+          <h1 className="font-serif-display text-caregiver-heading font-semibold text-navy">
+            Patients
+          </h1>
+        </div>
         <BigButton
           label="Add Patient"
           variant="primary"
@@ -56,9 +61,9 @@ export default function CaregiverPatientsPage() {
       </header>
 
       {patients === null && !error ? (
-        <div className="flex flex-col gap-3" aria-busy="true">
-          <Skeleton height={64} />
-          <Skeleton height={64} />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true">
+          <Skeleton height={72} />
+          <Skeleton height={72} />
         </div>
       ) : null}
 
@@ -69,35 +74,50 @@ export default function CaregiverPatientsPage() {
         </div>
       ) : null}
 
-      {patients ? (
-        <ul className="flex flex-col gap-2">
-          {patients.map((patient) => (
-            <li
-              key={patient.id}
-              className="flex items-center justify-between rounded-card border border-surface-muted bg-surface-card p-3"
-            >
-              <button
-                type="button"
-                onClick={() => router.push(`/caregiver/patients/${patient.id}`)}
-                className="flex flex-1 items-center gap-2 text-left"
+      {patients && patients.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-card border border-gray-300 bg-white py-12 text-center shadow-sm">
+          <p className="text-caregiver-body text-ink-muted">Add a patient to begin a supervised activity.</p>
+        </div>
+      ) : null}
+
+      {patients && patients.length > 0 ? (
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {patients.map((patient) => {
+            const stripColor =
+              patient.alertStatus === 'red'
+                ? 'bg-gamosa'
+                : patient.alertStatus === 'yellow'
+                  ? 'bg-warning'
+                  : 'bg-success';
+            return (
+              <li
+                key={patient.id}
+                className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm"
               >
-                <TrafficLight status={patient.alertStatus} size="sm" />
-                <span className="font-bold text-ink">{patient.displayName}</span>
-                <span className="text-caregiver-body text-ink-muted">
-                  {patient.ageYears} · {patient.primaryLanguage}
-                </span>
-              </button>
-              <button
-                type="button"
-                aria-label={`Delete ${patient.displayName}`}
-                onClick={() => setConfirmingId(patient.id)}
-                style={{ minHeight: 48, minWidth: 48 }}
-                className="flex items-center justify-center"
-              >
-                <Trash2 size={20} aria-hidden="true" />
-              </button>
-            </li>
-          ))}
+                <div className={`h-full w-1.5 self-stretch shrink-0 ${stripColor}`} aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={() => router.push(`/caregiver/patients/${patient.id}`)}
+                  className="flex flex-1 items-center gap-2 p-4 text-left"
+                >
+                  <TrafficLight status={patient.alertStatus} size="sm" />
+                  <span className="font-bold text-navy">{patient.displayName}</span>
+                  <span className="text-patient-sm text-gray-600">
+                    {patient.ageYears} · {patient.primaryLanguage}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Delete ${patient.displayName}`}
+                  onClick={() => setConfirmingId(patient.id)}
+                  style={{ minHeight: 48, minWidth: 48 }}
+                  className="mr-2 flex shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-danger"
+                >
+                  <Trash2 size={20} aria-hidden="true" />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 

@@ -145,6 +145,34 @@ describe('gameStore', () => {
     expect(await db.telemetryEvents.count()).toBe(1);
   });
 
+  it('endSession builds a daily_summaries row even with no page-level buildDailySummary call (the dashboard read path)', async () => {
+    // Regression for the caregiver dashboard showing "0/7 sessions" /
+    // "0% accuracy today" despite played games: /api/patients reads
+    // daily_summaries exclusively, but every game page only ever built that
+    // row from its own "Finish Session" -> "Go Home" happy path. Exiting via
+    // the nav bar's back button (which only ever called endSession) left a
+    // fully-synced session with no summary row for the dashboard to show.
+    useGameStore.getState().startSession('p1');
+    useGameStore.getState().logEvent({
+      gameType: 'object_hunt',
+      difficultyLevel: 1,
+      roundNumber: 1,
+      isCorrect: true,
+      responseTimeMs: 500,
+      metadata: {},
+    });
+    await useGameStore.getState().endSession();
+
+    const summaries = await db.dailySummaries.toArray();
+    expect(summaries).toHaveLength(1);
+    expect(summaries[0]).toMatchObject({
+      patientId: 'p1',
+      gameType: 'object_hunt',
+      totalRounds: 1,
+      correctRounds: 1,
+    });
+  });
+
   it('setWordStreamItems holds the recall list for the session', () => {
     useGameStore.getState().setWordStreamItems(['gamosa', 'bamboo', 'rhino']);
     expect(useGameStore.getState().wordStreamItems).toEqual(['gamosa', 'bamboo', 'rhino']);

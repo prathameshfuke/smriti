@@ -1,3 +1,110 @@
-export default function ObjectGrid() {
-  return null;
+'use client';
+
+import type { SmritiObject } from '@/lib/engine/objects';
+import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+
+export type RevealState = 'reveal' | 'recall';
+
+export interface ObjectGridProps {
+  /** One entry per tile (length === totalTiles); null means an empty decoy tile. */
+  objects: (SmritiObject | null)[];
+  totalTiles: number;
+  onTileSelect: (index: number) => void;
+  revealState: RevealState;
+  /** Index currently open during REVEAL, or -1 when none is open. */
+  revealedTileIndex: number;
+  correctTileIndex: number;
+  targetObject: SmritiObject;
+  /** Index just tapped right/wrong, briefly flashed, then cleared by the caller. */
+  flashIndex?: number;
+  flashCorrect?: boolean;
+}
+
+function columnsFor(totalTiles: number): string {
+  if (totalTiles <= 6) return 'grid-cols-2';
+  if (totalTiles <= 9) return 'grid-cols-3';
+  return 'grid-cols-4';
+}
+
+export default function ObjectGrid({
+  objects,
+  totalTiles,
+  onTileSelect,
+  revealState,
+  revealedTileIndex,
+  correctTileIndex,
+  targetObject,
+  flashIndex,
+  flashCorrect,
+}: ObjectGridProps) {
+  const tapEnabled = revealState === 'recall';
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div
+        className="flex flex-col items-center gap-1 rounded-tile border border-black/5 bg-surface-card p-4 shadow-sm"
+        style={{ backgroundColor: `${targetObject.categoryColor}1A` }}
+      >
+        <span className="text-4xl" aria-hidden="true">
+          {targetObject.emoji}
+        </span>
+        <span className="text-patient-body font-semibold text-ink">
+          {targetObject.name.en}
+        </span>
+      </div>
+
+      <div className={`grid ${columnsFor(totalTiles)} gap-4`}>
+        {Array.from({ length: totalTiles }).map((_, i) => {
+          const obj = objects[i] ?? null;
+          const isFlashed = flashIndex === i;
+          // During recall, a tile must never reveal its object ahead of a
+          // correct tap — it previously kept the answer tile open the whole
+          // round by keying off correctTileIndex unconditionally.
+          const isOpen =
+            (revealState === 'reveal' ? i === revealedTileIndex : isFlashed && flashCorrect === true) && obj !== null;
+
+          const flashClass = isFlashed
+            ? flashCorrect
+              ? 'ring-2 ring-success bg-success/20'
+              : 'ring-2 ring-warning bg-warning/20'
+            : '';
+
+          return (
+            <button
+              key={i}
+              type="button"
+              disabled={!tapEnabled}
+              aria-label={isOpen && obj ? obj.name.en : `Tile ${i + 1}`}
+              onClick={() => tapEnabled && onTileSelect(i)}
+              style={{
+                // Larger than the app-wide touch-target floor: these tiles are
+                // the whole point of the game, reported as too small to
+                // comfortably see and tap.
+                minHeight: TOUCH_TARGET_MIN_PX + 28,
+                minWidth: TOUCH_TARGET_MIN_PX + 28,
+                backgroundColor: isOpen && obj ? `${obj.categoryColor}33` : undefined,
+              }}
+              className={
+                'flex items-center justify-center rounded-card border-2 border-surface-muted shadow-sm ' +
+                `bg-game-tile transition-all duration-300 ${
+                  tapEnabled ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-primary/40 motion-reduce:hover:translate-y-0' : 'cursor-default'
+                } ` +
+                flashClass
+              }
+            >
+              {isOpen && obj ? (
+                <span className="text-5xl" aria-hidden="true">
+                  {obj.emoji}
+                </span>
+              ) : (
+                <span className="text-3xl text-ink-muted" aria-hidden="true">
+                  ?
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { AckMethod, GameType, ReminderType } from '@/lib/supabase/types';
+import type { AckMethod, CaregiverRole, GameType, MemoryBankCategory, ReminderType } from '@/lib/supabase/types';
 
 /**
  * Offline-first local mirror (IndexedDB via Dexie).
@@ -87,6 +87,55 @@ export interface LocalReminderAck {
   synced: boolean;
 }
 
+export interface LocalCaregiver {
+  id: string;
+  authUserId: string;
+  displayName: string;
+  role: CaregiverRole;
+  createdAt: string;
+}
+
+export interface LocalMemoryBankEntry {
+  id: string;
+  patientId: string;
+  category: MemoryBankCategory;
+  title: string;
+  detail: string;
+  /** Data-URL string — no Supabase Storage bucket exists yet (MVP scope cut). */
+  photoUrl: string | null;
+  relationship: string | null;
+  active: boolean;
+  createdBy: string;
+  updatedAt: string;
+}
+
+export interface LocalAiConversationLog {
+  id: string;
+  patientId: string;
+  question: string;
+  answer: string;
+  grounded: boolean;
+  modelUsed: string;
+  createdAt: string;
+}
+
+export interface ReminiscenceQuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  /** Verbatim title of the Memory Bank entry this question is about — lets
+   * the game look up that entry's photo without round-tripping an id
+   * through the LLM. */
+  entryTitle: string;
+}
+
+export interface LocalReminiscenceQuiz {
+  id: string;
+  patientId: string;
+  questions: ReminiscenceQuizQuestion[];
+  generatedAt: string;
+}
+
 export interface SyncQueueItem {
   id: string;
   tableName: string;
@@ -98,23 +147,31 @@ export interface SyncQueueItem {
 }
 
 export class SmritiDB extends Dexie {
+  caregivers!: Table<LocalCaregiver>;
   patients!: Table<LocalPatient>;
   gameSessions!: Table<LocalGameSession>;
   telemetryEvents!: Table<LocalTelemetryEvent>;
   dailySummaries!: Table<LocalDailySummary>;
   reminderSchedules!: Table<LocalReminderSchedule>;
   reminderAcks!: Table<LocalReminderAck>;
+  memoryBankEntries!: Table<LocalMemoryBankEntry>;
+  aiConversationLog!: Table<LocalAiConversationLog>;
+  reminiscenceQuizzes!: Table<LocalReminiscenceQuiz>;
   syncQueue!: Table<SyncQueueItem>;
 
   constructor() {
     super(DB_NAME);
     this.version(1).stores({
+      caregivers: 'id, authUserId',
       patients: 'id, caregiverId, isActive',
       gameSessions: 'id, patientId, startedAt, synced',
       telemetryEvents: 'id, sessionId, patientId, gameType, eventTimestamp, synced',
       dailySummaries: 'id, [patientId+summaryDate+gameType], synced',
       reminderSchedules: 'id, patientId, reminderType, isActive',
       reminderAcks: 'id, reminderId, patientId, scheduledAt, synced',
+      memoryBankEntries: 'id, patientId, category, active',
+      aiConversationLog: 'id, patientId, createdAt',
+      reminiscenceQuizzes: 'id, patientId',
       syncQueue: 'id, tableName, createdAt',
     });
   }

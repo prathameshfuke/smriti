@@ -45,8 +45,11 @@ export function useSync(): {
   const syncNow = useCallback(async () => {
     if (useGameStore.getState().isSessionActive) return;
     setIsSyncing(true);
-    await syncAllPatients();
-    setLastSynced(new Date().toISOString());
+    const result = await syncAllPatients();
+    // Only a genuine success (including "nothing to sync") updates the
+    // timestamp — otherwise the caregiver sees a fresh "last synced" time
+    // while their pending records never actually reached the server.
+    if (result.success) setLastSynced(new Date().toISOString());
     await refreshPendingCount();
     setIsSyncing(false);
   }, [refreshPendingCount]);

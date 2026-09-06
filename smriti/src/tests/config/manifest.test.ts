@@ -7,8 +7,8 @@ const manifest = JSON.parse(
 );
 
 describe('PWA manifest', () => {
-  it('uses the SMRITI brand gold as theme_color', () => {
-    expect(manifest.theme_color).toBe('#8B6914');
+  it('uses the SMRITI brand terracotta as theme_color', () => {
+    expect(manifest.theme_color).toBe('#B3452D');
   });
 
   it('declares standalone display so it installs as an app', () => {
@@ -24,8 +24,8 @@ describe('PWA manifest', () => {
     expect(manifest.short_name).toBe('SMRITI');
   });
 
-  it('uses the warm surface tone as background_color', () => {
-    expect(manifest.background_color).toBe('#FAF7F2');
+  it('uses the SMRITI paper tone as background_color', () => {
+    expect(manifest.background_color).toBe('#F8F7F3');
   });
 
   it('ships 192px and 512px icons that exist on disk', () => {
@@ -39,10 +39,10 @@ describe('PWA manifest', () => {
     }
   });
 
-  it('marks the 512px icon maskable for Android adaptive icons', () => {
+  it('marks a 512px icon maskable for Android adaptive icons', () => {
     const large = (manifest.icons as { sizes: string; purpose?: string }[]).find(
-      (i) => i.sizes === '512x512',
+      (i) => i.sizes === '512x512' && i.purpose === 'maskable',
     );
-    expect(large?.purpose).toBe('maskable');
+    expect(large).toBeDefined();
   });
 });

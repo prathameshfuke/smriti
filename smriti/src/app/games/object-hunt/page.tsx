@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
@@ -39,17 +39,27 @@ const LEVELS: Record<number, LevelParams> = {
 };
 
 const INSTRUCTION_SECONDS = 5;
-const ENCOURAGEMENT = [
-  '',
-  "You're learning! Keep trying.",
-  "Good try! You're getting there.",
-  'Nice work!',
-  'Great job!',
-  'Wonderful! You remembered everything!',
+/**
+ * Several lines per star tier instead of one fixed line each — a round that
+ * scores the same star count every time (common once a patient masters a
+ * level) used to repeat the exact same sentence every single round.
+ */
+const ENCOURAGEMENT: string[][] = [
+  [''],
+  ["You're learning! Keep trying.", "That's alright, let's try again.", 'Keep going, you can do it.'],
+  ["Good try! You're getting there.", 'Almost there!', "You're improving!"],
+  ['Nice work!', 'Well done!', "You're doing great!"],
+  ['Great job!', 'Excellent work!', 'Fantastic effort!'],
+  ['Wonderful! You remembered everything!', 'Perfect memory!', 'Amazing! Every one correct!'],
 ];
 
 function starsFor(accuracy: number): number {
   return Math.max(1, Math.round(accuracy / 20));
+}
+
+function pickEncouragement(stars: number): string {
+  const pool = ENCOURAGEMENT[stars] ?? ENCOURAGEMENT[0];
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 /** Places `objectCount` distinct objects across random tiles in the grid. */
@@ -78,7 +88,6 @@ function ObjectHuntPageInner() {
   const router = useRouter();
   const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
-  const isSessionActive = useGameStore((s) => s.isSessionActive);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
@@ -204,9 +213,14 @@ function ObjectHuntPageInner() {
 
   const accuracy = targetOrder.length > 0 ? (correctCount / targetOrder.length) * 100 : 0;
   const stars = starsFor(accuracy);
+  // Recomputed once per round (not on every re-render) so the line doesn't
+  // change under the patient's eyes while a single "round complete" screen
+  // is still showing.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const encouragement = useMemo(() => pickEncouragement(stars), [round, stars]);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy);
+    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
     setRound((r) => r + 1);
@@ -214,7 +228,7 @@ function ObjectHuntPageInner() {
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy);
+    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
     setPhase('session_complete');
@@ -225,18 +239,24 @@ function ObjectHuntPageInner() {
       await buildDailySummary(currentPatient.id, new Date().toISOString().slice(0, 10), 'object_hunt');
     }
     await endSession();
-    router.push('/');
+    router.push('/app');
   };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
-      <PatientNav title={t('game.objectHunt.name')} onBack={isSessionActive ? undefined : () => router.push('/')} />
+      <PatientNav
+        title={t('game.objectHunt.name')}
+        onBack={() => {
+          void endSession();
+          router.push('/app');
+        }}
+      />
 
       <main className="flex flex-1 flex-col items-center gap-6 px-4 py-6">
         {phase === 'instruction' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.objectHunt.instruction')}</p>
-            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 motion-reduce:animate-none" />
+            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 shadow-sm motion-reduce:animate-none" />
           </div>
         ) : null}
 
@@ -260,10 +280,10 @@ function ObjectHuntPageInner() {
               {'★'.repeat(stars)}
               {'☆'.repeat(5 - stars)}
             </p>
-            <p className="text-patient-heading text-ink">
+            <p className="font-serif-display text-patient-heading text-ink">
               {correctCount} out of {targetOrder.length} correct!
             </p>
-            <p className="text-patient-body text-ink-muted">{ENCOURAGEMENT[stars]}</p>
+            <p className="text-patient-body text-ink-muted">{encouragement}</p>
             <BigButton label="Keep Going" variant="primary" onClick={keepGoing} />
             <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
           </div>

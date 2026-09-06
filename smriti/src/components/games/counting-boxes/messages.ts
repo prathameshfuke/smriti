@@ -1,0 +1,73 @@
+/** next-intl messages for the copied counting-boxes GameComponent. */
+
+const gameUI = {
+  en: {
+    observing: 'Watch the boxes',
+    nextLevel: 'Next level in {seconds}',
+    startGame: 'Start',
+    howMany: 'How many boxes did you see?',
+    enter: 'Enter',
+    correct: 'Correct',
+    incorrect: 'Not quite',
+    actualCount: 'There were {count}',
+    gameOver: 'Activity complete',
+    accuracyLabel: 'Correct rounds',
+    totalTimeLabel: 'Time taken',
+    seconds: 's',
+    encouragement: {
+      perfect: 'Perfect! Wonderful counting today.',
+      great: 'Great work today!',
+      good: 'Good effort — keep going.',
+      keepTrying: 'Well done for trying today.',
+    },
+    playAgain: 'Play again',
+  },
+  hi: {
+    observing: 'बक्सों को देखें',
+    nextLevel: '{seconds} में अगला स्तर',
+    startGame: 'शुरू करें',
+    howMany: 'आपने कितने बक्से देखे?',
+    enter: 'दर्ज करें',
+    correct: 'सही',
+    incorrect: 'ठीक नहीं',
+    actualCount: '{count} थे',
+    gameOver: 'गतिविधि पूरी हुई',
+    accuracyLabel: 'सही दौर',
+    totalTimeLabel: 'लिया गया समय',
+    seconds: 'से',
+    encouragement: {
+      perfect: 'शानदार! आज गिनती बहुत अच्छी रही।',
+      great: 'आज बहुत बढ़िया काम!',
+      good: 'अच्छा प्रयास — जारी रखें।',
+      keepTrying: 'आज कोशिश करने के लिए शाबाश।',
+    },
+    playAgain: 'फिर से खेलें',
+  },
+  as: {
+    observing: 'বাকচবোৰ চাওক',
+    nextLevel: '{seconds}ত পিছৰ স্তৰ',
+    startGame: 'আৰম্ভ কৰক',
+    howMany: 'আপুনি কিমান বাকচ দেখিছিল?',
+    enter: 'দিয়ক',
+    correct: 'শুদ্ধ',
+    incorrect: 'ঠিক নহয়',
+    actualCount: '{count} টা আছিল',
+    gameOver: 'কাৰ্যকলাপ সম্পূৰ্ণ',
+    accuracyLabel: 'শুদ্ধ ৰাউণ্ড',
+    totalTimeLabel: 'লোৱা সময়',
+    seconds: 'ছে',
+    encouragement: {
+      perfect: 'উত্তম! আজি গণনা বহুত ভাল আছিল।',
+      great: 'আজি বহুত ভাল কাম!',
+      good: 'ভাল প্ৰচেষ্টা — চলাই থাকক।',
+      keepTrying: 'আজি চেষ্টা কৰাৰ বাবে বাহ।',
+    },
+    playAgain: 'পুনৰ খেলক',
+  },
+};
+
+export const COUNTING_BOXES_MESSAGES = {
+  en: { games: { countingBoxes: { gameUI: gameUI.en } } },
+  hi: { games: { countingBoxes: { gameUI: gameUI.hi } } },
+  as: { games: { countingBoxes: { gameUI: gameUI.as } } },
+};

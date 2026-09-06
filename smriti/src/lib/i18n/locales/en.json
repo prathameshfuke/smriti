@@ -8,11 +8,16 @@
   "game": {
     "objectHunt": {
       "name": "Object Hunt",
-      "instruction": "Remember where each picture is hidden. Tap a tile to look."
+      "instruction": "Remember where each picture is hidden. Tap a tile to look.",
+      "whereWasThe": "Where was the"
     },
     "wordStream": {
       "name": "Market List",
-      "instruction": "Remember these things. We will ask you later."
+      "instruction": "Remember these things. We will ask you later.",
+      "rememberLater": "Remember these for later.",
+      "okRemember": "OK, I remember!",
+      "whichItems": "Which items did we show you?",
+      "imDone": "I am done!"
     },
     "quickTap": {
       "name": "Quick Quick",
@@ -20,8 +25,23 @@
     },
     "pathMatch": {
       "name": "Path Match",
-      "instruction": "Join the numbers in order, from 1 onwards."
+      "instruction": "Join the numbers in order, from 1 onwards.",
+      "good": "Good!"
     },
+    "memoryMatch": {
+      "name": "Memory Match",
+      "instruction": "Tap two cards. If they match, they stay open.",
+      "goodMatch": "Good match",
+      "tryAnotherOne": "Let's try another one"
+    },
+    "memoryBlocks": { "name": "Memory Blocks" },
+    "frogLeap": { "name": "Frog Leap" },
+    "countingBoxes": { "name": "Counting Boxes" },
+    "nBack": { "name": "N-Back" },
+    "largerNumber": { "name": "Larger Number" },
+    "memorySpan": { "name": "Memory Span" },
+    "fishTrace": { "name": "Fish Trace" },
+    "doubleDecision": { "name": "Double Decision" },
     "correct": "Correct!",
     "tryAgain": "Try again",
     "sessionComplete": "Well done! You finished today's session.",

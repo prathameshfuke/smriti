@@ -22,7 +22,7 @@ export default function CaregiverNav() {
     <nav
       aria-label="Caregiver"
       style={{ height: 64, paddingBottom: 'env(safe-area-inset-bottom)' }}
-      className="fixed inset-x-0 bottom-0 z-40 flex bg-surface-card border-t border-surface-muted"
+      className="fixed inset-x-0 bottom-0 z-40 flex bg-surface-card border-t border-surface-muted md:hidden"
     >
       {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname?.startsWith(`${href}/`);
@@ -33,6 +33,7 @@ export default function CaregiverNav() {
             aria-current={active ? 'page' : undefined}
             className={
               'flex flex-1 flex-col items-center justify-center gap-1 ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ' +
               (active ? 'text-primary' : 'text-ink-muted')
             }
           >

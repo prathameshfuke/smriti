@@ -37,6 +37,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const days = dateRange(RANGE_DAYS);
   const earliest = days[0];
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const currentTimeStr = now.toISOString().slice(11, 16);
 
   const [{ data: schedules }, { data: acks }] = await Promise.all([
     supabase
@@ -69,6 +72,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     for (const dateStr of days) {
       const weekday = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
       if (!schedule.days_of_week.includes(weekday)) continue;
+
+      // A reminder scheduled later today hasn't had a chance to fire yet —
+      // counting it as "missed" the moment the day starts made every
+      // patient's adherence look worse than reality until each reminder's
+      // own time actually passed.
+      if (dateStr === todayStr && schedule.time_of_day.slice(0, 5) > currentTimeStr) continue;
 
       totalExpected += 1;
       byType[type].total += 1;

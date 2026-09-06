@@ -7,7 +7,8 @@ import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
 import { OBJECTS, pickObjects, type SmritiObject } from '@/lib/engine/objects';
-import { logEvent } from '@/lib/engine/telemetry';
+import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
 import { speak } from '@/lib/audio/speech';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -32,14 +33,28 @@ export default function WordStreamPage() {
 
 function WordStreamPageInner() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const wordStreamItems = useGameStore((s) => s.wordStreamItems);
   const setWordStreamItems = useGameStore((s) => s.setWordStreamItems);
   const activeSession = useGameStore((s) => s.activeSession);
-  const isSessionActive = useGameStore((s) => s.isSessionActive);
+  const startSession = useGameStore((s) => s.startSession);
+  const endSession = useGameStore((s) => s.endSession);
 
-  const level = currentPatient?.currentDifficulty.word_stream ?? 1;
+  // Unlike every other game page, Word Stream is visited twice per round
+  // (show-phase, then recall-phase after navigating home and back) — each
+  // visit gets its own session, same as this component gets its own mount.
+  useEffect(() => {
+    if (currentPatient) startSession(currentPatient.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
+    currentLevel: currentPatient?.currentDifficulty.word_stream ?? 1,
+    consecutiveHighScores: 0,
+    consecutiveLowScores: 0,
+  }));
+  const level = difficulty.currentLevel;
   const isRecall = wordStreamItems.length > 0;
 
   // --- START phase ---
@@ -64,14 +79,15 @@ function WordStreamPageInner() {
       queueMicrotask(() => setStartDone(true));
       return;
     }
-    speak(startItems[showIndex].name.en);
+    speak(startItems[showIndex].name[language], language);
     const timer = setTimeout(() => setShowIndex((i) => i + 1), SHOW_SECONDS * 1000);
     return () => clearTimeout(timer);
-  }, [isRecall, startItems, showIndex]);
+  }, [isRecall, startItems, showIndex, language]);
 
   const confirmRemembered = () => {
     setWordStreamItems(startItems.map((o) => o.id));
-    router.push('/');
+    void endSession();
+    router.push('/app');
   };
 
   // --- RECALL phase ---
@@ -81,7 +97,7 @@ function WordStreamPageInner() {
 
   useEffect(() => {
     if (!isRecall) return;
-    speak('Which items did we show you?');
+    speak(t('game.wordStream.whichItems'), language);
     const total = GRID_TOTAL_BY_LEVEL[level] ?? 8;
     const distractors = pickObjects(total - wordStreamItems.length, wordStreamItems);
     const all = [...wordStreamItems.map(objectFor), ...distractors];
@@ -110,7 +126,13 @@ function WordStreamPageInner() {
     const score = scoreRecall(wordStreamItems, selected);
     setResult(score);
 
+    const total = wordStreamItems.length || score.hits + score.misses || 1;
+    const accuracy = (score.hits / total) * 100;
+    const next = adjustDifficulty(difficulty, 'word_stream', accuracy, useGameStore.getState().sessionEvents);
+    setDifficulty(next);
     if (currentPatient) {
+      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'word_stream', next.currentLevel);
+
       await logEvent({
         sessionId: activeSession?.id ?? '',
         patientId: currentPatient.id,
@@ -125,19 +147,26 @@ function WordStreamPageInner() {
     }
   };
 
-  const goHome = () => {
+  const goHome = async () => {
+    if (currentPatient) {
+      await buildDailySummary(currentPatient.id, new Date().toISOString().slice(0, 10), 'word_stream');
+    }
+    await endSession();
     // Cleared here, not at finishRecall: clearing earlier would flip
     // `isRecall` back to false while the result screen is still showing,
     // re-triggering the START effect underneath it.
     setWordStreamItems([]);
-    router.push('/');
+    router.push('/app');
   };
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
       <PatientNav
         title={t('game.wordStream.name')}
-        onBack={isSessionActive ? undefined : () => router.push('/')}
+        onBack={() => {
+          void endSession();
+          router.push('/app');
+        }}
       />
 
       <main className="flex flex-1 flex-col items-center gap-6 px-4 py-6">
@@ -149,8 +178,8 @@ function WordStreamPageInner() {
                 <span className="text-6xl" aria-hidden="true">
                   {startItems[showIndex].emoji}
                 </span>
-                <span className="text-patient-heading font-semibold text-ink">
-                  {startItems[showIndex].name.en}
+                <span className="font-serif-display text-patient-heading font-semibold text-ink">
+                  {startItems[showIndex].name[language]}
                 </span>
               </>
             ) : null}
@@ -159,14 +188,14 @@ function WordStreamPageInner() {
 
         {!isRecall && startDone ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <p className="text-patient-body text-ink">Remember these for later.</p>
-            <BigButton label="OK, I remember!" variant="primary" onClick={confirmRemembered} />
+            <p className="text-patient-body text-ink">{t('game.wordStream.rememberLater')}</p>
+            <BigButton label={t('game.wordStream.okRemember')} variant="primary" onClick={confirmRemembered} />
           </div>
         ) : null}
 
         {isRecall && !result ? (
           <div className="flex flex-1 flex-col items-center gap-4">
-            <p className="text-patient-body text-ink">Which items did we show you?</p>
+            <p className="text-patient-body text-ink">{t('game.wordStream.whichItems')}</p>
             <div className="grid grid-cols-3 gap-3">
               {gridItems.map((obj) => {
                 const isSelected = selected.has(obj.id);
@@ -177,21 +206,21 @@ function WordStreamPageInner() {
                     onClick={() => toggle(obj.id)}
                     aria-pressed={isSelected}
                     className={
-                      'flex flex-col items-center gap-1 rounded-card border-2 p-3 transition-colors ' +
+                      'flex flex-col items-center gap-1 rounded-card border-2 p-3 shadow-sm transition-all ' +
                       (isSelected
-                        ? 'border-success bg-success/10'
-                        : 'border-surface-muted bg-surface-card')
+                        ? 'border-success bg-success/10 shadow-md'
+                        : 'border-surface-muted bg-surface-card hover:border-primary/30')
                     }
                   >
                     <span className="text-3xl" aria-hidden="true">
                       {obj.emoji}
                     </span>
-                    <span className="text-patient-sm text-ink">{obj.name.en}</span>
+                    <span className="text-patient-sm text-ink">{obj.name[language]}</span>
                   </button>
                 );
               })}
             </div>
-            <BigButton label="I am done!" variant="primary" onClick={finishRecall} />
+            <BigButton label={t('game.wordStream.imDone')} variant="primary" onClick={finishRecall} />
           </div>
         ) : null}
 

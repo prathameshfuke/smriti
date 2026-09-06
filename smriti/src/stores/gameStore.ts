@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { v4 as uuid } from 'uuid';
 import { db, type LocalGameSession, type LocalTelemetryEvent } from '@/lib/db/schema';
 import { buildQueueItem } from '@/lib/db/syncQueue';
+import { buildDailySummary } from '@/lib/engine/telemetry';
 import type { GameType } from '@/lib/supabase/types';
 
 /** The caller supplies the round facts; the store owns identity and timing. */
@@ -101,6 +102,23 @@ export const useGameStore = create<GameState>()((set, get) => ({
           ),
         ]);
       },
+    );
+
+    // A daily_summaries row is what the caregiver dashboard actually reads
+    // ("/api/patients" queries daily_summaries, never telemetry_events
+    // directly) - so it must be built here, on every session end, not left
+    // to each game page to remember on its own "finish" button. Pages that
+    // only called buildDailySummary from a happy-path completion screen left
+    // every other exit (the nav bar's back button, in particular) with a
+    // fully synced session and zero rows the dashboard could show for it.
+    const gameDatesPlayed = new Set(
+      sessionEvents.map((e) => e.eventTimestamp.slice(0, 10) + '|' + e.gameType),
+    );
+    await Promise.all(
+      Array.from(gameDatesPlayed, (key) => {
+        const [date, gameType] = key.split('|') as [string, GameType];
+        return buildDailySummary(closed.patientId, date, gameType);
+      }),
     );
 
     set({ activeSession: null, isSessionActive: false, currentGame: null, sessionEvents: [] });

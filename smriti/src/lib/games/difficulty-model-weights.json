@@ -1,0 +1,44 @@
+{
+  "classes": [
+    "decrease",
+    "maintain",
+    "increase"
+  ],
+  "featureNames": [
+    "rolling_accuracy",
+    "reaction_time_zscore",
+    "error_streak",
+    "domain_accuracy",
+    "session_fatigue"
+  ],
+  "coefficients": [
+    [
+      -1.0253346881786987,
+      0.10982688510505494,
+      -0.06888010237847918,
+      -11.130111516270143,
+      0.418608635470046
+    ],
+    [
+      0.5278880053369718,
+      0.12360995313124133,
+      0.07858799323955284,
+      -2.7174905946996213,
+      -0.4653854335483176
+    ],
+    [
+      0.49744668284175797,
+      -0.23343683823632913,
+      -0.009707890861386095,
+      13.847602110969763,
+      0.04677679807827066
+    ]
+  ],
+  "intercepts": [
+    6.8269189052191885,
+    3.0210729611534726,
+    -9.847991866372578
+  ],
+  "trainingAccuracyVsRuleOracle": 0.6451,
+  "note": "Bootstrapped from the rule-based streak engine on synthetic sessions. See docstring at the top of this script."
+}
