@@ -219,15 +219,15 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
             {gameState !== 'idle' && !showResults && (
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                     <div className="flex shrink-0 gap-4 items-center">
-                        <div className="text-lg font-medium">
+                        <div className="text-patient-body font-semibold text-ink">
                             {t('level')}: {level}
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Trophy className="w-4 h-4" />
+                        <div className="flex items-center gap-1 text-ink">
+                            <Trophy className="w-4 h-4 text-primary" />
                             <span>{score}</span>
                         </div>
                     </div>
-                    <div className="min-w-0 text-right text-sm text-muted-foreground">
+                    <div className="min-w-0 text-right text-patient-sm text-ink-muted">
                         {gameState === 'showing'
                             ? t('watchSequence')
                             : gameState === 'guessing'
@@ -246,13 +246,13 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                             key={block.id}
                             onClick={() => handleBlockClick(block.id)}
                             className={cn(
-                                'aspect-square min-h-24 rounded-lg transition-all duration-150',
+                                'aspect-square min-h-24 rounded-tile transition-all duration-150',
                                 'flex items-center justify-center',
-                                'border border-gray-300',
-                                gameState === 'guessing' ? 'cursor-pointer bg-gray-200' : 'cursor-not-allowed bg-gray-200',
+                                'border border-line200',
+                                gameState === 'guessing' ? 'cursor-pointer bg-surface-muted' : 'cursor-not-allowed bg-surface-muted',
                                 block.isHighlighted && 'bg-primary scale-95 cursor-default',
                                 block.isCorrect && 'bg-success scale-95 cursor-default',
-                                block.isError && 'bg-destructive/30 scale-95 cursor-default',
+                                block.isError && 'bg-danger/30 scale-95 cursor-default',
                                 gameState !== 'guessing' && !block.isHighlighted && !block.isCorrect && !block.isError && 'opacity-75',
                             )}
                         />
@@ -260,13 +260,13 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                 </div>
 
                 {gameState === 'idle' && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-primary/5 rounded-lg backdrop-blur-xs p-4">
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-primary/5 rounded-tile backdrop-blur-xs p-4">
                         {bestScore > 0 && (
                             <div className="text-center mb-2">
-                                <div className="text-sm text-muted-foreground">
+                                <div className="text-patient-sm text-ink-muted">
                                     {t('bestScore')}
                                 </div>
-                                <div className="text-2xl font-bold">
+                                <div className="font-serif-display text-patient-heading text-ink">
                                     {bestScore}
                                 </div>
                             </div>
@@ -305,12 +305,12 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                 )}
 
                 {showResults && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-sm rounded-lg overflow-y-auto">
-                        <div className="bg-background p-6 rounded-xl shadow-lg space-y-4 text-center w-11/12 max-w-sm my-4">
-                            <h3 className="text-2xl font-bold mb-4">
+                    <div className="absolute inset-0 flex items-center justify-center bg-surface/95 backdrop-blur-sm rounded-tile overflow-y-auto">
+                        <div className="bg-surface-card p-6 rounded-card shadow-md space-y-4 text-center w-11/12 max-w-sm my-4">
+                            <h3 className="font-serif-display text-patient-heading text-ink mb-4">
                                 {t('gameOver')}
                             </h3>
-                            <div className="space-y-2 text-left w-full">
+                            <div className="space-y-2 text-left w-full text-patient-body text-ink">
                                 <p className="flex justify-between gap-4">
                                     <span>{t('finalScore')}:</span>
                                     <span className="font-bold">{score}</span>

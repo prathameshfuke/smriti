@@ -148,8 +148,8 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
     return (
       <div className="w-full max-w-4xl mx-auto p-4">
         <div className="text-center space-y-4">
-          <div className="text-xl font-medium">Loading...</div>
-          <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="text-patient-body font-medium text-ink">Loading...</div>
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
@@ -161,33 +161,33 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
         {gameState === 'presentation' && (
             <div className="text-center space-y-8">
               <div className="space-y-3">
-                <div className="text-2xl font-bold text-primary">
+                <div className="font-serif-display text-patient-heading text-primary">
                   {t('memorizeTheseWords')}
                 </div>
-                <p className="text-muted-foreground max-w-md mx-auto">
+                <p className="text-patient-body text-ink-muted max-w-md mx-auto">
                   {t('studyAtYourPace')}
                 </p>
               </div>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-3xl mx-auto">
                 {currentWords.map((phrase, index) => (
                   <div
                     key={index}
-                    className="group p-4 bg-white rounded-xl text-center font-medium shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 border border-blue-100"
+                    className="group p-4 bg-surface-card rounded-tile text-center font-medium shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 border border-line200"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <span className="text-gray-700">
+                    <span className="text-patient-body text-ink">
                       {phrase}
                     </span>
                   </div>
                 ))}
               </div>
-              
+
               <div className="pt-6">
-                <Button 
-                  onClick={proceedToRecall} 
+                <Button
+                  onClick={proceedToRecall}
                   size="lg"
-                  className="px-8 py-3 shadow-lg hover:shadow-xl transition-all duration-200"
+                  className="px-8 py-3"
                 >
                   {t('ready')}
                 </Button>
@@ -198,17 +198,17 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
           {gameState === 'recall' && (
             <div className="space-y-8">
               <div className="text-center space-y-3">
-                <h3 className="text-2xl font-bold text-navy">
+                <h3 className="font-serif-display text-patient-heading text-ink">
                   {t('recall.title')}
                 </h3>
-                <p className="text-muted-foreground max-w-lg mx-auto text-lg">
+                <p className="text-patient-body text-ink-muted max-w-lg mx-auto">
                   {t('recall.gridInstruction')}
                 </p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="text-center">
-                  <Label className="text-lg font-medium">{t('recall.inputLabel')}</Label>
+                  <Label className="text-patient-body font-medium text-ink">{t('recall.inputLabel')}</Label>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-3xl mx-auto">
                   {userInputs.map((input, index) => (
@@ -216,19 +216,19 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                       key={index}
                       value={input}
                       onChange={(e) => updateUserInput(index, e.target.value)}
-                      className="text-center h-12 rounded-xl bg-white border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200 focus:outline-none"
+                      className="text-center h-12 rounded-tile bg-surface-card border border-line200 shadow-sm hover:shadow-md transition-all duration-200 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       style={{ animationDelay: `${index * 50}ms` }}
                     />
                   ))}
                 </div>
               </div>
-              
+
               <div className="text-center pt-4">
-                <Button 
-                  onClick={submitRecall} 
+                <Button
+                  onClick={submitRecall}
                   size="lg"
                   disabled={userInputs.every(input => input.trim().length === 0)}
-                  className="px-8 py-3 bg-white hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('submitRecall')}
                 </Button>
@@ -239,19 +239,19 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
           {gameState === 'setup' && (
             <div className="space-y-8">
               <div className="text-center space-y-3">
-                <h3 className="text-2xl font-bold text-navy">
+                <h3 className="font-serif-display text-patient-heading text-ink">
                   {t('setup.title')}
                 </h3>
-                <p className="text-muted-foreground max-w-lg mx-auto text-lg">
+                <p className="text-patient-body text-ink-muted max-w-lg mx-auto">
                   {t('setup.description')}
                 </p>
               </div>
-              
-              <div className="bg-white rounded-3xl p-8 max-w-2xl mx-auto border-2 border-emerald-200 shadow-xl">
+
+              <div className="bg-surface-card rounded-panel p-8 max-w-2xl mx-auto border-2 border-primary/20 shadow-md">
                 <div className="space-y-8">
                   {/* Age Group Section */}
                   <div className="space-y-4">
-                    <Label className="text-xl font-bold text-emerald-700 block text-center">{t('setup.ageGroup')}</Label>
+                    <Label className="text-patient-body font-bold text-primary block text-center">{t('setup.ageGroup')}</Label>
                                          <div className="grid grid-cols-3 gap-3">
                        {[
                          { value: "under-18", label: t('setup.ageUnder18'), emoji: "" },
@@ -270,18 +270,18 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                           onClick={() => setDemographics({ ...demographics, ageGroup: age.value })}
                         >
                           <div className={`
-                            p-4 rounded-2xl border-2 text-center transition-all duration-200
+                            p-4 rounded-tile border-2 text-center transition-all duration-200
                             ${demographics.ageGroup === age.value
-                              ? 'bg-white border-emerald-400 text-white shadow-lg'
-                              : 'bg-white border-emerald-200 hover:border-emerald-400 hover:shadow-md'
+                              ? 'bg-primary border-primary text-ink-inverse shadow-md'
+                              : 'bg-surface-card border-line200 hover:border-primary hover:shadow-sm'
                             }
                           `}>
                             <div className="text-2xl mb-2">{age.emoji}</div>
-                            <div className="font-semibold text-sm">{age.label}</div>
+                            <div className="font-semibold text-patient-sm">{age.label}</div>
                           </div>
                           {demographics.ageGroup === age.value && (
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-bold"></span>
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary-dark rounded-full flex items-center justify-center">
+                              <span className="text-ink-inverse text-xs font-bold"></span>
                             </div>
                           )}
                         </div>
@@ -291,7 +291,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
 
                   {/* Gender Section */}
                   <div className="space-y-4">
-                    <Label className="text-xl font-bold text-emerald-700 block text-center">{t('setup.gender')}</Label>
+                    <Label className="text-patient-body font-bold text-primary block text-center">{t('setup.gender')}</Label>
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         { value: "male", label: t('setup.male'), emoji: "" },
@@ -308,18 +308,18 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                           onClick={() => setDemographics({ ...demographics, gender: gender.value as Demographics['gender'] })}
                         >
                           <div className={`
-                            p-4 rounded-2xl border-2 text-center transition-all duration-200
+                            p-4 rounded-tile border-2 text-center transition-all duration-200
                             ${demographics.gender === gender.value
-                              ? 'bg-white border-teal-400 text-white shadow-lg'
-                              : 'bg-white border-teal-200 hover:border-teal-400 hover:shadow-md'
+                              ? 'bg-primary border-primary text-ink-inverse shadow-md'
+                              : 'bg-surface-card border-line200 hover:border-primary hover:shadow-sm'
                             }
                           `}>
                             <div className="text-2xl mb-2">{gender.emoji}</div>
-                            <div className="font-semibold text-sm">{gender.label}</div>
+                            <div className="font-semibold text-patient-sm">{gender.label}</div>
                           </div>
                           {demographics.gender === gender.value && (
-                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-teal-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-bold"></span>
+                            <div className="absolute -top-1 -right-1 w-6 h-6 bg-primary-dark rounded-full flex items-center justify-center">
+                              <span className="text-ink-inverse text-xs font-bold"></span>
                             </div>
                           )}
                         </div>
@@ -328,13 +328,13 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-center pt-4">
-                <Button 
+                <Button
                   onClick={submitDemographics}
                   disabled={!demographics.ageGroup || !demographics.gender}
                   size="lg"
-                  className="px-10 py-4 text-lg bg-white hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-10 py-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {t('setup.submit')}
                 </Button>
@@ -346,53 +346,53 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
             <div className="space-y-8">
               <div className="text-center space-y-4">
                 <div className="relative">
-                  <Trophy className="w-20 h-20 mx-auto text-yellow-500 drop-shadow-lg" />
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-white font-bold text-sm animate-pulse">
+                  <Trophy className="w-20 h-20 mx-auto text-primary" />
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-ink-inverse font-bold text-sm">
                     {results.score}
                   </div>
                 </div>
-                <h3 className="text-3xl font-bold text-navy">
+                <h3 className="font-serif-display text-patient-heading text-ink">
                   {t('results.title')}
                 </h3>
-                <p className="text-muted-foreground text-lg">
-                  {results.score >= 80 ? t('results.excellent') : 
-                   results.score >= 60 ? t('results.good') : 
+                <p className="text-patient-body text-ink-muted">
+                  {results.score >= 80 ? t('results.excellent') :
+                   results.score >= 60 ? t('results.good') :
                    t('results.keepPracticing')}
                 </p>
               </div>
-              
+
               <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <Card className="bg-white border-blue-200 shadow-lg">
+                <Card className="bg-surface-card border-line200 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-xl text-navy">
+                    <CardTitle className="font-serif-display text-patient-body text-ink">
                       {t('results.performance')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-white rounded-lg">
-                      <span className="font-medium">{t('results.wordsRecalled')}:</span>
-                      <span className="font-bold text-xl text-blue-600">{results.correctWords.length}/12</span>
+                    <div className="flex justify-between items-center p-3 bg-surface-muted rounded-control">
+                      <span className="font-medium text-ink">{t('results.wordsRecalled')}:</span>
+                      <span className="font-bold text-xl text-primary">{results.correctWords.length}/12</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-white rounded-lg">
-                      <span className="font-medium">{t('results.accuracy')}:</span>
-                      <span className="font-bold text-xl text-green-600">{results.score}%</span>
+                    <div className="flex justify-between items-center p-3 bg-surface-muted rounded-control">
+                      <span className="font-medium text-ink">{t('results.accuracy')}:</span>
+                      <span className="font-bold text-xl text-success">{results.score}%</span>
                     </div>
-                    <div className="flex justify-between items-center p-3 bg-white rounded-lg">
-                      <span className="font-medium">{t('results.timeSpent')}:</span>
-                      <span className="font-bold text-xl text-purple-600">{Math.round(results.timeSpent)}s</span>
+                    <div className="flex justify-between items-center p-3 bg-surface-muted rounded-control">
+                      <span className="font-medium text-ink">{t('results.timeSpent')}:</span>
+                      <span className="font-bold text-xl text-ink">{Math.round(results.timeSpent)}s</span>
                     </div>
                     {results.percentile && (
-                      <div className="flex justify-between items-center p-3 bg-white rounded-lg border-2 border-orange-200">
-                        <span className="font-medium">{t('results.percentile')}:</span>
-                        <span className="font-bold text-xl text-orange-600">{results.percentile}th</span>
+                      <div className="flex justify-between items-center p-3 bg-surface-muted rounded-control border-2 border-primary/20">
+                        <span className="font-medium text-ink">{t('results.percentile')}:</span>
+                        <span className="font-bold text-xl text-primary">{results.percentile}th</span>
                       </div>
                     )}
                   </CardContent>
                 </Card>
-                
-                <Card className="bg-white border-green-200 shadow-lg">
+
+                <Card className="bg-surface-card border-line200 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-xl text-navy">
+                    <CardTitle className="font-serif-display text-patient-body text-ink">
                       {t('results.correctWords')}
                     </CardTitle>
                   </CardHeader>
@@ -400,20 +400,20 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {results.correctWords.length > 0 ? (
                         results.correctWords.map((word, index) => (
-                          <div 
-                            key={index} 
-                            className="flex items-center gap-3 px-3 py-2 bg-green-100 rounded-lg shadow-sm"
+                          <div
+                            key={index}
+                            className="flex items-center gap-3 px-3 py-2 bg-success/10 rounded-control"
                             style={{ animationDelay: `${index * 100}ms` }}
                           >
-                            <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-sm font-bold"></span>
+                            <div className="w-6 h-6 bg-success rounded-full flex items-center justify-center">
+                              <span className="text-ink-inverse text-sm font-bold"></span>
                             </div>
-                            <span className="font-medium">{word}</span>
+                            <span className="font-medium text-ink">{word}</span>
                           </div>
                         ))
                       ) : (
                         <div className="text-center py-4">
-                          <p className="text-muted-foreground text-sm">{t('results.noMatches')}</p>
+                          <p className="text-patient-sm text-ink-muted">{t('results.noMatches')}</p>
                         </div>
                       )}
                     </div>
@@ -423,9 +423,9 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
 
               {/* Missed Words Section */}
               {currentWords.filter(word => !results.correctWords.includes(word)).length > 0 && (
-                <Card className="bg-white border-red-200 shadow-lg max-w-4xl mx-auto">
+                <Card className="bg-surface-card border-line200 shadow-sm max-w-4xl mx-auto">
                   <CardHeader>
-                    <CardTitle className="text-xl text-navy">
+                    <CardTitle className="font-serif-display text-patient-body text-ink">
                       {t('results.missedWords')}
                     </CardTitle>
                   </CardHeader>
@@ -434,14 +434,14 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                       {currentWords
                         .filter(word => !results.correctWords.includes(word))
                         .map((word, index) => (
-                          <div 
-                            key={index} 
-                            className="flex items-center gap-2 px-3 py-2 bg-red-100 rounded-lg shadow-sm text-sm"
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 px-3 py-2 bg-danger/10 rounded-control text-patient-sm"
                           >
-                            <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">×</span>
+                            <div className="w-4 h-4 bg-danger rounded-full flex items-center justify-center">
+                              <span className="text-ink-inverse text-xs font-bold">×</span>
                             </div>
-                            <span className="font-medium">{word}</span>
+                            <span className="font-medium text-ink">{word}</span>
                           </div>
                         ))}
                     </div>
@@ -450,22 +450,22 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
               )}
 
               {/* Encouragement Section */}
-              <div className="bg-white rounded-2xl p-6 max-w-4xl mx-auto border border-yellow-200 shadow-lg">
+              <div className="bg-surface-card rounded-panel p-6 max-w-4xl mx-auto border border-line200 shadow-sm">
                 <div className="text-center space-y-4">
-                  <h4 className="text-xl font-bold text-navy">
+                  <h4 className="font-serif-display text-patient-body text-ink">
                     {t('results.encouragement')}
                   </h4>
-                  <p className="text-muted-foreground max-w-2xl mx-auto">
+                  <p className="text-patient-body text-ink-muted max-w-2xl mx-auto">
                     {t('results.trainingTip')}
                   </p>
                 </div>
               </div>
-              
+
               <div className="text-center pt-4">
-                <Button 
-                  onClick={resetGame} 
-                  size="lg" 
-                  className="px-8 py-3 bg-white hover:bg-gray-50 shadow-lg hover:shadow-xl transition-all duration-200 gap-3"
+                <Button
+                  onClick={resetGame}
+                  size="lg"
+                  className="px-8 py-3 gap-3"
                 >
                   <RotateCcw className="w-5 h-5" />
                   {t('tryAgain')}
