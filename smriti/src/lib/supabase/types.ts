@@ -210,12 +210,19 @@ export type FamilyShare = {
 
 export type FamilyNote = {
   id: string;
-  family_share_id: string;
+  /** Exactly one of `family_share_id` / `posted_by_caregiver_id` is set — see MIGRATION 011. */
+  family_share_id: string | null;
+  posted_by_caregiver_id: string | null;
   patient_id: string;
   text: string;
   status: FamilyShareStatus;
+  sender_name: string | null;
+  sender_relation: string | null;
+  photo_url: string | null;
   created_at: Timestamptz;
   surfaced_at: Timestamptz | null;
+  /** Patient tapped "Seen" on the kiosk — distinct from `surfaced_at`. */
+  seen_at: Timestamptz | null;
 }
 
 /**

@@ -136,6 +136,31 @@ export interface LocalReminiscenceQuiz {
   generatedAt: string;
 }
 
+/**
+ * Offline mirror of `family_notes` (docs/03_DATABASE.md MIGRATION 010/011),
+ * scoped to the rows the kiosk is allowed to see: approved/surfaced
+ * messages for the currently-active patient. Populated by a periodic pull
+ * (`lib/family/familyMessagesClient.ts`), never written to directly by
+ * patient-side code except the local optimistic `seenAt` stamp on ack —
+ * this is a read mirror, not a queue, so there is no `syncQueue` entry for
+ * it; the ack write goes straight to the server and only updates this row
+ * locally on success (or optimistically, with `ackSynced` tracking whether
+ * the server has confirmed it).
+ */
+export interface LocalFamilyMessage {
+  id: string;
+  patientId: string;
+  text: string;
+  senderName: string | null;
+  senderRelation: string | null;
+  photoUrl: string | null;
+  createdAt: string;
+  /** Set locally the moment the patient taps "Seen"; may run ahead of `ackSynced`. */
+  seenAt: string | null;
+  /** Whether the seen-ack above has been confirmed by the server. */
+  ackSynced: boolean;
+}
+
 export interface SyncQueueItem {
   id: string;
   tableName: string;
@@ -158,6 +183,7 @@ export class SmritiDB extends Dexie {
   aiConversationLog!: Table<LocalAiConversationLog>;
   reminiscenceQuizzes!: Table<LocalReminiscenceQuiz>;
   syncQueue!: Table<SyncQueueItem>;
+  familyMessages!: Table<LocalFamilyMessage>;
 
   constructor() {
     super(DB_NAME);
@@ -173,6 +199,11 @@ export class SmritiDB extends Dexie {
       aiConversationLog: 'id, patientId, createdAt',
       reminiscenceQuizzes: 'id, patientId',
       syncQueue: 'id, tableName, createdAt',
+    });
+    // New store only — Dexie carries every unlisted table over unchanged
+    // from version 1, so existing installs upgrade in place with no data loss.
+    this.version(2).stores({
+      familyMessages: 'id, patientId, createdAt, seenAt',
     });
   }
 

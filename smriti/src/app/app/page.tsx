@@ -10,6 +10,7 @@ import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
 import ReminderCard, { REMINDER_ICON } from '@/components/ui/ReminderCard';
 import Skeleton from '@/components/ui/Skeleton';
+import FamilyMessageBoard from '@/components/patient/FamilyMessageBoard';
 import { useReminders } from '@/hooks/useReminders';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { getDeviceTrustToken, isTokenWellFormed } from '@/lib/auth/deviceTrust';
@@ -294,6 +295,8 @@ export default function HomePage() {
           />
         </div>
       )}
+
+      {currentPatient ? <FamilyMessageBoard patientId={currentPatient.id} /> : null}
 
       <LanguagePicker />
 

@@ -658,3 +658,49 @@ CREATE POLICY caregiver_family_notes ON family_notes
 -- themselves in application code — RLS above only ever needs to authorize
 -- the caregiver's own session, never an anonymous family-member request.
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 011: Family message board (sender identity, photo, seen ack,
+-- caregiver-direct posting)
+-- =============================================
+
+-- Widens `family_notes` (MIGRATION 010) into the patient-home "family
+-- message board" instead of introducing a parallel table: same
+-- one-directional family -> patient shape, same moderation/surfacing
+-- lifecycle, just richer content and a second way to get a row in here.
+--
+-- `family_share_id` becomes nullable because a caregiver can now post a
+-- message directly (patient detail page) without minting a family-share
+-- link first — those rows carry `posted_by_caregiver_id` instead. The CHECK
+-- ensures a row always has exactly one origin, never both and never
+-- neither, so the ownership story for RLS/moderation stays unambiguous.
+ALTER TABLE family_notes ALTER COLUMN family_share_id DROP NOT NULL;
+ALTER TABLE family_notes ADD COLUMN posted_by_caregiver_id UUID REFERENCES caregivers(id) ON DELETE CASCADE;
+ALTER TABLE family_notes ADD COLUMN sender_name TEXT;
+ALTER TABLE family_notes ADD COLUMN sender_relation TEXT;
+-- Plain URL string, not a Storage bucket reference — same MVP scope cut as
+-- memory_bank_entries.photo_url (see lib/db/schema.ts).
+ALTER TABLE family_notes ADD COLUMN photo_url TEXT;
+-- When the patient taps "Seen" on the kiosk. Distinct from `surfaced_at`
+-- (server decided to show it) — this is the patient's own acknowledgement,
+-- and is what the caregiver-side board can point to as "read".
+ALTER TABLE family_notes ADD COLUMN seen_at TIMESTAMPTZ;
+
+ALTER TABLE family_notes ADD CONSTRAINT family_notes_origin_check
+  CHECK (
+    (family_share_id IS NOT NULL AND posted_by_caregiver_id IS NULL) OR
+    (family_share_id IS NULL AND posted_by_caregiver_id IS NOT NULL)
+  );
+
+CREATE INDEX idx_family_notes_patient_created ON family_notes(patient_id, created_at DESC);
+
+-- Caregiver-authored rows are managed the same way family-share-authored
+-- rows already are (MIGRATION 010's `caregiver_family_notes` policy only
+-- reaches rows through `family_share_id`, so a direct-post row needs its
+-- own arm of coverage).
+CREATE POLICY caregiver_family_notes_direct ON family_notes
+  FOR ALL USING (posted_by_caregiver_id IN (
+    SELECT id FROM caregivers WHERE auth_id = auth.uid()
+  ));
+```
