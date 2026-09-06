@@ -370,25 +370,25 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const params = getLevelParams(level);
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col font-mono bg-white rounded-xl overflow-hidden">
+        <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
 
             {/* Top HUD */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 bg-transparent shrink-0 z-20">
                 {phase !== 'idle' && (
-                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-emerald-500/10 text-emerald-600 shrink-0">
+                    <span className="text-patient-sm font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary-light/40 text-primary-dark shrink-0">
                         {t('level', { level: level.toString() })}
                     </span>
                 )}
-                <div className="font-bold text-sm md:text-lg tracking-wide text-zinc-800 truncate">
+                <div className="font-serif-display font-semibold text-patient-sm md:text-patient-body text-ink truncate">
                     {phase === 'idle' ? t('start') : message}
                 </div>
                 {phase !== 'idle' && (
-                    <div className="flex gap-3 text-xs md:text-sm font-bold tracking-wider md:ml-auto">
-                        <span className="text-zinc-600">
+                    <div className="flex gap-3 text-patient-sm font-semibold md:ml-auto">
+                        <span className="text-ink-muted">
                             {t('score', { score: score.toString() })}
                         </span>
                         {bestScore > 0 && (
-                            <span className="text-zinc-400">
+                            <span className="text-ink-muted/70">
                                 {t('highScore', { score: bestScore.toString() })}
                             </span>
                         )}
@@ -428,7 +428,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             transition={{ duration: 1.2, ease: 'easeOut' }}
                             className="absolute top-1/3 left-1/2 -translate-x-1/2 z-40 pointer-events-none"
                         >
-                            <span className="text-4xl font-black text-green-400 drop-shadow-lg">
+                            <span className="text-4xl font-black text-success drop-shadow-lg">
                                 +{roundPoints}
                             </span>
                         </motion.div>
@@ -511,9 +511,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
             {/* Progress Bar */}
             {progressTotal > 0 && (
-                <div className="w-full h-0.5 bg-zinc-200 shrink-0 overflow-hidden">
+                <div className="w-full h-1 bg-surface-muted shrink-0 overflow-hidden">
                     <motion.div
-                        className="h-full rounded-r-full bg-cyan-400"
+                        className="h-full rounded-r-full bg-primary"
                         style={{ width: `${progressPct * 100}%` }}
                         transition={{ duration: 0.05 }}
                     />
@@ -537,7 +537,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startRound(settings.startLevel)}
-                                    className="w-56 h-14 text-2xl font-bold uppercase tracking-widest rounded-xl shadow-md"
+                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('start')}
                                 </Button>
@@ -551,7 +551,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="text-sm font-medium text-zinc-500 tracking-wider"
+                            className="text-patient-sm font-medium text-ink-muted"
                         >
                             {params.jumpCount} {t('watch')}
                         </motion.div>
@@ -563,7 +563,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0 }}
-                            className="text-sm font-medium text-zinc-500 tracking-wider"
+                            className="text-patient-sm font-medium text-ink-muted"
                         >
                             {playerIndex - 1}/{jumpSeq.length - 1}
                         </motion.div>
@@ -580,14 +580,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 size="lg"
                                 variant="outline"
                                 onClick={retryLevel}
-                                className="font-bold py-5 px-8 text-lg uppercase tracking-widest rounded-xl"
+                                className="font-semibold py-5 px-8 text-patient-body rounded-tile focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                             >
                                 {t('tryAgain')}
                             </Button>
                             <Button
                                 size="lg"
                                 onClick={restartGame}
-                                className="font-bold py-5 px-8 text-lg uppercase tracking-widest rounded-xl shadow-md"
+                                className="font-semibold py-5 px-8 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                             >
                                 {t('start')}
                             </Button>
@@ -621,17 +621,17 @@ function GameSettingsDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full">
+                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary">
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm font-mono rounded-xl">
+            <DialogContent className="sm:max-w-sm rounded-card">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-bold tracking-widest">{t('settings')}</DialogTitle>
+                    <DialogTitle className="font-serif-display font-semibold text-patient-body text-ink">{t('settings')}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-5 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="startLevel" className="uppercase font-bold tracking-wider text-sm">{t('startLevel')}</Label>
+                        <Label htmlFor="startLevel" className="font-semibold text-patient-sm text-ink">{t('startLevel')}</Label>
                         <Input
                             id="startLevel"
                             type="number"
@@ -649,10 +649,10 @@ function GameSettingsDialog({
                     </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="uppercase font-bold text-sm tracking-wider">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-semibold text-patient-sm">
                         {t('cancel')}
                     </Button>
-                    <Button onClick={() => onSave(tempSettings)} className="uppercase font-bold text-sm tracking-wider">
+                    <Button onClick={() => onSave(tempSettings)} className="font-semibold text-patient-sm text-ink-inverse">
                         {t('save')}
                     </Button>
                 </div>

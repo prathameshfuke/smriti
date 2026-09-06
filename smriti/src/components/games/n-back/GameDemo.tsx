@@ -265,23 +265,23 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
 
     return (
         <Dialog open={isOpen} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md rounded-card">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle className="flex items-center gap-2 font-serif-display font-semibold text-patient-body text-ink">
                         <Brain className="w-5 h-5 text-primary" />
                         {t('title')}
                     </DialogTitle>
-                    <div className="text-sm text-muted-foreground mt-2 p-3 bg-blue-50 rounded-lg">
+                    <div className="text-patient-sm text-ink-muted mt-2 p-3 bg-surface-muted rounded-tile">
                         <div className="font-medium mb-1"> {t('whatIsNBack')}</div>
                         <div>{t('nBackExplanation')}</div>
-                        <div className="mt-1 text-xs">{t('tutorialNote')}</div>
+                        <div className="mt-1 text-patient-sm">{t('tutorialNote')}</div>
                     </div>
                 </DialogHeader>
 
                 <div className="space-y-3">
                     {/* 进度指示 */}
                     <div className="flex justify-center">
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-patient-sm text-ink-muted">
                             {t('stepProgress', { current: currentStep + 1, total: TUTORIAL_SEQUENCE.length })}
                         </div>
                     </div>
@@ -293,10 +293,10 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                                 <div
                                     key={index}
                                     className={cn(
-                                        "aspect-square rounded-lg transition-all duration-500 flex items-center justify-center text-lg font-bold",
+                                        "aspect-square rounded-tile transition-all duration-500 flex items-center justify-center text-lg font-bold",
                                         currentTutorial?.position === index
-                                            ? "bg-primary text-white scale-110 shadow-lg"
-                                            : "bg-foreground/5"
+                                            ? "bg-primary text-ink-inverse scale-110 shadow-sm"
+                                            : "bg-surface-muted"
                                     )}
                                 >
                                     {currentTutorial?.position === index && "●"}
@@ -309,7 +309,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                     <div className="flex justify-center items-center gap-2">
                         <Volume2 className={cn(
                             "w-4 h-4",
-                            isAudioPlaying ? "text-primary animate-pulse" : "text-muted-foreground"
+                            isAudioPlaying ? "text-primary animate-pulse" : "text-ink-muted"
                         )} />
                         <span className="text-lg font-bold text-primary">
                             {currentTutorial?.letter || "?"}
@@ -319,7 +319,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                                 variant="ghost"
                                 size="sm"
                                 onClick={playCurrentAudio}
-                                className="text-xs h-6 px-2"
+                                className="text-patient-sm h-6 px-2"
                                 disabled={isAudioPlaying}
                             >
                                 {isAudioPlaying ? t('playingAudio') : t('replayAudio')}
@@ -328,12 +328,12 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                     </div>
 
                     {/* 指导说明 */}
-                    <div className="text-center p-4 bg-muted/30 rounded-lg">
-                        <div className="text-sm font-medium mb-2">
+                    <div className="text-center p-4 bg-surface-muted rounded-tile">
+                        <div className="text-patient-sm font-medium mb-2 text-ink">
                             {currentTutorial && t(currentTutorial.instructionKey)}
                         </div>
                         {isWaitingForUser && (
-                            <div className="text-xs text-primary animate-pulse">
+                            <div className="text-patient-sm text-primary animate-pulse">
                                  {locale === 'zh' ? '等待你的操作...' : 'Waiting for your action...'}
                             </div>
                         )}
@@ -346,17 +346,17 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                                 onClick={() => handleUserClick('position')}
                                 variant={userResponse.position ? "default" : "outline"}
                                 className={cn(
-                                    "flex items-center gap-2",
-                                    feedback === 'correct' && userResponse.position && "bg-green-500 hover:bg-green-600",
-                                    feedback === 'incorrect' && userResponse.position && "bg-red-500 hover:bg-red-600"
+                                    "flex items-center gap-2 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                    feedback === 'correct' && userResponse.position && "bg-success text-ink-inverse hover:brightness-95",
+                                    feedback === 'incorrect' && userResponse.position && "bg-danger text-ink-inverse hover:brightness-95"
                                 )}
                                 disabled={userResponse.position}
                             >
                                 <Square className="w-4 h-4" />
                                 {t('positionMatch')}
                                 {feedback && userResponse.position && (
-                                    feedback === 'correct' ? 
-                                    <CheckCircle className="w-4 h-4" /> : 
+                                    feedback === 'correct' ?
+                                    <CheckCircle className="w-4 h-4" /> :
                                     <XCircle className="w-4 h-4" />
                                 )}
                             </Button>
@@ -364,17 +364,17 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                                 onClick={() => handleUserClick('audio')}
                                 variant={userResponse.audio ? "default" : "outline"}
                                 className={cn(
-                                    "flex items-center gap-2",
-                                    feedback === 'correct' && userResponse.audio && "bg-green-500 hover:bg-green-600",
-                                    feedback === 'incorrect' && userResponse.audio && "bg-red-500 hover:bg-red-600"
+                                    "flex items-center gap-2 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                    feedback === 'correct' && userResponse.audio && "bg-success text-ink-inverse hover:brightness-95",
+                                    feedback === 'incorrect' && userResponse.audio && "bg-danger text-ink-inverse hover:brightness-95"
                                 )}
                                 disabled={userResponse.audio}
                             >
                                 <Volume2 className="w-4 h-4" />
                                 {t('audioMatch')}
                                 {feedback && userResponse.audio && (
-                                    feedback === 'correct' ? 
-                                    <CheckCircle className="w-4 h-4" /> : 
+                                    feedback === 'correct' ?
+                                    <CheckCircle className="w-4 h-4" /> :
                                     <XCircle className="w-4 h-4" />
                                 )}
                             </Button>
@@ -389,7 +389,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                             size="sm"
                             onClick={prevStep}
                             disabled={currentStep === 0}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         >
                             <ChevronLeft className="w-4 h-4" />
                             {t('prevStep')}
@@ -400,13 +400,13 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                             {currentTutorial && currentTutorial.expectResponse ? (
                                 (() => {
                                     const needsBothButtons = currentTutorial.isMatch.position && currentTutorial.isMatch.audio;
-                                    const hasCorrectResponses = needsBothButtons 
+                                    const hasCorrectResponses = needsBothButtons
                                         ? (userResponse.position && userResponse.audio)
                                         : (currentTutorial.isMatch.position ? userResponse.position : userResponse.audio);
-                                    
+
                                     if (needsBothButtons && (userResponse.position || userResponse.audio) && feedback === 'correct' && !hasCorrectResponses) {
                                         return (
-                                            <div className="text-xs text-orange-600 font-medium">
+                                            <div className="text-patient-sm text-warning font-medium">
                                                 {t('needBothButtons')}
                                             </div>
                                         );
@@ -419,7 +419,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                         {/* 下一步按钮 */}
                         {currentTutorial && !currentTutorial.expectResponse ? (
                             // 观察步骤：直接显示下一步按钮
-                            <Button onClick={nextStep} className="flex items-center gap-1">
+                            <Button onClick={nextStep} className="flex items-center gap-1 rounded-tile text-ink-inverse text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark">
                                 {currentStep === TUTORIAL_SEQUENCE.length - 1 ? t('completeTutorial') : t('nextStep')}
                                 <ChevronRight className="w-4 h-4" />
                             </Button>
@@ -427,17 +427,17 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                             // 操作步骤：检查是否满足进入下一步的条件
                             (() => {
                                 const needsBothButtons = currentTutorial.isMatch.position && currentTutorial.isMatch.audio;
-                                const hasCorrectResponses = needsBothButtons 
+                                const hasCorrectResponses = needsBothButtons
                                     ? (userResponse.position && userResponse.audio)
                                     : (currentTutorial.isMatch.position ? userResponse.position : userResponse.audio);
-                                
+
                                 return hasCorrectResponses && feedback === 'correct' ? (
-                                    <Button onClick={nextStep} className="flex items-center gap-1">
+                                    <Button onClick={nextStep} className="flex items-center gap-1 rounded-tile text-ink-inverse text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark">
                                         {currentStep === TUTORIAL_SEQUENCE.length - 1 ? t('completeTutorial') : t('nextStep')}
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
                                 ) : (
-                                    <Button variant="outline" disabled className="flex items-center gap-1">
+                                    <Button variant="outline" disabled className="flex items-center gap-1 rounded-tile text-patient-sm">
                                         {currentStep === TUTORIAL_SEQUENCE.length - 1 ? t('completeTutorial') : t('nextStep')}
                                         <ChevronRight className="w-4 h-4" />
                                     </Button>
@@ -450,8 +450,8 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                     {/* 反馈消息 */}
                     {feedback && (
                         <div className={cn(
-                            "text-center p-3 rounded-lg",
-                            feedback === 'correct' ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                            "text-center p-3 rounded-tile text-patient-sm font-medium",
+                            feedback === 'correct' ? "bg-success/15 text-success" : "bg-danger/15 text-danger"
                         )}>
                             {feedback === 'correct' ? t('correct') : t('incorrect')}
                         </div>

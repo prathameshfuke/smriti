@@ -742,7 +742,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     }, []);
 
     return (
-        <div className="flex flex-col items-center gap-5 text-foreground p-4">
+        <div className="flex flex-col items-center gap-5 text-ink p-4">
             {/* Three.js 场景容器 */}
             <div className="responsive-game-container relative">
                 <div ref={sceneRef} className="counting-boxes-canvas-container" />
@@ -752,7 +752,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                     countdown > 0 &&
                     level < LEVEL_CONFIGS.length ? (
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20">
-                        <div className="text-center font-bold text-foreground shadow rounded-2xl px-6 py-2 bg-background/60 backdrop-blur-sm whitespace-nowrap min-w-fit">
+                        <div className="text-center font-semibold text-ink text-patient-sm shadow-sm rounded-panel px-6 py-2 bg-surface-card/85 backdrop-blur-sm whitespace-nowrap min-w-fit">
                             {t('nextLevel', { seconds: countdown })}
                         </div>
                     </div>
@@ -761,7 +761,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                 {/* 提示信息 */}
                 {gameState === "observing" && (
                     <div className="absolute top-0 left-1/2 transform -translate-x-1/2 z-20">
-                        <div className="text-center text-xl font-bold text-foreground shadow rounded-2xl px-6 py-2 bg-background/60 backdrop-blur-sm">
+                        <div className="text-center text-patient-sm font-semibold text-ink shadow-sm rounded-panel px-6 py-2 bg-surface-card/85 backdrop-blur-sm">
                             {t('observing')}
                         </div>
                     </div>
@@ -769,14 +769,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
                 {/* UI 覆盖层 */}
                 {gameState !== "observing" && (
-                    <div className="absolute inset-0 flex justify-center items-end z-10 rounded-lg text-center bg-transparent">
+                    <div className="absolute inset-0 flex justify-center items-end z-10 rounded-card text-center bg-transparent">
                         <div className="flex flex-col gap-4 items-center">
                             {/* 开始画面 */}
                             {gameState === "start" && (
                                 <>
                                     <Button
                                         onClick={startGame}
-                                        className="game-button"
+                                        className="game-button rounded-tile text-ink-inverse text-patient-body focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                         size="lg"
                                     >
                                         {t('startGame')}
@@ -787,7 +787,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             {/* 输入画面 */}
                             {gameState === "input" && (
                                 <div>
-                                    <h2 className="text-xl text-black font-semibold m-0">
+                                    <h2 className="font-serif-display text-patient-body text-ink font-semibold m-0">
                                         {t('howMany')}
                                     </h2>
                                     <form
@@ -802,12 +802,12 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                             }
                                             required
                                             autoFocus
-                                            className="w-20 px-3 py-2 text-lg text-center bg-background border border-border rounded-md game-input focus:border-primary focus:outline-none"
+                                            className="w-20 px-3 py-2 text-patient-body text-center bg-surface-card text-ink border-2 border-line200 rounded-control game-input focus:border-primary focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary focus:outline-none"
                                         />
                                         <Button
                                             type="submit"
                                             variant="outline"
-                                            className="game-button"
+                                            className="game-button rounded-tile text-patient-body focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                         >
                                             {t('enter')}
                                         </Button>
@@ -819,13 +819,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             {gameState === "result" && (
                                 <div className="text-center">
                                     {lastResult ? (
-                                        <div className="flex items-center justify-center gap-3 mb-4 text-black">
+                                        <div className="flex items-center justify-center gap-3 mb-4 text-ink">
                                             {lastResult.correct ? (
-                                                <CheckCircle className="w-8 h-8 text-green-500" />
+                                                <CheckCircle className="w-8 h-8 text-success" />
                                             ) : (
-                                                <XCircle className="w-8 h-8 text-red-500" />
+                                                <XCircle className="w-8 h-8 text-danger" />
                                             )}
-                                            <span className="text-2xl font-semibold">
+                                            <span className="text-patient-body font-semibold">
                                                 {timerDisplay}
                                             </span>
                                         </div>
@@ -836,13 +836,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             {/* 游戏结束统计画面 */}
                             {gameState === "gameOver" && (
                                 <div className="absolute inset-0 flex items-center justify-center z-20">
-                                    <div className="rounded-lg p-6 bg-background/50 backdrop-blur-sm max-w-md w-full">
-                                        <h2 className="text-2xl font-bold text-center mb-4">
+                                    <div className="rounded-card p-6 bg-surface-card/95 shadow-sm backdrop-blur-sm max-w-md w-full">
+                                        <h2 className="font-serif-display text-patient-heading text-ink text-center mb-4">
                                             {t('gameOver')}
                                         </h2>
 
                                         {/* 总体统计 */}
-                                        <div className="space-y-3 mb-6">
+                                        <div className="space-y-3 mb-6 text-patient-sm text-ink">
                                             <div className="flex justify-between">
                                                 <span>{t('accuracyLabel')}</span>
                                                 <span className="font-bold">
@@ -870,7 +870,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                         </div>
 
                                         {/* 鼓励文案 */}
-                                        <div className="mb-6 text-center text-lg font-semibold">
+                                        <div className="mb-6 text-center text-patient-body font-semibold text-ink">
                                             {(() => {
                                                 const rate =
                                                     gameStats.totalLevels > 0
@@ -891,7 +891,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                         <div className="flex justify-center">
                                             <Button
                                                 onClick={startGame}
-                                                className="game-button"
+                                                className="game-button rounded-tile text-ink-inverse text-patient-body focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                                 size="lg"
                                             >
                                                 {t('playAgain')}
