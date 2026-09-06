@@ -624,7 +624,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
             >
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex flex-col">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2 text-patient-sm text-ink-muted">
                             <span>
                                 {settings.selectedTypes.length === 2
                                     ? t('dual')
@@ -649,43 +649,43 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                     {gameState === "idle" ? (
                         <div className="text-center py-8">
                             <div className="mb-6">
-                                <h3 className="text-2xl font-bold mb-4 text-primary">
+                                <h3 className="font-serif-display text-patient-heading font-semibold mb-4 text-primary">
                                     {t('challenge')}
                                 </h3>
-                                <p className="text-lg text-muted-foreground mb-6">
+                                <p className="text-patient-body text-ink-muted mb-6">
                                     {t('improveMemorySubtitle')}
                                 </p>
                             </div>
-                            
-                            
+
+
                             <div className="space-y-4">
                                 <ShimmerButton
                                     onClick={startGame}
                                     disabled={isLoading}
-                                    className="w-full py-4"
+                                    className="w-full py-4 rounded-tile focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
-                                    <span className="flex items-center justify-center text-white text-lg">
+                                    <span className="flex items-center justify-center text-ink-inverse text-patient-body font-semibold">
                                         <PlayCircle className="w-6 h-6 mr-2" />
                                         {isLoading ? t('starting') : t('startTraining')}
                                     </span>
                                 </ShimmerButton>
-                                
+
                                 <div className="text-center">
                                     <Link href="/get-started" target="_blank">
                                         <Button
-                                            variant="ghost" 
-                                            className="text-sm text-muted-foreground"
+                                            variant="ghost"
+                                            className="text-patient-sm text-ink-muted"
                                         >
                                             {t('testMyLevel')}
                                         </Button>
                                     </Link>
                                 </div>
-                                
+
                             </div>
                         </div>
                     ) : gameState === "playing" ? (
                         <div className="text-center py-6">
-                            <div className="text-lg font-medium mb-4">
+                            <div className="text-patient-body font-medium mb-4 text-ink">
                                 {t('trial', { current: currentTrial, total: settings.trialsPerRound })}
                             </div>
 
@@ -700,10 +700,10 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                         <div
                                             key={index}
                                             className={cn(
-                                                "aspect-square rounded-lg transition-all duration-300",
+                                                "aspect-square rounded-tile transition-all duration-300",
                                                 activePosition === index
                                                     ? "bg-primary"
-                                                    : "bg-foreground/5"
+                                                    : "bg-surface-muted"
                                             )}
                                         />
                                     ))}
@@ -719,7 +719,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                 "w-16 h-16 rounded-full flex items-center justify-center",
                                                 isAudioPlaying
                                                     ? "bg-primary/20"
-                                                    : "bg-foreground/5"
+                                                    : "bg-surface-muted"
                                             )}
                                         >
                                             <Volume2
@@ -727,7 +727,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                     "w-8 h-8",
                                                     isAudioPlaying
                                                         ? "text-primary animate-pulse"
-                                                        : "text-muted-foreground"
+                                                        : "text-ink-muted"
                                                 )}
                                             />
                                         </div>
@@ -740,7 +740,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                         onClick={() => handleResponse("position")}
                                         variant="ghost"
                                         className={cn(
-                                            "border-2 rounded-full shadow-none",
+                                            "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isPositionHighlight &&
                                                 "hover:border-primary border-primary"
                                         )}
@@ -754,7 +754,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                         onClick={() => handleResponse("audio")}
                                         variant="ghost"
                                         className={cn(
-                                            "border-2 rounded-full shadow-none",
+                                            "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isAudioHighlight &&
                                                 "hover:border-primary border-primary"
                                         )}
@@ -772,10 +772,10 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                         </div>
                     ) : (
                         <div className="text-center py-8">
-                            <h2 className="text-xl font-bold mb-4">
+                            <h2 className="font-serif-display text-patient-heading font-semibold mb-4 text-ink">
                                 {t('trainingResults')}
                             </h2>
-                            <div className="bg-muted/30 p-6 rounded-lg mb-6 max-w-md mx-auto">
+                            <div className="bg-surface-muted p-6 rounded-card mb-6 max-w-md mx-auto">
                                 <div
                                     className={cn(
                                         "grid gap-6",
@@ -791,21 +791,21 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                             className={cn(
                                                 "space-y-3",
                                                 settings.selectedTypes.length ===
-                                                    2 && "border-r pr-4"
+                                                    2 && "border-r border-line200 pr-4"
                                             )}
                                         >
                                             <h3 className="font-semibold text-primary">
                                                 {t('position')}
                                             </h3>
                                             <div className="flex flex-col items-center">
-                                                <div className="text-3xl font-bold">
-                                                    {t('accuracy', { 
-                                                        correct: accuracy.position.correct, 
-                                                        total: accuracy.position.total 
+                                                <div className="text-3xl font-bold text-ink">
+                                                    {t('accuracy', {
+                                                        correct: accuracy.position.correct,
+                                                        total: accuracy.position.total
                                                     })}
                                                 </div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    {t('accuracyPercent', { 
+                                                <div className="text-patient-sm text-ink-muted">
+                                                    {t('accuracyPercent', {
                                                         percent: accuracy.position.total > 0
                                                             ? Math.round(
                                                                 (accuracy.position.correct /
@@ -816,7 +816,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                     })}
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-muted-foreground space-y-1">
+                                            <div className="text-patient-sm text-ink-muted space-y-1">
                                                 <div className="flex justify-between">
                                                     <span>{t('missed')}:</span>
                                                     <span>{accuracy.position.missed}</span>
@@ -841,14 +841,14 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                 {t('sound')}
                                             </h3>
                                             <div className="flex flex-col items-center">
-                                                <div className="text-3xl font-bold">
-                                                    {t('accuracy', { 
-                                                        correct: accuracy.audio.correct, 
-                                                        total: accuracy.audio.total 
+                                                <div className="text-3xl font-bold text-ink">
+                                                    {t('accuracy', {
+                                                        correct: accuracy.audio.correct,
+                                                        total: accuracy.audio.total
                                                     })}
                                                 </div>
-                                                <div className="text-sm text-muted-foreground">
-                                                    {t('accuracyPercent', { 
+                                                <div className="text-patient-sm text-ink-muted">
+                                                    {t('accuracyPercent', {
                                                         percent: accuracy.audio.total > 0
                                                             ? Math.round(
                                                                 (accuracy.audio.correct /
@@ -859,7 +859,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                     })}
                                                 </div>
                                             </div>
-                                            <div className="text-xs text-muted-foreground space-y-1">
+                                            <div className="text-patient-sm text-ink-muted space-y-1">
                                                 <div className="flex justify-between">
                                                     <span>{t('missed')}:</span>
                                                     <span>{accuracy.audio.missed}</span>
@@ -873,8 +873,8 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     )}
                                 </div>
 
-                                <div className="mt-6 pt-4 border-t border-border/40">
-                                    <div className="text-sm">
+                                <div className="mt-6 pt-4 border-t border-line200">
+                                    <div className="text-patient-sm text-ink">
                                         {settings.selectedTypes.length === 2 && (
                                             <div className="flex justify-between items-center">
                                                 <span className="font-medium">
@@ -896,7 +896,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                 </span>
                                             </div>
                                         )}
-                                        <div className="mt-2 text-xs text-muted-foreground">
+                                        <div className="mt-2 text-patient-sm text-ink-muted">
                                             <p>
                                                 {t('level')} {t('back', { level: settings.selectedNBack })} • {t('trials', { count: settings.trialsPerRound })}
                                             </p>
@@ -909,22 +909,22 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     <Button
                                         onClick={shareScore}
                                         variant="outline"
-                                        className="flex items-center gap-2"
+                                        className="flex items-center gap-2 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                     >
                                         <Share2 className="w-4 h-4" />
                                         {shareT('button')}
                                     </Button>
                                     <Button
                                         onClick={startGame}
-                                        className="flex items-center gap-2"
+                                        className="flex items-center gap-2 rounded-tile text-ink-inverse text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                     >
                                         <PlayCircle className="w-4 h-4" />
                                         {t('playAgain')}
                                     </Button>
                                 </div>
-                                
-                                <div className="p-4 bg-muted/20 rounded-lg">
-                                    <p className="text-sm text-muted-foreground mb-3 text-center">
+
+                                <div className="p-4 bg-surface-muted rounded-card">
+                                    <p className="text-patient-sm text-ink-muted mb-3 text-center">
                                         {t('continueTraining')}
                                     </p>
                                     <div className="flex justify-center gap-2">

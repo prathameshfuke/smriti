@@ -77,6 +77,7 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                     variant="outline"
                     size="sm"
                     disabled={disabled}
+                    className="text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <Settings className="h-4 w-4" />
                     <span className="hidden sm:inline">
@@ -84,9 +85,9 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                     </span>
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] rounded-card">
                 <DialogHeader>
-                    <DialogTitle>{t('gameSettings')}</DialogTitle>
+                    <DialogTitle className="font-serif-display font-semibold text-patient-body text-ink">{t('gameSettings')}</DialogTitle>
                 </DialogHeader>
                 <Form {...form}>
                     <form
@@ -100,7 +101,7 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                                 <FormItem className="space-y-3">
                                     <FormLabel className="flex items-center justify-between">
                                         {t('nBackLevel')}
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-patient-sm text-ink-muted">
                                             {t('back', { level: field.value })}
                                         </span>
                                     </FormLabel>
@@ -219,7 +220,7 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                                 <FormItem className="space-y-3">
                                     <FormLabel className="flex items-center justify-between">
                                         {t('trialsPerRound')}
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-patient-sm text-ink-muted">
                                             {t('trials', { count: field.value })}
                                         </span>
                                     </FormLabel>
@@ -246,7 +247,7 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                                 <FormItem className="space-y-3">
                                     <FormLabel className="flex items-center justify-between">
                                         {t('trialSpeed')}
-                                        <span className="text-sm text-muted-foreground">
+                                        <span className="text-patient-sm text-ink-muted">
                                             {t('seconds', { seconds: (field.value / 1000).toFixed(1) })}
                                         </span>
                                     </FormLabel>
@@ -270,6 +271,7 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                             <Button
                                 type="submit"
                                 disabled={disabled}
+                                className="text-ink-inverse text-patient-sm rounded-tile focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                             >
                                 {t('saveChanges')}
                             </Button>

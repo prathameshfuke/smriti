@@ -259,28 +259,28 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const progressPct = progressTotal > 0 ? Math.max(0, 1 - progressElapsed / progressTotal) : 0;
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col font-mono bg-white rounded-xl overflow-hidden">
+        <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
 
             {/* Top HUD */}
             <div className="flex justify-between items-center px-6 py-3 bg-transparent shrink-0 z-20">
                 <div className="flex items-center gap-3">
                     {phase !== 'idle' && (
-                        <span className="text-xs font-bold tracking-widest uppercase px-2.5 py-1 rounded-full bg-blue-500/10 text-blue-600">
+                        <span className="text-patient-sm font-bold px-2.5 py-1 rounded-full bg-primary-light/40 text-primary-dark">
                             {t('level')} {level}
                         </span>
                     )}
-                    <div className="font-bold text-lg tracking-wide text-zinc-800">
+                    <div className="font-serif-display font-semibold text-patient-body text-ink">
                         {phase === 'idle' ? t('title') : message}
                     </div>
                 </div>
                 <div className="flex gap-3 items-center">
                     {phase !== 'idle' && (
-                        <div className="flex gap-3 text-sm font-bold tracking-wider">
-                            <span className="text-zinc-600">
+                        <div className="flex gap-3 text-patient-sm font-semibold">
+                            <span className="text-ink-muted">
                                 {t('scorePrefix')} {score}
                             </span>
                             {bestScore > 0 && (
-                                <span className="text-zinc-400">
+                                <span className="text-ink-muted/70">
                                     {t('bestScore')} {bestScore}
                                 </span>
                             )}
@@ -314,7 +314,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             transition={{ duration: 1.2, ease: 'easeOut' }}
                             className="absolute top-1/3 left-1/2 -translate-x-1/2 z-30 pointer-events-none"
                         >
-                            <span className="text-4xl font-black text-green-400 drop-shadow-lg">
+                            <span className="text-4xl font-black text-success drop-shadow-lg">
                                 +{roundPoints}
                             </span>
                         </motion.div>
@@ -426,9 +426,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
             {/* Progress Bar */}
             {progressTotal > 0 && (
-                <div className="w-full h-0.5 bg-zinc-200 shrink-0 overflow-hidden">
+                <div className="w-full h-1 bg-surface-muted shrink-0 overflow-hidden">
                     <motion.div
-                        className="h-full rounded-r-full bg-cyan-400"
+                        className="h-full rounded-r-full bg-primary"
                         style={{ width: `${progressPct * 100}%` }}
                         transition={{ duration: 0.05 }}
                     />
@@ -453,7 +453,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startGame()}
-                                    className="w-56 h-14 text-2xl font-bold uppercase tracking-widest rounded-xl shadow-md"
+                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('startBtn')}
                                 </Button>
@@ -472,7 +472,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             <Button
                                 size="lg"
                                 onClick={confirmSelection}
-                                className="font-bold py-6 px-12 text-lg uppercase tracking-widest rounded-xl shadow-md"
+                                className="font-semibold py-6 px-12 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                             >
                                 {t('confirmSelection')}
                             </Button>
@@ -487,7 +487,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             className="flex flex-col items-center gap-2"
                         >
                             {roundResult && (
-                                <div className="text-sm font-medium text-zinc-500 tracking-wide">
+                                <div className="text-patient-sm font-medium text-ink-muted">
                                     {roundResult.correct}/{roundResult.total} {t('scorePrefix')} {roundPoints !== null ? `+${roundPoints}` : ''}
                                 </div>
                             )}
@@ -495,7 +495,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startGame()}
-                                    className="font-bold py-5 px-10 text-lg uppercase tracking-widest rounded-xl shadow-md hover:scale-105 transition-transform"
+                                    className="font-semibold py-5 px-10 text-patient-body rounded-tile text-ink-inverse shadow-sm hover:scale-105 transition-transform focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('tryAgain')}
                                 </Button>
@@ -530,17 +530,17 @@ function GameSettingsDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full">
+                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary">
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm font-mono rounded-xl">
+            <DialogContent className="sm:max-w-sm rounded-card">
                 <DialogHeader>
-                    <DialogTitle className="uppercase font-bold tracking-widest">{t('settings')}</DialogTitle>
+                    <DialogTitle className="font-serif-display font-semibold text-patient-body text-ink">{t('settings')}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-5 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="startLevel" className="uppercase font-bold tracking-wider text-sm">{t('startLevel')}</Label>
+                        <Label htmlFor="startLevel" className="font-semibold text-patient-sm text-ink">{t('startLevel')}</Label>
                         <Input
                             id="startLevel"
                             type="number"
@@ -558,10 +558,10 @@ function GameSettingsDialog({
                     </div>
                 </div>
                 <div className="flex justify-end gap-2 mt-2">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="uppercase font-bold text-sm tracking-wider">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-semibold text-patient-sm">
                         {t('cancel')}
                     </Button>
-                    <Button onClick={() => onSave(tempSettings)} className="uppercase font-bold text-sm tracking-wider">
+                    <Button onClick={() => onSave(tempSettings)} className="font-semibold text-patient-sm text-ink-inverse">
                         {t('save')}
                     </Button>
                 </div>

@@ -11,7 +11,7 @@
 .counting-boxes-canvas-container canvas {
     max-width: 100%;
     max-height: 100%;
-    border-radius: 8px;
+    border-radius: 1.25rem; /* rounded-card */
 }
 
 /* 输入框聚焦动画 */
