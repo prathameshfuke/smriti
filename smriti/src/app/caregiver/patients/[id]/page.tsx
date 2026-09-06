@@ -150,6 +150,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const [familyNotes, setFamilyNotes] = useState<FamilyNoteRow[] | null>(null);
   const [newShareLabel, setNewShareLabel] = useState('');
   const [creatingShare, setCreatingShare] = useState(false);
+  const [newMessageSender, setNewMessageSender] = useState('');
+  const [newMessageRelation, setNewMessageRelation] = useState('');
+  const [newMessageText, setNewMessageText] = useState('');
+  const [newMessagePhotoUrl, setNewMessagePhotoUrl] = useState('');
+  const [postingMessage, setPostingMessage] = useState(false);
   const [digests, setDigests] = useState<DigestEntry[] | null>(null);
   const [digestGenerating, setDigestGenerating] = useState(false);
   const [quizStatus, setQuizStatus] = useState<
@@ -235,6 +240,28 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         loadFamilyTabData();
       })
       .catch(() => setError(true));
+  };
+
+  const postFamilyMessage = () => {
+    if (!patientId || !newMessageText.trim()) return;
+    setPostingMessage(true);
+    authedFetch<{ id: string; status: string }>(`/api/patients/${patientId}/family-notes`, {
+      method: 'POST',
+      body: JSON.stringify({
+        text: newMessageText.trim(),
+        senderName: newMessageSender.trim() || undefined,
+        senderRelation: newMessageRelation.trim() || undefined,
+        photoUrl: newMessagePhotoUrl.trim() || undefined,
+      }),
+    })
+      .then(() => {
+        setNewMessageSender('');
+        setNewMessageRelation('');
+        setNewMessageText('');
+        setNewMessagePhotoUrl('');
+      })
+      .catch(() => setError(true))
+      .finally(() => setPostingMessage(false));
   };
 
   const moderateFamilyNote = (noteId: string, action: 'approve' | 'reject') => {
@@ -761,6 +788,68 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   className="rounded-control bg-primary px-4 text-caregiver-body font-semibold text-ink-inverse disabled:opacity-50"
                 >
                   {creatingShare ? 'Creating…' : 'Create link'}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
+              <p className="font-serif-display text-lg font-semibold text-navy">Post a message</p>
+              <p className="mt-1 text-patient-sm text-gray-600">
+                Goes straight to the patient&apos;s home screen — no review link needed. Shown as a short
+                card the patient can tap &ldquo;Seen&rdquo; on.
+              </p>
+              <div className="mt-3 flex flex-col gap-2">
+                <div className="flex gap-2">
+                  <label htmlFor="message-sender-name" className="sr-only">
+                    Your name
+                  </label>
+                  <input
+                    id="message-sender-name"
+                    value={newMessageSender}
+                    onChange={(e) => setNewMessageSender(e.target.value)}
+                    placeholder="Your name (optional)"
+                    className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                  />
+                  <label htmlFor="message-sender-relation" className="sr-only">
+                    Relation to patient
+                  </label>
+                  <input
+                    id="message-sender-relation"
+                    value={newMessageRelation}
+                    onChange={(e) => setNewMessageRelation(e.target.value)}
+                    placeholder="Relation, e.g. Daughter"
+                    className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                  />
+                </div>
+                <label htmlFor="message-text" className="sr-only">
+                  Message
+                </label>
+                <textarea
+                  id="message-text"
+                  value={newMessageText}
+                  onChange={(e) => setNewMessageText(e.target.value)}
+                  placeholder="Write a short message…"
+                  maxLength={280}
+                  rows={3}
+                  className="rounded-control border border-gray-300 p-3 text-caregiver-body text-ink"
+                />
+                <label htmlFor="message-photo-url" className="sr-only">
+                  Photo URL
+                </label>
+                <input
+                  id="message-photo-url"
+                  value={newMessagePhotoUrl}
+                  onChange={(e) => setNewMessagePhotoUrl(e.target.value)}
+                  placeholder="Photo URL (optional)"
+                  className="h-11 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                />
+                <button
+                  type="button"
+                  onClick={postFamilyMessage}
+                  disabled={postingMessage || !newMessageText.trim()}
+                  className="self-start rounded-control bg-primary px-4 py-2 text-caregiver-body font-semibold text-ink-inverse disabled:opacity-50"
+                >
+                  {postingMessage ? 'Posting…' : 'Post message'}
                 </button>
               </div>
             </div>

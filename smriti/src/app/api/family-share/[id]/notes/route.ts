@@ -6,9 +6,14 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 interface NotesRequestBody {
   text: string;
+  senderName?: string;
+  senderRelation?: string;
+  photoUrl?: string;
 }
 
 const MAX_NOTE_LENGTH = 280;
+const MAX_SENDER_FIELD_LENGTH = 60;
+const MAX_PHOTO_URL_LENGTH = 2048;
 
 /**
  * A family member leaves a one-directional note. No auth header — the share
@@ -30,6 +35,13 @@ export async function POST(request: Request, { params }: RouteContext) {
   if (!text || text.length > MAX_NOTE_LENGTH) {
     return Response.json({ error: 'invalid_text' }, { status: 400 });
   }
+  const senderName = body?.senderName?.trim().slice(0, MAX_SENDER_FIELD_LENGTH) || null;
+  const senderRelation = body?.senderRelation?.trim().slice(0, MAX_SENDER_FIELD_LENGTH) || null;
+  const photoUrlRaw = body?.photoUrl?.trim();
+  if (photoUrlRaw && photoUrlRaw.length > MAX_PHOTO_URL_LENGTH) {
+    return Response.json({ error: 'invalid_photo_url' }, { status: 400 });
+  }
+  const photoUrl = photoUrlRaw || null;
 
   const service = createServiceRoleClient();
   const { data } = await service.from('family_shares').select('*').eq('id', id).single();
@@ -51,10 +63,15 @@ export async function POST(request: Request, { params }: RouteContext) {
   const { error } = await service.from('family_notes').insert({
     id: uuid(),
     family_share_id: share.id,
+    posted_by_caregiver_id: null,
     patient_id: share.patient_id,
     text,
     status,
+    sender_name: senderName,
+    sender_relation: senderRelation,
+    photo_url: photoUrl,
     surfaced_at: null,
+    seen_at: null,
   });
   if (error) return Response.json({ error: 'insert_failed' }, { status: 500 });
 
