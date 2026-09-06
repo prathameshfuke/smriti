@@ -352,18 +352,18 @@ function SettingsDialog({
         <button
           type="button"
           aria-label={t('settings')}
-          className="group flex h-9 w-9 items-center justify-center rounded-full bg-background/80 text-foreground shadow-sm backdrop-blur-md transition hover:bg-background active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="group flex h-9 w-9 items-center justify-center rounded-full bg-surface-card/80 text-ink shadow-sm backdrop-blur-md transition hover:bg-surface-card active:scale-95 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
           <Settings2 className="h-4 w-4 transition-transform duration-200 group-hover:rotate-45 motion-reduce:transition-none" />
         </button>
       </DialogTrigger>
-      <DialogContent className="w-[calc(100%-2rem)] border-0 p-5 shadow-2xl sm:max-w-sm">
+      <DialogContent className="w-[calc(100%-2rem)] border-0 p-5 shadow-md sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>{t('settingsTitle')}</DialogTitle>
+          <DialogTitle className="font-serif-display text-patient-body text-ink">{t('settingsTitle')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-5 pt-2">
           <div className="space-y-2">
-            <div className="text-sm font-medium">{t('settingsRounds')}</div>
+            <div className="text-patient-sm font-medium text-ink">{t('settingsRounds')}</div>
             <div className="grid grid-cols-3 gap-2">
               {TRIAL_OPTIONS.map((value) => (
                 <button
@@ -371,10 +371,10 @@ function SettingsDialog({
                   type="button"
                   onClick={() => update('totalTrials', value)}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm transition active:scale-95',
+                    'rounded-control px-3 py-2 text-patient-sm transition active:scale-95',
                     settings.totalTrials === value
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-muted text-muted-foreground hover:text-foreground',
+                      ? 'bg-primary text-ink-inverse'
+                      : 'bg-surface-muted text-ink-muted hover:text-ink',
                   )}
                 >
                   {value}
@@ -384,8 +384,8 @@ function SettingsDialog({
           </div>
           <div className="space-y-2">
             <div>
-              <div className="text-sm font-medium">{t('settingsSpeed')}</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <div className="text-patient-sm font-medium text-ink">{t('settingsSpeed')}</div>
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
                 {t('settingsSpeedHelp')}
               </p>
             </div>
@@ -396,10 +396,10 @@ function SettingsDialog({
                   type="button"
                   onClick={() => update('startingDisplayMs', value)}
                   className={cn(
-                    'rounded-lg px-2 py-2 text-sm transition active:scale-95',
+                    'rounded-control px-2 py-2 text-patient-sm transition active:scale-95',
                     settings.startingDisplayMs === value
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-muted text-muted-foreground hover:text-foreground',
+                      ? 'bg-primary text-ink-inverse'
+                      : 'bg-surface-muted text-ink-muted hover:text-ink',
                   )}
                 >
                   {value} ms
@@ -409,8 +409,8 @@ function SettingsDialog({
           </div>
           <div className="space-y-2">
             <div>
-              <div className="text-sm font-medium">{t('settingsField')}</div>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+              <div className="text-patient-sm font-medium text-ink">{t('settingsField')}</div>
+              <p className="mt-1 text-xs leading-5 text-ink-muted">
                 {t('settingsFieldHelp')}
               </p>
             </div>
@@ -421,10 +421,10 @@ function SettingsDialog({
                   type="button"
                   onClick={() => update('startingFieldLevel', value)}
                   className={cn(
-                    'rounded-lg px-3 py-2 text-sm transition active:scale-95',
+                    'rounded-control px-3 py-2 text-patient-sm transition active:scale-95',
                     settings.startingFieldLevel === value
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-muted text-muted-foreground hover:text-foreground',
+                      ? 'bg-primary text-ink-inverse'
+                      : 'bg-surface-muted text-ink-muted hover:text-ink',
                   )}
                 >
                   {t('levelValue', { level: value })}
@@ -432,7 +432,7 @@ function SettingsDialog({
               ))}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">{t('settingsHint')}</p>
+          <p className="text-xs text-ink-muted">{t('settingsHint')}</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -697,7 +697,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
     <div className="relative mx-auto w-full max-w-4xl overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-4 z-50 flex items-center justify-between px-4 sm:px-5">
         <div
-          className="pointer-events-auto flex h-9 items-center gap-2 rounded-full bg-background/80 px-3 font-mono text-xs text-foreground shadow-sm backdrop-blur-md"
+          className="pointer-events-auto flex h-9 items-center gap-2 rounded-full bg-surface-card/80 px-3 font-mono text-xs text-ink shadow-sm backdrop-blur-md"
           aria-label={`${t('round', { current: visibleRound, total: totalTrials })}, ${t('score', { score: currentAccuracy })}`}
         >
           <span
@@ -706,7 +706,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
           >
             {visibleRound}/{totalTrials}
           </span>
-          <span className="h-3 w-px bg-foreground/15" />
+          <span className="h-3 w-px bg-ink/15" />
           <span
             key={`accuracy-${currentAccuracy}`}
             className="motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200"
@@ -720,18 +720,18 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
       </div>
 
       {phase === 'intro' && (
-        <div className="flex min-h-[280px] flex-col items-center justify-center bg-background px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
-          <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-500">
+        <div className="flex min-h-[280px] flex-col items-center justify-center bg-surface px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
+          <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-ink-inverse motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-500">
             <Gauge className="h-6 w-6" />
           </div>
-          <h2 className="text-3xl font-semibold tracking-tight motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 sm:text-4xl">
+          <h2 className="font-serif-display text-patient-heading tracking-tight text-ink motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
             {t('title')}
           </h2>
-          <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500 sm:text-base">
+          <p className="mt-3 max-w-md text-patient-body leading-6 text-ink-muted motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
             {t('intro')}
           </p>
-          <p className="mt-7 flex items-center gap-2 text-sm text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-red-500" />
+          <p className="mt-7 flex items-center gap-2 text-patient-sm text-ink-muted">
+            <span className="h-2 w-2 rounded-full bg-danger" />
             {t('fixationTip')}
           </p>
           <Button
@@ -742,7 +742,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
             {t('startPractice')}
           </Button>
           {(bestRating !== null || bestAccuracy !== null) && (
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-patient-sm text-ink-muted">
               {bestRating !== null && (
                 <span>{t('bestRating', { score: bestRating })}</span>
               )}
@@ -755,12 +755,12 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
       )}
 
       {phase === 'practice-result' && (
-        <div className="flex min-h-[280px] flex-col items-center justify-center bg-background px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
-          <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white">
+        <div className="flex min-h-[280px] flex-col items-center justify-center bg-surface px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
+          <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-ink-inverse">
             <Check className="h-6 w-6" />
           </div>
-          <h2 className="text-2xl font-semibold tracking-tight">{t('practiceDoneTitle')}</h2>
-          <p className="mt-3 max-w-md text-sm leading-6 text-muted-foreground">
+          <h2 className="font-serif-display text-patient-heading tracking-tight text-ink">{t('practiceDoneTitle')}</h2>
+          <p className="mt-3 max-w-md text-patient-body leading-6 text-ink-muted">
             {t('practiceDoneBody')}
           </p>
           <Button
@@ -774,10 +774,10 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
       )}
 
       {phase === 'countdown' && (
-        <div className="flex min-h-[280px] items-center justify-center bg-[#edf1ec] sm:min-h-[320px]">
+        <div className="flex min-h-[280px] items-center justify-center bg-surface-muted sm:min-h-[320px]">
           <span
             key={countdown}
-            className="font-mono text-7xl font-medium text-slate-900 motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-300"
+            className="font-mono text-7xl font-medium text-ink motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-50 motion-safe:duration-300"
           >
             {countdown || 'GO'}
           </span>
@@ -788,8 +788,8 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
       {phase === 'mask' && <VisualMask />}
 
       {phase === 'vehicle-answer' && (
-        <div className="flex min-h-[280px] flex-col items-center justify-center gap-7 bg-[#eef2ed] p-6 pt-16 text-slate-900 sm:min-h-[320px]">
-          <h3 className="text-xl font-medium motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-150">
+        <div className="flex min-h-[280px] flex-col items-center justify-center gap-7 bg-surface p-6 pt-16 text-ink sm:min-h-[320px]">
+          <h3 className="text-patient-body font-medium motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-150">
             {t('chooseVehicle')}
           </h3>
           <div className="grid w-full max-w-lg grid-cols-2 gap-4">
@@ -801,13 +801,13 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
                   key={id}
                   type="button"
                   onClick={() => chooseVehicle(id)}
-                  className="group flex min-h-36 flex-col items-center justify-center gap-3 rounded-2xl bg-white/80 shadow-[0_8px_24px_rgba(15,23,42,0.06)] transition duration-150 hover:-translate-y-1 hover:bg-white hover:shadow-[0_12px_30px_rgba(15,23,42,0.1)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500/40 motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
+                  className="group flex min-h-36 flex-col items-center justify-center gap-3 rounded-tile bg-surface-card shadow-sm transition duration-150 hover:-translate-y-1 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
                 >
                   <Icon
                     className="h-16 w-16 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
                     strokeWidth={1.5}
                   />
-                  <span className="font-semibold">{t(`vehicles.${id}`)}</span>
+                  <span className="font-semibold text-patient-body">{t(`vehicles.${id}`)}</span>
                 </button>
               )
             })}
@@ -824,20 +824,20 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
           className={cn(
             'flex min-h-[280px] flex-col items-center justify-center gap-5 p-8 pt-16 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:min-h-[320px]',
             feedbackCorrect
-              ? 'bg-emerald-50 text-emerald-800'
-              : 'bg-amber-50 text-amber-900',
+              ? 'bg-success/10 text-success'
+              : 'bg-warning/10 text-warning',
           )}
         >
           <div
             className={cn(
               'flex h-16 w-16 items-center justify-center rounded-full motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-300',
-              feedbackCorrect ? 'bg-emerald-500 text-white' : 'bg-amber-400 text-slate-900',
+              feedbackCorrect ? 'bg-success text-ink-inverse' : 'bg-warning text-ink-inverse',
             )}
           >
             {feedbackCorrect ? <Check className="h-9 w-9" /> : <X className="h-9 w-9" />}
           </div>
           <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
-            <h3 className="text-2xl font-semibold">
+            <h3 className="font-serif-display text-patient-heading">
               {feedbackCorrect
                 ? t('correct')
                 : !outcome.vehicleCorrect
@@ -845,7 +845,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
                   : t('signMissed')}
             </h3>
             {!feedbackCorrect && (
-              <p className="mt-2 text-sm opacity-80">
+              <p className="mt-2 text-patient-sm opacity-80">
                 {t('answerReveal', {
                   vehicle: t(`vehicles.${trial.vehicle}`),
                   location: trial.targetPosition + 1,
@@ -857,33 +857,33 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
       )}
 
       {phase === 'results' && (
-        <div className="flex min-h-[280px] flex-col items-center justify-center bg-background px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
-          <div className="font-mono text-6xl font-medium tracking-tight motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-500">
+        <div className="flex min-h-[280px] flex-col items-center justify-center bg-surface px-6 pb-12 pt-20 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500 sm:min-h-[320px]">
+          <div className="font-mono text-6xl font-medium tracking-tight text-ink motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-500">
             {decisionRating}
           </div>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">
+          <p className="mt-1 text-patient-sm font-medium text-ink-muted">
             {t('ratingUnit')}
           </p>
-          <h2 className="mt-4 text-xl font-semibold">{t('resultsTitle')}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <h2 className="mt-4 font-serif-display text-patient-heading text-ink">{t('resultsTitle')}</h2>
+          <p className="mt-2 text-patient-sm text-ink-muted">
             {t('resultsBody', { correct: correctCount, total: totalTrials })}
           </p>
           <div className="mt-6 grid w-full max-w-md grid-cols-3 gap-3">
-            <div className="rounded-xl bg-muted/60 px-3 py-3">
-              <div className="font-mono text-lg font-semibold">{currentAccuracy}%</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t('resultAccuracy')}</div>
+            <div className="rounded-tile bg-surface-muted px-3 py-3">
+              <div className="font-mono text-lg font-semibold text-ink">{currentAccuracy}%</div>
+              <div className="mt-1 text-xs text-ink-muted">{t('resultAccuracy')}</div>
             </div>
-            <div className="rounded-xl bg-muted/60 px-3 py-3">
-              <div className="font-mono text-lg font-semibold">{maxFieldReached}</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t('resultField')}</div>
+            <div className="rounded-tile bg-surface-muted px-3 py-3">
+              <div className="font-mono text-lg font-semibold text-ink">{maxFieldReached}</div>
+              <div className="mt-1 text-xs text-ink-muted">{t('resultField')}</div>
             </div>
-            <div className="rounded-xl bg-muted/60 px-3 py-3">
-              <div className="font-mono text-lg font-semibold">{fastestCorrectDisplayMs} ms</div>
-              <div className="mt-1 text-xs text-muted-foreground">{t('resultFastest')}</div>
+            <div className="rounded-tile bg-surface-muted px-3 py-3">
+              <div className="font-mono text-lg font-semibold text-ink">{fastestCorrectDisplayMs} ms</div>
+              <div className="mt-1 text-xs text-ink-muted">{t('resultFastest')}</div>
             </div>
           </div>
-          <div className="mt-5 flex max-w-md items-start gap-2 text-left text-xs leading-5 text-muted-foreground">
-            <Trophy className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="mt-5 flex max-w-md items-start gap-2 text-left text-xs leading-5 text-ink-muted">
+            <Trophy className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <span>{t('progressSaved')}</span>
           </div>
           <Button

@@ -304,7 +304,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     // 渲染难度徽章
     const renderDifficultyBadge = () => {
         return (
-            <div className="px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 bg-primary text-primary-foreground">
+            <div className="px-3 py-1 rounded-full text-patient-sm font-medium flex items-center gap-1 bg-primary text-ink-inverse">
                 {t("level")} {difficultyLevel}
             </div>
         );
@@ -343,7 +343,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                 {/* Timer display */}
                 {gameState !== "idle" && (
                     <div className="flex justify-end items-center mb-2">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 text-patient-sm text-ink-muted">
                             <Clock className="w-4 h-4" />
                             <span>{Math.ceil(timeLeft / 1000)}s</span>
                         </div>
@@ -368,8 +368,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 {renderDifficultyBadge()}
                             </div>
 
-                            <div className="mb-8 p-4 bg-muted/30 rounded-lg">
-                                <h3>
+                            <div className="mb-8 p-4 bg-surface-muted rounded-card">
+                                <h3 className="font-serif-display text-patient-body text-ink">
                                     {t("challenge", {
                                         attempts: currentDifficulty.attempts,
                                         accuracy: currentDifficulty.accuracy,
@@ -393,7 +393,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                         <>
                             {/* Game options */}
                             <div className="text-center mb-8 mt-10">
-                                <div className="text-lg font-medium mb-2">
+                                <div className="text-patient-body font-semibold text-ink mb-2">
                                     {t("whichIsLarger")}
                                 </div>
                             </div>
@@ -403,10 +403,10 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                     <RippleButton
                                         key={`button-${option.position}`}
                                         onClick={() => handleSelection(option)}
-                                        rippleColor="bg-foreground/20 dark:bg-foreground/30"
+                                        rippleColor="bg-primary/20"
                                         className={cn(
-                                            "flex-1 aspect-square rounded-xl flex items-center justify-center text-3xl sm:text-5xl font-bold cursor-pointer",
-                                            "bg-foreground/5 text-ink border-2 border-line200 shadow-sm",
+                                            "flex-1 aspect-square rounded-tile flex items-center justify-center text-3xl sm:text-5xl font-bold cursor-pointer",
+                                            "bg-surface-card text-ink border-2 border-primary/40 shadow-sm hover:shadow-md",
                                         )}
                                     >
                                         {option.value}
@@ -420,19 +420,19 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 {renderDifficultyBadge()}
                             </div>
 
-                            <h2 className="text-xl sm:text-2xl font-bold mb-4">
+                            <h2 className="font-serif-display text-patient-heading text-ink mb-4">
                                 {t("timeUp")}
                             </h2>
 
                             {/* Challenge result */}
                             {challengeResult && (
-                                <div className="bg-muted/30 p-4 rounded-lg mb-6">
+                                <div className="bg-surface-muted p-4 rounded-card mb-6">
                                     <div className="flex justify-center items-center gap-2 mb-3">
-                                        <h3 className="font-bold text-lg">
+                                        <h3 className="font-semibold text-patient-body text-ink">
                                             {challengeResult.message}
                                         </h3>
                                     </div>
-                                    <div className="mt-4 text-lg">
+                                    <div className="mt-4 text-patient-body text-ink">
                                         <div>
                                             {t("totalAttempts")}:{" "}
                                             {totalAttempts}
@@ -445,13 +445,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                             {t("accuracy")}:{" "}
                                             {calculateAccuracy()}%
                                         </div>
-                                        <div className="text-sm text-muted-foreground mt-6">
+                                        <div className="text-patient-sm text-ink-muted mt-6">
                                             {getCurrentLevelTarget()}
                                         </div>
 
                                         {/* 显示下一关目标 - 仅在成功时显示 */}
                                         {challengeResult.success && (
-                                            <div className="mt-4 p-3 bg-primary/10 rounded-lg text-sm">
+                                            <div className="mt-4 p-3 bg-primary/10 rounded-card text-patient-sm">
                                                 <div className="font-medium text-primary mb-1">
                                                     {t("nextLevel")}
                                                 </div>
@@ -464,8 +464,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
                             {/* 难度调整选项 - 直接显示在结果下方 */}
                             {!challengeResult?.success && showDifficultyAdjustment && difficultyLevel > 1 && (
-                                <div className="mb-6 p-4 border border-muted rounded-lg">
-                                    <h3 className="font-medium mb-3">
+                                <div className="mb-6 p-4 border border-line200 rounded-card">
+                                    <h3 className="font-medium text-patient-body text-ink mb-3">
                                         {t("adjustDifficultyDescription")}
                                     </h3>
                                     <div className="flex flex-col gap-3">
