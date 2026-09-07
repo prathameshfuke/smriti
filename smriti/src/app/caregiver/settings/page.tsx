@@ -19,8 +19,12 @@ export default function CaregiverSettingsPage() {
   const router = useRouter();
   const verifyPin = useSettingsStore((s) => s.verifyPin);
   const setPin = useSettingsStore((s) => s.setPin);
+  const hasPin = useSettingsStore((s) => s.caregiverPinHash !== null);
 
-  const [stage, setStage] = useState<PinChangeStage>('current');
+  // A caregiver who skipped PIN setup at login (or is on a device that never
+  // offered it) has no "current PIN" to enter — starting this flow at
+  // 'current' would strand them with no way to ever set one from here.
+  const [stage, setStage] = useState<PinChangeStage>(hasPin ? 'current' : 'new');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -33,7 +37,7 @@ export default function CaregiverSettingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   const resetPinFlow = () => {
-    setStage('current');
+    setStage(hasPin ? 'current' : 'new');
     setCurrentPin('');
     setNewPin('');
     setConfirmPin('');
@@ -115,7 +119,7 @@ export default function CaregiverSettingsPage() {
     });
     useCaregiverStore.getState().setCurrentCaregiver(null);
     usePatientStore.setState({ currentPatient: null, allPatients: [] });
-    useSettingsStore.setState({ caregiverPinHash: null });
+    useSettingsStore.setState({ caregiverPinHash: null, caregiverSessionVerifiedAt: null });
     router.push('/caregiver/login');
   };
 

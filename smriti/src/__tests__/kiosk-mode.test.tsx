@@ -60,18 +60,18 @@ describe('Kiosk Mode: Device Trust Authentication', () => {
       expect(pinInputs.length).toBe(0);
     });
 
-    it('patient branch shows help message instead of PIN prompt', async () => {
+    it('patient branch defers to /app, which does the real local-session check itself', async () => {
+      // This page no longer renders its own "ask your caregiver" dead end —
+      // that had no logic behind it (it showed regardless of whether the
+      // device was actually set up). /app does the real check now: restore
+      // from local storage if this device already has a profile, or offer
+      // Caregiver Login if not.
       const { default: LoginPage } = await import('@/app/login/page');
       render(<LoginPage />);
 
       fireEvent.click(screen.getByRole('button', { name: /i am the patient/i }));
 
-      // Should show message asking to contact caregiver
-      expect(screen.getByText(/ask your caregiver/i)).toBeInTheDocument();
-
-      // No PIN input fields
-      const pinInputs = screen.queryAllByLabelText(/pin digit/i);
-      expect(pinInputs.length).toBe(0);
+      expect(mockReplace).toHaveBeenCalledWith('/app');
     });
   });
 

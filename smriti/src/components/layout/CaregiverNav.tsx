@@ -2,17 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Settings } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
 
 /**
  * Fixed bottom tab bar for the caregiver side. Caregivers use SMRITI
- * one-handed on a shared device between other apps, so the 3 destinations
+ * one-handed on a shared device between other apps, so the destinations
  * stay reachable with a thumb at all times rather than scrolling to a header.
+ * "Patient View" lives here too — on mobile, CaregiverTopNav (which carries
+ * the desktop equivalent) is hidden entirely, so without it there was no way
+ * back to `/app` short of typing the URL once a caregiver session started.
  */
 const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { href: '/caregiver/patients', label: 'Patients', Icon: Users },
+  { href: '/caregiver/memory-bank', label: 'Memory Bank', Icon: Images },
   { href: '/caregiver/settings', label: 'Settings', Icon: Settings },
+  { href: '/app', label: 'Patient View', Icon: Home },
 ] as const;
 
 export default function CaregiverNav() {

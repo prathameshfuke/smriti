@@ -8,12 +8,14 @@ import { useSettingsStore } from '@/stores/settingsStore';
 const push = vi.fn();
 const replace = vi.fn();
 let pathname = '/';
+let searchParams = new URLSearchParams();
 
 const router = { push, replace };
 
 vi.mock('next/navigation', () => ({
   useRouter: () => router,
   usePathname: () => pathname,
+  useSearchParams: () => searchParams,
 }));
 
 const getSession = vi.fn();
@@ -24,17 +26,24 @@ const isSupabaseConfigured = vi.fn(() => true);
 const signOut = vi.fn();
 const getUser = vi.fn(() => Promise.resolve({ data: { user: { id: 'test-user' } } }));
 
-/** No caregiver/patient row by default — most tests never touch `.from()`. */
+/** No caregiver row by default — most tests never touch `.from()`. */
 let fromResult: { data: unknown; error: unknown } = { data: null, error: null };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeQueryBuilder(): any {
+function makeQueryBuilder(table: string): any {
+  // Only `caregivers` reads the test-configurable `fromResult` (a single row
+  // via .maybeSingle()) — patients/reminder_schedules default to an empty
+  // array, matching pullCaregiverProfile's real shape for each table. A
+  // shared single value for every table broke as soon as a caregiver lookup
+  // needed to differ from the patients lookup that follows it in the same
+  // call (e.g. a "found" caregiver with zero patients).
+  const result = table === 'caregivers' ? fromResult : { data: [], error: null };
   const builder = {
     select: () => builder,
     eq: () => builder,
     in: () => builder,
-    upsert: () => Promise.resolve(fromResult),
-    maybeSingle: () => Promise.resolve(fromResult),
-    then: (...args: Parameters<Promise<unknown>['then']>) => Promise.resolve(fromResult).then(...args),
+    upsert: () => Promise.resolve(result),
+    maybeSingle: () => Promise.resolve(result),
+    then: (...args: Parameters<Promise<unknown>['then']>) => Promise.resolve(result).then(...args),
   };
   return builder;
 }
@@ -43,7 +52,7 @@ vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: () => isSupabaseConfigured(),
   createBrowserClient: () => ({
     auth: { getSession, signInWithOtp, verifyOtp, signOut, getUser },
-    from: () => makeQueryBuilder(),
+    from: (table: string) => makeQueryBuilder(table),
   }),
 }));
 
@@ -95,6 +104,7 @@ beforeEach(async () => {
   isSupabaseConfigured.mockReturnValue(true);
   deviceTrustToken = null;
   pathname = '/';
+  searchParams = new URLSearchParams();
   await db.caregivers.clear();
   await db.patients.clear();
   await db.reminderSchedules.clear();
@@ -199,6 +209,100 @@ describe('Home page', () => {
 
     expect(await screen.findByText(/try again in/i)).toBeInTheDocument();
   }, 15000);
+
+  it('never shows a PIN prompt or any credential input until the caregiver icon is tapped', () => {
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+    expect(screen.queryByRole('dialog', { name: /enter caregiver pin/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'PIN keypad' })).not.toBeInTheDocument();
+  });
+
+  it('lets a correct PIN straight into the dashboard while the caregiver session is still fresh, with no Supabase check', async () => {
+    // The PIN is the whole point of not re-authenticating on every switch —
+    // a live check on every unlock would defeat that (and break offline use).
+    await useSettingsStore.getState().setPin('1234');
+    useSettingsStore.getState().markCaregiverSessionVerified();
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /my progress/i }));
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(screen.getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/dashboard'));
+    expect(getSession).not.toHaveBeenCalled();
+  });
+
+  it('switching to patient view does not clear the caregiver PIN or session — only Log Out or Delete All Data do', async () => {
+    // Navigating /app <-> /caregiver/* is plain client-side routing; nothing
+    // on the patient screen touches settingsStore or the local caregiver
+    // profile. Rendering the patient home page is enough to prove this: if
+    // mounting it cleared anything, these would already be gone.
+    await useSettingsStore.getState().setPin('1234');
+    useSettingsStore.getState().markCaregiverSessionVerified();
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+
+    expect(useSettingsStore.getState().caregiverPinHash).not.toBeNull();
+    expect(useSettingsStore.getState().caregiverSessionVerifiedAt).not.toBeNull();
+  });
+
+  it('falls back to full email login when the PIN is correct but the underlying session has actually expired', async () => {
+    await useSettingsStore.getState().setPin('1234');
+    // Older than the 24h freshness window: a correct PIN alone is no longer
+    // enough, and the live check below reports the session is really gone.
+    useSettingsStore.setState({ caregiverSessionVerifiedAt: Date.now() - 25 * 60 * 60 * 1000 });
+    getSession.mockResolvedValue({ data: { session: null } });
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /my progress/i }));
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(screen.getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/login?next=/app'));
+    expect(push).not.toHaveBeenCalledWith('/caregiver/dashboard');
+  });
+
+  it('a stale but still-live session refreshes the freshness timestamp and proceeds on a correct PIN', async () => {
+    await useSettingsStore.getState().setPin('1234');
+    useSettingsStore.setState({ caregiverSessionVerifiedAt: Date.now() - 25 * 60 * 60 * 1000 });
+    getSession.mockResolvedValue({ data: { session: { user: { id: 'u1' } } } });
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /my progress/i }));
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(screen.getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/dashboard'));
+    expect(useSettingsStore.getState().caregiverSessionVerifiedAt).toBeGreaterThan(
+      Date.now() - 5000,
+    );
+  });
+
+  it('lets a correct PIN through while offline even with a stale session, deferring verification', async () => {
+    await useSettingsStore.getState().setPin('1234');
+    const staleTimestamp = Date.now() - 25 * 60 * 60 * 1000;
+    useSettingsStore.setState({ caregiverSessionVerifiedAt: staleTimestamp });
+    Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /my progress/i }));
+    for (const digit of ['1', '2', '3', '4']) {
+      fireEvent.click(screen.getByRole('button', { name: digit }));
+    }
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/dashboard'));
+    // Not marked freshly verified — offline could not actually confirm it,
+    // so the next unlock attempt re-checks instead of trusting this one.
+    expect(useSettingsStore.getState().caregiverSessionVerifiedAt).toBe(staleTimestamp);
+    Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });
+  });
 });
 
 describe('Caregiver login page', () => {
@@ -224,8 +328,22 @@ describe('Caregiver login page', () => {
   });
 
   it('verifies the typed code in-app and redirects to the dashboard, without depending on a clicked link', async () => {
+    // A PIN already on this device means this is a returning caregiver, not
+    // a first-ever login — goes straight to `next`, skipping the one-time
+    // "set up quick access" PIN step covered separately below.
+    useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
     signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ error: null });
+    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    fromResult = {
+      data: {
+        id: 'c1',
+        auth_id: 'test-user',
+        display_name: 'ASHA Worker',
+        role: 'family',
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    };
     render(<CaregiverLoginPage />);
 
     fireEvent.change(screen.getByLabelText(/email/i), {
@@ -244,6 +362,99 @@ describe('Caregiver login page', () => {
       token: '123456',
       type: 'email',
     });
+  });
+
+  it('with ?next=/app, verifying the code pulls the profile and returns to the patient screen, not the caregiver dashboard', async () => {
+    // This is the patient-side login: /app's "Caregiver Login" button links
+    // here with ?next=/app so a device with no local profile yet ends up
+    // back on the game screen with data to show, not stranded on the
+    // caregiver dashboard after typing the same code.
+    searchParams = new URLSearchParams('next=/app');
+    useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
+    signInWithOtp.mockResolvedValue({ error: null });
+    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    fromResult = {
+      data: {
+        id: 'c1',
+        auth_id: 'test-user',
+        display_name: 'ASHA Worker',
+        role: 'family',
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    };
+    render(<CaregiverLoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'asha@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+
+    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/app'));
+    expect(await db.caregivers.get('c1')).toMatchObject({ displayName: 'ASHA Worker' });
+  });
+
+  it('with ?next=/app but no account found yet, still goes to onboarding — there is nothing to show on /app', async () => {
+    searchParams = new URLSearchParams('next=/app');
+    signInWithOtp.mockResolvedValue({ error: null });
+    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'brand-new-user' } } }, error: null });
+    render(<CaregiverLoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'new@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+
+    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/onboarding'));
+  });
+
+  it('offers a quick-access PIN setup when a found account has no local PIN yet, then continues to `next`', async () => {
+    // A caregiver returning on a second device (or after Delete All Data)
+    // has an account but never set a PIN here — without this step there was
+    // no fast way back into caregiver mode afterward, only ever a fresh
+    // email login.
+    signInWithOtp.mockResolvedValue({ error: null });
+    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    fromResult = {
+      data: {
+        id: 'c1',
+        auth_id: 'test-user',
+        display_name: 'ASHA Worker',
+        role: 'family',
+        created_at: new Date().toISOString(),
+      },
+      error: null,
+    };
+    render(<CaregiverLoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'asha@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+
+    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
+      target: { value: '123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+
+    expect(await screen.findByText(/set up quick access/i)).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+
+    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
+    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/dashboard'));
+    expect(useSettingsStore.getState().caregiverPinHash).not.toBeNull();
   });
 
   it('shows the error and lets the caregiver retry when the code is wrong', async () => {
@@ -307,6 +518,61 @@ describe('Caregiver layout auth guard', () => {
     );
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/login'));
+  });
+
+  it('redirects away from onboarding to the dashboard when a local profile already exists', async () => {
+    // Reaching onboarding a second time while a profile is already on this
+    // device is exactly how it ends up with two caregiver/patient pairs —
+    // nothing to onboard here; Delete All Data is the sanctioned way to
+    // really start over.
+    pathname = '/caregiver/onboarding';
+    await db.caregivers.put({
+      id: 'c1',
+      authUserId: 'u1',
+      displayName: 'Test Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    render(
+      <CaregiverLayout>
+        <p>Onboarding form</p>
+      </CaregiverLayout>,
+    );
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/dashboard'));
+  });
+
+  it('self-heals by clearing local data when more than one caregiver profile exists on this device', async () => {
+    // Never a valid state under the single-caregiver-per-device model — it
+    // means onboarding ran twice without clearing the old profile first.
+    // Picking one arbitrarily is exactly how one screen shows the old
+    // patient's name while another (server-backed) screen shows the new
+    // one.
+    await db.caregivers.put({
+      id: 'c1',
+      authUserId: 'u1',
+      displayName: 'Old Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    await db.caregivers.put({
+      id: 'c2',
+      authUserId: 'u1',
+      displayName: 'New Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    await db.patients.put(patient({ id: 'p-old', caregiverId: 'c1', displayName: 'Old Patient' }));
+    await db.patients.put(patient({ id: 'p-new', caregiverId: 'c2', displayName: 'New Patient' }));
+
+    render(
+      <CaregiverLayout>
+        <p>Protected content</p>
+      </CaregiverLayout>,
+    );
+
+    await waitFor(async () => expect(await db.caregivers.count()).toBe(0));
+    expect(await db.patients.count()).toBe(0);
   });
 
   it('renders the dashboard from the local profile alone when the Supabase session has expired', async () => {

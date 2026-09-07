@@ -197,6 +197,7 @@ export default function CaregiverOnboardingPage() {
     usePatientStore.getState().setCurrentPatient(patient);
 
     await setPin(data.pin);
+    useSettingsStore.getState().markCaregiverSessionVerified();
 
     const reminders = buildReminders(patientId, data);
     if (reminders.length > 0) await db.reminderSchedules.bulkPut(reminders);

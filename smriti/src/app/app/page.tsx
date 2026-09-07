@@ -14,7 +14,7 @@ import FamilyMessageBoard from '@/components/patient/FamilyMessageBoard';
 import { useReminders } from '@/hooks/useReminders';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { getDeviceTrustToken, isTokenWellFormed } from '@/lib/auth/deviceTrust';
-import { restoreLocalSession } from '@/lib/auth/localSession';
+import { restoreLocalSession, checkLiveCaregiverSession } from '@/lib/auth/localSession';
 import { speak } from '@/lib/audio/speech';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -94,16 +94,40 @@ function PinDialog({ onClose }: { onClose: () => void }) {
 
   const submitPin = async (candidate: string) => {
     const ok = await verifyPin(candidate);
-    if (ok) {
+    if (!ok) {
+      setDigits('');
+      setAttempts((prev) => {
+        const next = prev + 1;
+        if (next >= MAX_PIN_ATTEMPTS) startCooldown();
+        return next;
+      });
+      return;
+    }
+
+    // The PIN is a fast unlock on top of a real login, not a second
+    // credential — once it's old enough to plausibly have expired, correct
+    // digits alone must not be enough. Skip the live check entirely while
+    // it's still fresh: that's the whole point of the PIN, and hitting
+    // Supabase on every unlock would also break it offline.
+    if (useSettingsStore.getState().isCaregiverSessionFresh()) {
       router.push('/caregiver/dashboard');
       return;
     }
-    setDigits('');
-    setAttempts((prev) => {
-      const next = prev + 1;
-      if (next >= MAX_PIN_ATTEMPTS) startCooldown();
-      return next;
-    });
+
+    const liveStatus = await checkLiveCaregiverSession();
+    if (liveStatus === 'invalid') {
+      // The underlying login has actually expired — the PIN can't paper
+      // over that. Send them through the real thing instead of bouncing
+      // between here and a dashboard that will just bounce them again.
+      router.push('/caregiver/login?next=/app');
+      return;
+    }
+    // 'valid' or 'offline': either the login is still genuinely live, or
+    // there's no way to check right now. Offline is let through rather than
+    // stranding a caregiver with no connectivity — it stays unverified and
+    // gets re-checked the next time this device is online.
+    if (liveStatus === 'valid') useSettingsStore.getState().markCaregiverSessionVerified();
+    router.push('/caregiver/dashboard');
   };
 
   const onDigit = (digit: string) => {
@@ -291,7 +315,7 @@ export default function HomePage() {
           <BigButton
             label="Caregiver Login"
             variant="primary"
-            onClick={() => router.push('/caregiver/login')}
+            onClick={() => router.push('/caregiver/login?next=/app')}
           />
         </div>
       )}

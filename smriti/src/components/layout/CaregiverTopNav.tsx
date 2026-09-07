@@ -3,13 +3,14 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Home } from 'lucide-react';
 import { useSync } from '@/hooks/useSync';
 import appIcon from '@/appicon.png';
 
 const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Overview' },
   { href: '/caregiver/patients', label: 'Patients' },
+  { href: '/caregiver/memory-bank', label: 'Memory Bank' },
   { href: '/reminders', label: 'Reminders' },
   { href: '/caregiver/settings', label: 'Settings' },
 ] as const;
@@ -64,6 +65,14 @@ export default function CaregiverTopNav() {
           {syncStatus === 'offline' ? 'Offline' : syncStatus === 'syncing' ? 'Syncing' : 'Online'}
         </span>
       </div>
+
+      <Link
+        href="/app"
+        className="ml-4 flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1.5 text-patient-sm font-semibold text-gray-600 hover:border-primary hover:text-primary"
+      >
+        <Home size={16} aria-hidden="true" />
+        Patient View
+      </Link>
     </header>
   );
 }

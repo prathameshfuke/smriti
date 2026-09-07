@@ -104,16 +104,30 @@ export async function checkPin(pin: string, stored: string | null): Promise<bool
   return equalHex(await legacyDigest(pin, salt), expected);
 }
 
+/** The PIN is a fast unlock on top of a real login, not a second credential
+ * — it must stop working once that underlying login is old enough that the
+ * real session could plausibly have expired. */
+const CAREGIVER_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 /** Single source of truth for language; I18nProvider reads through to this. */
 interface SettingsState {
   language: UILanguage;
   isFirstLaunch: boolean;
   /** `pbkdf2$<iterations>$<salt>$<digest>` — never the raw PIN. */
   caregiverPinHash: string | null;
+  /** Timestamp of the last confirmed-live caregiver login (magic-link
+   * verify or onboarding) on this device. `null` until one has happened. */
+  caregiverSessionVerifiedAt: number | null;
   setLanguage: (language: UILanguage) => void;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
   markLaunched: () => void;
+  /** Call right after a real login (magic-link verify, onboarding) succeeds. */
+  markCaregiverSessionVerified: () => void;
+  /** Whether the PIN can be trusted to unlock caregiver mode without
+   * re-checking the underlying session — false once it's old enough that the
+   * real login could have expired, or if no login has ever been recorded. */
+  isCaregiverSessionFresh: () => boolean;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -122,6 +136,7 @@ export const useSettingsStore = create<SettingsState>()(
       language: DEFAULT_LANGUAGE,
       isFirstLaunch: true,
       caregiverPinHash: null,
+      caregiverSessionVerifiedAt: null,
 
       setLanguage: (language) => set({ language }),
       setPin: async (pin) => {
@@ -129,6 +144,11 @@ export const useSettingsStore = create<SettingsState>()(
       },
       verifyPin: (pin) => checkPin(pin, get().caregiverPinHash),
       markLaunched: () => set({ isFirstLaunch: false }),
+      markCaregiverSessionVerified: () => set({ caregiverSessionVerifiedAt: Date.now() }),
+      isCaregiverSessionFresh: () => {
+        const verifiedAt = get().caregiverSessionVerifiedAt;
+        return verifiedAt !== null && Date.now() - verifiedAt < CAREGIVER_SESSION_MAX_AGE_MS;
+      },
     }),
     { name: 'smriti.settings' },
   ),

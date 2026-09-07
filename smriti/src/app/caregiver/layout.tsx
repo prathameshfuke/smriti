@@ -7,11 +7,7 @@ import CaregiverTopNav from '@/components/layout/CaregiverTopNav';
 import Skeleton from '@/components/ui/Skeleton';
 import BigButton from '@/components/ui/BigButton';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { db } from '@/lib/db/schema';
-import { pullCaregiverProfile } from '@/lib/db/serverProfile';
-import { restoreLocalSession } from '@/lib/auth/localSession';
-import { useCaregiverStore } from '@/stores/caregiverStore';
-import { usePatientStore } from '@/stores/patientStore';
+import { restoreLocalSession, pullAndStoreServerProfile } from '@/lib/auth/localSession';
 
 type GateState = 'checking' | 'ready' | 'offline';
 
@@ -54,6 +50,20 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
       if (cancelled) return;
 
       if (foundLocal) {
+        // Onboarding while a local profile already exists is exactly how a
+        // device ends up with two caregiver/patient pairs — going through
+        // setup again created a second local row instead of replacing the
+        // first, and whichever screen queried the local tables "first" (not
+        // necessarily the same row each time) showed a different patient
+        // than the one the server-backed dashboard resolved by auth id.
+        // Nothing to onboard when a profile is already here; redirect to
+        // the dashboard instead of rendering the form. Deliberately
+        // fresh means Delete All Data first, which is the only path that
+        // actually clears the local profile.
+        if (isOnboardingRoute) {
+          router.replace('/caregiver/dashboard');
+          return;
+        }
         setState('ready');
         return;
       }
@@ -72,24 +82,15 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
       }
 
       const authUserId = data.session.user.id;
-      const pulled = await pullCaregiverProfile(authUserId);
+      const status = await pullAndStoreServerProfile(authUserId);
       if (cancelled) return;
 
-      if (pulled.status === 'found') {
-        await db.transaction('rw', db.caregivers, db.patients, db.reminderSchedules, async () => {
-          await db.caregivers.put(pulled.caregiver);
-          await db.patients.bulkPut(pulled.patients);
-          if (pulled.reminders.length) await db.reminderSchedules.bulkPut(pulled.reminders);
-        });
-        useCaregiverStore.getState().setCurrentCaregiver(pulled.caregiver);
-        await usePatientStore.getState().loadPatients(pulled.caregiver.id);
-        const active = pulled.patients.find((p) => p.isActive) ?? null;
-        usePatientStore.getState().setCurrentPatient(active);
+      if (status === 'found') {
         setState('ready');
         return;
       }
 
-      if (pulled.status === 'error') {
+      if (status === 'error') {
         setState('offline');
         return;
       }

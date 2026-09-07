@@ -2,8 +2,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 let searchParams = new URLSearchParams();
+const replace = vi.fn();
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace }),
   usePathname: () => '/login',
   useSearchParams: () => searchParams,
 }));
@@ -81,22 +82,27 @@ describe('Login page', () => {
     expect(screen.getByRole('button', { name: /i am the caregiver/i })).toBeInTheDocument();
   });
 
-  it('patient flow shows setup message instead of PIN', async () => {
+  it('patient role sends the caregiver straight to the real /app screen, not a dead-end message', async () => {
+    // The old inline "ask your caregiver" screen had no logic behind it at
+    // all — this now defers entirely to /app, which actually checks local
+    // storage and restores a returning patient or offers Caregiver Login.
     searchParams = new URLSearchParams();
+    replace.mockClear();
     const { default: LoginPage } = await import('@/app/login/page');
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /i am the patient/i }));
-    expect(screen.getByText(/ask your caregiver/i)).toBeInTheDocument();
-    const pinInputs = screen.queryAllByLabelText(/pin digit/i);
-    expect(pinInputs.length).toBe(0);
+    expect(replace).toHaveBeenCalledWith('/app');
   });
 
-  it('caregiver flow shows an email input and submit button', async () => {
+  it('caregiver role sends the caregiver to the real, fixed login page, not the old link-only flow', async () => {
+    // The inline flow here used to be a second, divergent copy of
+    // /caregiver/login stuck on the old link-only OTP email with no code
+    // entry — fixed once, in one place, by routing here instead.
     searchParams = new URLSearchParams();
+    replace.mockClear();
     const { default: LoginPage } = await import('@/app/login/page');
     render(<LoginPage />);
     fireEvent.click(screen.getByRole('button', { name: /i am the caregiver/i }));
-    expect(screen.getByPlaceholderText(/your@email.com/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send login link/i })).toBeInTheDocument();
+    expect(replace).toHaveBeenCalledWith('/caregiver/login');
   });
 });
