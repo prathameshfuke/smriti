@@ -18,6 +18,11 @@ import { useGameStore } from '@/stores/gameStore';
 const ITEM_COUNT_BY_LEVEL: Record<number, number> = { 1: 3, 2: 3, 3: 4, 4: 4, 5: 5, 6: 5 };
 const GRID_TOTAL_BY_LEVEL: Record<number, number> = { 1: 8, 2: 8, 3: 10, 4: 10, 5: 12, 6: 12 };
 const SHOW_SECONDS = 3;
+/** Filled pause between memorizing and recall — long enough to be a real
+ * delayed-recall test, short enough not to feel like the game stalled. */
+const DELAY_SECONDS = 12;
+
+type Phase = 'show' | 'delay' | 'recall' | 'result';
 
 function objectFor(id: string): SmritiObject {
   return OBJECTS.find((o) => o.id === id) ?? OBJECTS[0];
@@ -35,15 +40,17 @@ function WordStreamPageInner() {
   const router = useRouter();
   const { t, language } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
-  const wordStreamItems = useGameStore((s) => s.wordStreamItems);
-  const setWordStreamItems = useGameStore((s) => s.setWordStreamItems);
   const activeSession = useGameStore((s) => s.activeSession);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
 
-  // Unlike every other game page, Word Stream is visited twice per round
-  // (show-phase, then recall-phase after navigating home and back) — each
-  // visit gets its own session, same as this component gets its own mount.
+  // One continuous visit per round: show the items, hold a filled pause
+  // (the actual delayed-recall interval), then test recall — all without
+  // ever leaving this page. An earlier version sent the patient back to
+  // the home screen after the show phase and relied on them remembering to
+  // reopen this same tile for the recall half; for this cohort that reads
+  // as the game randomly quitting, and most patients never came back to
+  // finish the round at all.
   useEffect(() => {
     if (currentPatient) startSession(currentPatient.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -55,40 +62,55 @@ function WordStreamPageInner() {
     consecutiveLowScores: 0,
   }));
   const level = difficulty.currentLevel;
-  const isRecall = wordStreamItems.length > 0;
 
-  // --- START phase ---
+  const [phase, setPhase] = useState<Phase>('show');
+  const [itemsToRecall, setItemsToRecall] = useState<string[]>([]);
+
+  // --- SHOW phase ---
   const [showIndex, setShowIndex] = useState(0);
   const [startItems, setStartItems] = useState<SmritiObject[]>([]);
-  const [startDone, setStartDone] = useState(false);
 
   useEffect(() => {
-    if (isRecall) return;
     const items = pickObjects(ITEM_COUNT_BY_LEVEL[level] ?? 3);
     queueMicrotask(() => {
       setStartItems(items);
       setShowIndex(0);
-      setStartDone(false);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRecall]);
+  }, []);
 
   useEffect(() => {
-    if (isRecall || startItems.length === 0) return;
+    if (phase !== 'show' || startItems.length === 0) return;
     if (showIndex >= startItems.length) {
-      queueMicrotask(() => setStartDone(true));
+      setItemsToRecall(startItems.map((o) => o.id));
+      setPhase('delay');
       return;
     }
     speak(startItems[showIndex].name[language], language);
     const timer = setTimeout(() => setShowIndex((i) => i + 1), SHOW_SECONDS * 1000);
     return () => clearTimeout(timer);
-  }, [isRecall, startItems, showIndex, language]);
+  }, [phase, startItems, showIndex, language]);
 
-  const confirmRemembered = () => {
-    setWordStreamItems(startItems.map((o) => o.id));
-    void endSession();
-    router.push('/app');
-  };
+  // --- DELAY phase — a filled pause, not a trip back to the home screen ---
+  const [delayRemaining, setDelayRemaining] = useState(DELAY_SECONDS);
+
+  useEffect(() => {
+    if (phase !== 'delay') return;
+    setDelayRemaining(DELAY_SECONDS);
+    speak(t('game.wordStream.rememberLater'), language);
+    const interval = setInterval(() => {
+      setDelayRemaining((s) => {
+        if (s <= 1) {
+          clearInterval(interval);
+          setPhase('recall');
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   // --- RECALL phase ---
   const [gridItems, setGridItems] = useState<SmritiObject[]>([]);
@@ -96,11 +118,11 @@ function WordStreamPageInner() {
   const [result, setResult] = useState<RecallScore | null>(null);
 
   useEffect(() => {
-    if (!isRecall) return;
+    if (phase !== 'recall') return;
     speak(t('game.wordStream.whichItems'), language);
     const total = GRID_TOTAL_BY_LEVEL[level] ?? 8;
-    const distractors = pickObjects(total - wordStreamItems.length, wordStreamItems);
-    const all = [...wordStreamItems.map(objectFor), ...distractors];
+    const distractors = pickObjects(total - itemsToRecall.length, itemsToRecall);
+    const all = [...itemsToRecall.map(objectFor), ...distractors];
     for (let i = all.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
       [all[i], all[j]] = [all[j], all[i]];
@@ -111,7 +133,7 @@ function WordStreamPageInner() {
       setResult(null);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRecall]);
+  }, [phase]);
 
   const toggle = (id: string) => {
     setSelected((prev) => {
@@ -123,10 +145,11 @@ function WordStreamPageInner() {
   };
 
   const finishRecall = async () => {
-    const score = scoreRecall(wordStreamItems, selected);
+    const score = scoreRecall(itemsToRecall, selected);
     setResult(score);
+    setPhase('result');
 
-    const total = wordStreamItems.length || score.hits + score.misses || 1;
+    const total = itemsToRecall.length || score.hits + score.misses || 1;
     const accuracy = (score.hits / total) * 100;
     const next = adjustDifficulty(difficulty, 'word_stream', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
@@ -142,7 +165,7 @@ function WordStreamPageInner() {
         isCorrect: score.misses === 0 && score.falseAlarms === 0,
         responseTimeMs: null,
         eventTimestamp: new Date().toISOString(),
-        metadata: { ...score, original: wordStreamItems, selected: [...selected] },
+        metadata: { ...score, original: itemsToRecall, selected: [...selected] },
       });
     }
   };
@@ -152,10 +175,6 @@ function WordStreamPageInner() {
       await buildDailySummary(currentPatient.id, new Date().toISOString().slice(0, 10), 'word_stream');
     }
     await endSession();
-    // Cleared here, not at finishRecall: clearing earlier would flip
-    // `isRecall` back to false while the result screen is still showing,
-    // re-triggering the START effect underneath it.
-    setWordStreamItems([]);
     router.push('/app');
   };
 
@@ -170,7 +189,7 @@ function WordStreamPageInner() {
       />
 
       <main className="flex flex-1 flex-col items-center gap-6 px-4 py-6">
-        {!isRecall && !startDone ? (
+        {phase === 'show' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.wordStream.instruction')}</p>
             {startItems[showIndex] ? (
@@ -186,14 +205,20 @@ function WordStreamPageInner() {
           </div>
         ) : null}
 
-        {!isRecall && startDone ? (
+        {phase === 'delay' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.wordStream.rememberLater')}</p>
-            <BigButton label={t('game.wordStream.okRemember')} variant="primary" onClick={confirmRemembered} />
+            <div
+              className="flex h-24 w-24 items-center justify-center rounded-card border-2 border-primary/30 bg-surface-card font-serif-display text-patient-heading text-primary shadow-sm"
+              role="status"
+              aria-live="polite"
+            >
+              {delayRemaining}
+            </div>
           </div>
         ) : null}
 
-        {isRecall && !result ? (
+        {phase === 'recall' && !result ? (
           <div className="flex flex-1 flex-col items-center gap-4">
             <p className="text-patient-body text-ink">{t('game.wordStream.whichItems')}</p>
             <div className="grid grid-cols-3 gap-3">
@@ -224,14 +249,14 @@ function WordStreamPageInner() {
           </div>
         ) : null}
 
-        {isRecall && result ? (
+        {phase === 'result' && result ? (
           <SessionComplete
             gameType="word_stream"
             stars={starsFromRate(
-              result.hits / (wordStreamItems.length || result.hits + result.misses || 1),
+              result.hits / (itemsToRecall.length || result.hits + result.misses || 1),
             )}
             correctCount={result.hits}
-            totalCount={wordStreamItems.length || result.hits + result.misses}
+            totalCount={itemsToRecall.length || result.hits + result.misses}
             onGoHome={goHome}
           />
         ) : null}
