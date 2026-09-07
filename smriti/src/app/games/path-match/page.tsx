@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
-import PathCanvas, { type PathPoint } from '@/components/games/PathCanvas';
+import PathCanvas from '@/components/games/PathCanvas';
 import SessionComplete from '@/components/games/SessionComplete';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
+import { generatePointLayout } from '@/lib/games/pathMatchLayout';
 import { speak } from '@/lib/audio/speech';
 import { useTranslation } from '@/lib/i18n/provider';
 import { usePatientStore } from '@/stores/patientStore';
@@ -33,30 +34,6 @@ const LEVELS: Record<number, LevelParams> = {
   7: { numPoints: 10, timerSeconds: 35 },
   8: { numPoints: 12, timerSeconds: 30 },
 };
-
-/**
- * Deterministic grid, same board every session at a given level so a
- * patient can learn the layout. Jitter stays well inside each grid cell so
- * no two points ever land closer than the 60px minimum.
- */
-function generatePointLayout(numPoints: number, level: number): PathPoint[] {
-  const cols = Math.ceil(Math.sqrt(numPoints));
-  const rows = Math.ceil(numPoints / cols);
-  const cellWidth = 400 / (cols + 1);
-  const cellHeight = 600 / (rows + 1);
-
-  return Array.from({ length: numPoints }, (_, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const jitterX = ((i * 37 + level * 11) % 17) - 8;
-    const jitterY = ((i * 53 + level * 7) % 13) - 6;
-    return {
-      x: (col + 1) * cellWidth + jitterX,
-      y: (row + 1) * cellHeight + jitterY,
-      label: i + 1,
-    };
-  });
-}
 
 export default function PathMatchPage() {
   return (

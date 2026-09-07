@@ -34,7 +34,15 @@ export function useSync(): {
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
-  const wasOnlineRef = useRef(isOnline);
+  // Starts false, not `isOnline`: the goal is "attempt a sync shortly after
+  // this hook first sees the device online," and the device being online
+  // from the very first render (by far the common case — most sessions
+  // never see an offline->online transition at all) is exactly that case,
+  // not a no-op. Starting this at `isOnline` made the effect below treat an
+  // already-online mount as "no transition happened," so nothing ever
+  // synced until either a real offline->online transition or the 5-minute
+  // periodic interval — which read as "the app just doesn't sync."
+  const wasOnlineRef = useRef(false);
 
   const refreshPendingCount = useCallback(async () => {
     const patient = usePatientStore.getState().currentPatient;

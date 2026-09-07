@@ -195,6 +195,48 @@ describe('syncToServer', () => {
 });
 
 describe('useSync', () => {
+  it('attempts a sync shortly after mounting while already online, not only on an offline->online transition', async () => {
+    // The device being online from the very first render is the common
+    // case — most sessions never see a real offline->online transition at
+    // all. A prior regression only triggered the "just came online" sync on
+    // that transition, so an already-online mount never synced anything
+    // until either a real transition happened or the 5-minute periodic
+    // interval elapsed, which read from the caregiver dashboard as "the app
+    // just doesn't sync."
+    setOnline(true);
+    await db.patients.put({
+      id: 'p1',
+      caregiverId: 'c1',
+      displayName: 'Aai',
+      ageYears: 72,
+      gender: 'female',
+      educationYears: 4,
+      primaryLanguage: 'as',
+      sessionDurationMinutes: 10,
+      isActive: true,
+      currentDifficulty: {},
+      updatedAt: new Date().toISOString(),
+      syncedAt: null,
+    });
+    await seedUnsyncedEvent('mount-trigger', 'p1');
+    getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ serverTimestamp: new Date().toISOString(), syncedEventCount: 1, syncErrors: {}, updates: { patients: [], reminders: [], alerts: [] } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    // Real timers, not fake ones: AbortSignal.timeout() (used inside the
+    // actual fetch call this is proving happens) does not tolerate Vitest's
+    // fake timer patching and silently short-circuits before ever calling
+    // fetch, which would make this test pass for the wrong reason.
+    const { useSync } = await import('@/hooks/useSync');
+    renderHook(() => useSync());
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled(), { timeout: 5000 });
+  }, 10000);
+
   it('pendingCount equals the number of unsynced telemetryEvents in db', async () => {
     await seedUnsyncedEvent('u1', 'p1');
     await seedUnsyncedEvent('u2', 'p1');
