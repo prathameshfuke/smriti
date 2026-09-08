@@ -21,6 +21,7 @@ vi.mock('next/navigation', () => ({
 const getSession = vi.fn();
 const signInWithOtp = vi.fn();
 const verifyOtp = vi.fn();
+const exchangeCodeForSession = vi.fn();
 const isSupabaseConfigured = vi.fn(() => true);
 
 const signOut = vi.fn();
@@ -51,7 +52,7 @@ function makeQueryBuilder(table: string): any {
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: () => isSupabaseConfigured(),
   createBrowserClient: () => ({
-    auth: { getSession, signInWithOtp, verifyOtp, signOut, getUser },
+    auth: { getSession, signInWithOtp, verifyOtp, exchangeCodeForSession, signOut, getUser },
     from: (table: string) => makeQueryBuilder(table),
   }),
 }));
@@ -68,6 +69,7 @@ vi.mock('@/lib/auth/deviceTrust', async (importOriginal) => {
 
 import HomePage from '@/app/app/page';
 import CaregiverLoginPage from '@/app/caregiver/login/page';
+import CaregiverLoginCallbackPage from '@/app/caregiver/login/callback/page';
 import CaregiverLayout from '@/app/caregiver/layout';
 import CaregiverOnboardingPage from '@/app/caregiver/onboarding/page';
 import CaregiverSettingsPage from '@/app/caregiver/settings/page';
@@ -100,6 +102,7 @@ beforeEach(async () => {
   fromResult = { data: null, error: null };
   signInWithOtp.mockReset();
   verifyOtp.mockReset();
+  exchangeCodeForSession.mockReset();
   signOut.mockReset();
   isSupabaseConfigured.mockReturnValue(true);
   deviceTrustToken = null;
@@ -309,31 +312,54 @@ describe('Caregiver login page', () => {
   it('renders an email input and a submit button', () => {
     render(<CaregiverLoginPage />);
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send login code/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send login link/i })).toBeInTheDocument();
   });
 
-  it('shows a code input after sending', async () => {
+  it('sends a magic link and shows a check-your-email message, with no code input anywhere', async () => {
     signInWithOtp.mockResolvedValue({ error: null });
     render(<CaregiverLoginPage />);
 
     fireEvent.change(screen.getByLabelText(/email/i), {
       target: { value: 'asha@example.com' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    expect(await screen.findByLabelText(/6-digit code/i)).toBeInTheDocument();
-    expect(signInWithOtp).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'asha@example.com' }),
-    );
+    expect(await screen.findByText(/we sent a login link to asha@example\.com/i)).toBeInTheDocument();
+    expect(signInWithOtp).toHaveBeenCalledWith({
+      email: 'asha@example.com',
+      options: { emailRedirectTo: expect.stringContaining('/caregiver/login/callback') },
+    });
+    expect(screen.queryByLabelText(/code/i)).not.toBeInTheDocument();
   });
 
-  it('verifies the typed code in-app and redirects to the dashboard, without depending on a clicked link', async () => {
+  it('carries ?next through into the emailed link\'s redirect URL', async () => {
+    searchParams = new URLSearchParams('next=/app');
+    signInWithOtp.mockResolvedValue({ error: null });
+    render(<CaregiverLoginPage />);
+
+    fireEvent.change(screen.getByLabelText(/email/i), {
+      target: { value: 'asha@example.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
+
+    await waitFor(() => expect(signInWithOtp).toHaveBeenCalled());
+    const redirectTo = signInWithOtp.mock.calls[0][0].options.emailRedirectTo as string;
+    expect(redirectTo).toContain('/caregiver/login/callback');
+    expect(redirectTo).toContain(encodeURIComponent('/app'));
+  });
+});
+
+describe('Caregiver login callback page', () => {
+  it('exchanges the code, pulls the profile, and redirects to the dashboard for a returning caregiver', async () => {
     // A PIN already on this device means this is a returning caregiver, not
     // a first-ever login — goes straight to `next`, skipping the one-time
     // "set up quick access" PIN step covered separately below.
     useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    searchParams = new URLSearchParams('code=abc123');
+    exchangeCodeForSession.mockResolvedValue({
+      data: { session: { user: { id: 'test-user' } } },
+      error: null,
+    });
     fromResult = {
       data: {
         id: 'c1',
@@ -344,35 +370,24 @@ describe('Caregiver login page', () => {
       },
       error: null,
     };
-    render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
-
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    render(<CaregiverLoginCallbackPage />);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/dashboard'));
-    expect(verifyOtp).toHaveBeenCalledWith({
-      email: 'asha@example.com',
-      token: '123456',
-      type: 'email',
-    });
+    expect(exchangeCodeForSession).toHaveBeenCalledWith('abc123');
   });
 
-  it('with ?next=/app, verifying the code pulls the profile and returns to the patient screen, not the caregiver dashboard', async () => {
+  it('with ?next=/app, pulls the profile and returns to the patient screen, not the caregiver dashboard', async () => {
     // This is the patient-side login: /app's "Caregiver Login" button links
-    // here with ?next=/app so a device with no local profile yet ends up
-    // back on the game screen with data to show, not stranded on the
-    // caregiver dashboard after typing the same code.
-    searchParams = new URLSearchParams('next=/app');
+    // to /caregiver/login with ?next=/app, carried into the emailed link so
+    // a device with no local profile yet ends up back on the game screen
+    // with data to show, not stranded on the caregiver dashboard.
+    searchParams = new URLSearchParams('code=abc123&next=/app');
     useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    exchangeCodeForSession.mockResolvedValue({
+      data: { session: { user: { id: 'test-user' } } },
+      error: null,
+    });
     fromResult = {
       data: {
         id: 'c1',
@@ -383,37 +398,21 @@ describe('Caregiver login page', () => {
       },
       error: null,
     };
-    render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
-
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    render(<CaregiverLoginCallbackPage />);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/app'));
     expect(await db.caregivers.get('c1')).toMatchObject({ displayName: 'ASHA Worker' });
   });
 
   it('with ?next=/app but no account found yet, still goes to onboarding — there is nothing to show on /app', async () => {
-    searchParams = new URLSearchParams('next=/app');
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'brand-new-user' } } }, error: null });
-    render(<CaregiverLoginPage />);
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'new@example.com' },
+    searchParams = new URLSearchParams('code=abc123&next=/app');
+    exchangeCodeForSession.mockResolvedValue({
+      data: { session: { user: { id: 'brand-new-user' } } },
+      error: null,
     });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    render(<CaregiverLoginCallbackPage />);
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/onboarding'));
   });
@@ -423,8 +422,11 @@ describe('Caregiver login page', () => {
     // has an account but never set a PIN here — without this step there was
     // no fast way back into caregiver mode afterward, only ever a fresh
     // email login.
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
+    searchParams = new URLSearchParams('code=abc123');
+    exchangeCodeForSession.mockResolvedValue({
+      data: { session: { user: { id: 'test-user' } } },
+      error: null,
+    });
     fromResult = {
       data: {
         id: 'c1',
@@ -435,17 +437,8 @@ describe('Caregiver login page', () => {
       },
       error: null,
     };
-    render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
-
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    render(<CaregiverLoginCallbackPage />);
 
     expect(await screen.findByText(/set up quick access/i)).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
@@ -457,24 +450,28 @@ describe('Caregiver login page', () => {
     expect(useSettingsStore.getState().caregiverPinHash).not.toBeNull();
   });
 
-  it('shows the error and lets the caregiver retry when the code is wrong', async () => {
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ error: { message: 'Token has expired or is invalid' } });
-    render(<CaregiverLoginPage />);
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
+  it('shows an error and a way back to login when the link is expired or already used', async () => {
+    searchParams = new URLSearchParams('code=stale-code');
+    exchangeCodeForSession.mockResolvedValue({
+      data: { session: null },
+      error: { message: 'Token has expired or is invalid' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '000000' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
+    render(<CaregiverLoginCallbackPage />);
 
     expect(await screen.findByText(/token has expired or is invalid/i)).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(/6-digit code/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /back to login/i }));
+    expect(replace).toHaveBeenCalledWith('/caregiver/login');
+  });
+
+  it('shows an error when there is no code in the URL at all', async () => {
+    searchParams = new URLSearchParams();
+
+    render(<CaregiverLoginCallbackPage />);
+
+    expect(await screen.findByText(/invalid or already used/i)).toBeInTheDocument();
+    expect(exchangeCodeForSession).not.toHaveBeenCalled();
   });
 });
 

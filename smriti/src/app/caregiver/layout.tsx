@@ -33,7 +33,11 @@ type GateState = 'checking' | 'ready' | 'offline';
 export default function CaregiverLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isLoginRoute = pathname === '/caregiver/login';
+  // Exempts the login page's callback route too — it establishes the
+  // session itself (exchanging the magic link's code) and would otherwise
+  // race this gate's own getSession() check, which runs before that
+  // exchange finishes and bounces straight back to /caregiver/login.
+  const isLoginRoute = pathname === '/caregiver/login' || pathname.startsWith('/caregiver/login/');
   const isOnboardingRoute = pathname === '/caregiver/onboarding';
 
   const [state, setState] = useState<GateState>(isLoginRoute ? 'ready' : 'checking');
