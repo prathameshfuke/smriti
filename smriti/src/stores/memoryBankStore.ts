@@ -1,11 +1,10 @@
 import { create } from 'zustand';
 import { db, type LocalMemoryBankEntry } from '@/lib/db/schema';
-import { buildQueueItem } from '@/lib/db/syncQueue';
 
 interface MemoryBankState {
   entries: LocalMemoryBankEntry[];
   loadEntries: (patientId: string) => Promise<void>;
-  addEntry: (entry: LocalMemoryBankEntry) => Promise<void>;
+  addEntry: (entry: Omit<LocalMemoryBankEntry, 'synced'>) => Promise<void>;
   updateEntry: (id: string, changes: Partial<LocalMemoryBankEntry>) => Promise<void>;
   /** Soft-delete, matching `patientStore.deactivatePatient` — keeps the
    * record for sync/audit rather than losing it if a delete races offline. */
@@ -29,11 +28,9 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
   },
 
   addEntry: async (entry) => {
-    await db.transaction('rw', db.memoryBankEntries, db.syncQueue, async () => {
-      await db.memoryBankEntries.put(entry);
-      await db.syncQueue.put(buildQueueItem('memory_bank_entries', entry.id, 'insert', { ...entry }));
-    });
-    set({ entries: [...get().entries, entry] });
+    const withSync: LocalMemoryBankEntry = { ...entry, synced: false };
+    await db.memoryBankEntries.put(withSync);
+    set({ entries: [...get().entries, withSync] });
   },
 
   updateEntry: async (id, changes) => {
@@ -44,12 +41,10 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
       ...existing,
       ...changes,
       updatedAt: new Date().toISOString(),
+      synced: false,
     };
 
-    await db.transaction('rw', db.memoryBankEntries, db.syncQueue, async () => {
-      await db.memoryBankEntries.put(updated);
-      await db.syncQueue.put(buildQueueItem('memory_bank_entries', updated.id, 'update', { ...updated }));
-    });
+    await db.memoryBankEntries.put(updated);
     set({ entries: get().entries.map((e) => (e.id === id ? updated : e)) });
   },
 
@@ -61,12 +56,10 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
       ...existing,
       active: false,
       updatedAt: new Date().toISOString(),
+      synced: false,
     };
 
-    await db.transaction('rw', db.memoryBankEntries, db.syncQueue, async () => {
-      await db.memoryBankEntries.put(updated);
-      await db.syncQueue.put(buildQueueItem('memory_bank_entries', updated.id, 'update', { ...updated }));
-    });
+    await db.memoryBankEntries.put(updated);
     set({ entries: get().entries.filter((e) => e.id !== id) });
   },
 }));

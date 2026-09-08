@@ -8,9 +8,14 @@
  */
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.1-8b-instant';
+// 'llama-3.1-8b-instant' was retired from Groq's catalog (404s on every
+// call) — verified live against the Groq API, 2026-09-08.
+const GROQ_MODEL = 'openai/gpt-oss-20b';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const OPENROUTER_MODEL = 'meta-llama/llama-3.1-8b-instruct:free';
+// 'meta-llama/llama-3.1-8b-instruct:free' was retired; OpenRouter's own
+// error response names the paid slug below as the replacement — verified
+// live, 2026-09-08.
+const OPENROUTER_MODEL = 'meta-llama/llama-3.1-8b-instruct';
 
 export const FALLBACK_TEXT =
   "I can't check that right now — try again in a moment, or ask your caregiver.";

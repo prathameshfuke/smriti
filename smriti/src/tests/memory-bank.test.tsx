@@ -79,6 +79,7 @@ describe('Memory Bank editor', () => {
       active: true,
       createdBy: 'c1',
       updatedAt: new Date().toISOString(),
+      synced: true,
     });
 
     const { default: MemoryBankPage } = await import('@/app/caregiver/memory-bank/page');
@@ -108,6 +109,7 @@ describe('Memory Bank editor', () => {
       active: true,
       createdBy: 'c1',
       updatedAt: new Date().toISOString(),
+      synced: true,
     });
 
     const { default: MemoryBankPage } = await import('@/app/caregiver/memory-bank/page');
@@ -126,8 +128,8 @@ describe('Memory Bank editor', () => {
 
   it('groups entries under visible category headings', async () => {
     await db.memoryBankEntries.bulkPut([
-      { id: 'e3', patientId: 'p1', category: 'person', title: 'Arun', detail: 'Son', photoUrl: null, relationship: 'Son', active: true, createdBy: 'c1', updatedAt: new Date().toISOString() },
-      { id: 'e4', patientId: 'p1', category: 'medication', title: 'Red pill', detail: 'After breakfast', photoUrl: null, relationship: null, active: true, createdBy: 'c1', updatedAt: new Date().toISOString() },
+      { id: 'e3', patientId: 'p1', category: 'person', title: 'Arun', detail: 'Son', photoUrl: null, relationship: 'Son', active: true, createdBy: 'c1', updatedAt: new Date().toISOString(), synced: true },
+      { id: 'e4', patientId: 'p1', category: 'medication', title: 'Red pill', detail: 'After breakfast', photoUrl: null, relationship: null, active: true, createdBy: 'c1', updatedAt: new Date().toISOString(), synced: true },
     ]);
 
     const { default: MemoryBankPage } = await import('@/app/caregiver/memory-bank/page');

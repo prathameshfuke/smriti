@@ -47,6 +47,19 @@ describe('H1 — service worker runtime caching', () => {
     expect(images?.test('https://smriti.app/images/games/cow.png')).toBe(true);
     for (const p of patterns) expect(p.source.startsWith('^')).toBe(false);
   });
+
+  it('caches page navigations, not just the manifest start_url — offline access must work for every route, not just "/"', async () => {
+    // next-pwa's only automatic navigation cache matches the literal "/",
+    // but manifest.json's start_url is "/app" — so opening the installed
+    // PWA offline hit the network with no fallback and failed before any
+    // app JS ran. This rule (a request.mode predicate, not a urlPattern
+    // regex — deliberately invisible to the regex-based assertions above)
+    // is what actually fixes that.
+    const { readFileSync } = await import('node:fs');
+    const source = readFileSync('next.config.js', 'utf8');
+    expect(source).toMatch(/request\.mode === 'navigate'/);
+    expect(source).toMatch(/handler:\s*'NetworkFirst'/);
+  });
 });
 
 // M2's original placeholder-501 check was retired once alerts/health/patients/sync

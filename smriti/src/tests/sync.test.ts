@@ -494,4 +494,153 @@ describe('POST /api/sync', () => {
     // to the start of today's calendar date (which would be ~hours off).
     expect(Math.abs(windowStartMs - (before - 48 * 60 * 60 * 1000))).toBeLessThan(5000);
   });
+
+  it('inserts a yellow missed_sessions alert when a patient has no sessions in the last 3 days', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-missed-sessions-test' } }, error: null });
+
+    const inserted: Array<Record<string, unknown>> = [];
+    let patientsCallCount = 0;
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      if (table === 'patients') {
+        patientsCallCount += 1;
+        return patientsCallCount === 1
+          ? makeChain({ data: [{ id: 'p1' }], error: null })
+          : makeChain({ data: { caregiver_id: 'c1' }, error: null });
+      }
+      // No daily_summaries in the last 3 days -> detectMissedSessions fires.
+      if (table === 'daily_summaries') return makeChain({ data: [], error: null });
+      if (table === 'alerts') {
+        const chain = makeChain({ data: [], error: null }); // no unresolved alert exists yet
+        chain.insert = vi.fn((payload: Record<string, unknown>) => {
+          inserted.push(payload);
+          return chain;
+        });
+        return chain;
+      }
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          { patientId: 'p1', sessions: [], events: [], dailySummaries: [], reminderAcks: [] },
+        ],
+      }),
+    });
+
+    await POST(req);
+
+    expect(inserted.some((a) => a.alert_type === 'missed_sessions' && a.severity === 'yellow')).toBe(true);
+  });
+
+  it('does not insert a second missed_sessions alert while one is already unresolved', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-missed-sessions-dedup-test' } }, error: null });
+
+    const inserted: Array<Record<string, unknown>> = [];
+    let patientsCallCount = 0;
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      if (table === 'patients') {
+        patientsCallCount += 1;
+        return patientsCallCount === 1
+          ? makeChain({ data: [{ id: 'p1' }], error: null })
+          : makeChain({ data: { caregiver_id: 'c1' }, error: null });
+      }
+      if (table === 'daily_summaries') return makeChain({ data: [], error: null });
+      if (table === 'alerts') {
+        // An unresolved missed_sessions alert already exists.
+        const chain = makeChain({ data: [{ id: 'existing-alert' }], error: null });
+        chain.insert = vi.fn((payload: Record<string, unknown>) => {
+          inserted.push(payload);
+          return chain;
+        });
+        return chain;
+      }
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          { patientId: 'p1', sessions: [], events: [], dailySummaries: [], reminderAcks: [] },
+        ],
+      }),
+    });
+
+    await POST(req);
+
+    expect(inserted.some((a) => a.alert_type === 'missed_sessions')).toBe(false);
+  });
+
+  it('inserts a yellow low_adherence alert when 7-day reminder adherence is below 50%', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-low-adherence-test' } }, error: null });
+
+    const inserted: Array<Record<string, unknown>> = [];
+    let patientsCallCount = 0;
+
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      if (table === 'patients') {
+        patientsCallCount += 1;
+        return patientsCallCount === 1
+          ? makeChain({ data: [{ id: 'p1' }], error: null })
+          : makeChain({ data: { caregiver_id: 'c1' }, error: null });
+      }
+      // A daily reminder, expected every day, acknowledged 0 times -> 0% adherence.
+      if (table === 'reminder_schedules') {
+        return makeChain({
+          data: [
+            {
+              id: 'sched1',
+              reminder_type: 'medication',
+              label: 'Morning pill',
+              time_of_day: '00:00',
+              days_of_week: [0, 1, 2, 3, 4, 5, 6],
+            },
+          ],
+          error: null,
+        });
+      }
+      if (table === 'reminder_acks') return makeChain({ data: [], error: null });
+      if (table === 'alerts') {
+        const chain = makeChain({ data: [], error: null });
+        chain.insert = vi.fn((payload: Record<string, unknown>) => {
+          inserted.push(payload);
+          return chain;
+        });
+        return chain;
+      }
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const req = new Request('http://localhost/api/sync', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deviceId: 'd1',
+        lastSyncTimestamp: null,
+        patients: [
+          { patientId: 'p1', sessions: [], events: [], dailySummaries: [], reminderAcks: [] },
+        ],
+      }),
+    });
+
+    await POST(req);
+
+    expect(inserted.some((a) => a.alert_type === 'low_adherence' && a.severity === 'yellow')).toBe(true);
+  });
 });

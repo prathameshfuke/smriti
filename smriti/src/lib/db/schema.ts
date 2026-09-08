@@ -101,12 +101,17 @@ export interface LocalMemoryBankEntry {
   category: MemoryBankCategory;
   title: string;
   detail: string;
-  /** Data-URL string — no Supabase Storage bucket exists yet (MVP scope cut). */
+  /** Data-URL string locally — this is what every same-device render (the
+   * caregiver form, the kiosk reminiscence quiz) actually reads. `lib/db/sync.ts`
+   * uploads it to the `memory-bank-photos` Storage bucket on sync and sends
+   * *that* URL to Supabase instead — this local copy is never overwritten. */
   photoUrl: string | null;
   relationship: string | null;
   active: boolean;
   createdBy: string;
   updatedAt: string;
+  /** False until `/api/sync` confirms this row reached Supabase — see `lib/db/sync.ts`. */
+  synced: boolean;
 }
 
 export interface LocalAiConversationLog {
@@ -204,6 +209,16 @@ export class SmritiDB extends Dexie {
     // from version 1, so existing installs upgrade in place with no data loss.
     this.version(2).stores({
       familyMessages: 'id, patientId, createdAt, seenAt',
+    });
+    // Adds a `synced` index to memoryBankEntries so it can finally be
+    // gathered by lib/db/sync.ts the same way gameSessions/telemetryEvents/
+    // reminderAcks already are — this table was never wired into the real
+    // sync path (only into the never-drained syncQueue), so nothing added
+    // here ever reached Supabase. Existing rows have `synced === undefined`,
+    // which the `!r.synced` filter in sync.ts treats as unsynced — they
+    // self-heal on the next sync instead of needing a data migration.
+    this.version(3).stores({
+      memoryBankEntries: 'id, patientId, category, active, synced',
     });
   }
 

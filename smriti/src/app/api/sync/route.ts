@@ -1,6 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
-import { detectCognitiveDrop } from '@/lib/engine/alerts';
+import { detectCognitiveDrop, detectLowAdherence, detectMissedSessions } from '@/lib/engine/alerts';
+import { computeAdherence, dateRange } from '@/lib/engine/adherence';
 import type { GameType } from '@/lib/supabase/types';
 
 const RATE_LIMIT_MS = 30_000;
@@ -18,6 +19,9 @@ interface PatientSyncPayload {
   events: Array<Record<string, unknown> & { id: string }>;
   dailySummaries: Array<Record<string, unknown> & { id: string; gameType: string }>;
   reminderAcks: Array<Record<string, unknown> & { id: string }>;
+  /** Already snake_case (mapped client-side in lib/db/sync.ts) — safe to
+   * upsert directly, unlike the categories above. */
+  memoryBankEntries: Array<Record<string, unknown> & { id: string }>;
 }
 
 /** Which of one patient's row categories Supabase actually rejected this sync. */
@@ -26,6 +30,7 @@ interface PatientSyncErrors {
   events?: string;
   dailySummaries?: string;
   reminderAcks?: string;
+  memoryBankEntries?: string;
 }
 
 interface SyncRequestBody {
@@ -115,6 +120,15 @@ export async function POST(request: Request) {
         .upsert(patient.reminderAcks as never[], { onConflict: 'id', ignoreDuplicates: true });
       if (error) errors.reminderAcks = error.message;
     }
+    if (patient.memoryBankEntries?.length) {
+      // Not ignoreDuplicates: unlike the append-only categories above, an
+      // edit or soft-delete re-sends the same id and must actually overwrite
+      // the existing row, not be silently skipped as a duplicate.
+      const { error } = await supabase
+        .from('memory_bank_entries')
+        .upsert(patient.memoryBankEntries as never[], { onConflict: 'id' });
+      if (error) errors.memoryBankEntries = error.message;
+    }
 
     if (Object.keys(errors).length > 0) {
       syncErrors[patient.patientId] = errors;
@@ -130,6 +144,9 @@ export async function POST(request: Request) {
     for (const gameType of gameTypes) {
       await checkCognitiveDropAlert(supabase, patient.patientId, gameType as GameType);
     }
+    // Patient-level, not per-game-type: one check each per patient per sync.
+    await checkMissedSessionsAlert(supabase, patient.patientId);
+    await checkLowAdherenceAlert(supabase, patient.patientId);
   }
 
   const since = body.lastSyncTimestamp ?? new Date(0).toISOString();
@@ -212,6 +229,110 @@ async function checkCognitiveDropAlert(
     severity: 'red',
     title: 'Sudden drop in performance',
     description: `Today's ${gameType.replace('_', ' ')} accuracy is well below the recent average.`,
+    is_read: false,
+    is_resolved: false,
+    resolved_at: null,
+  });
+}
+
+/**
+ * Inserts a `missed_sessions` (yellow) alert when a patient has no
+ * daily_summaries row for 3+ consecutive days — unless one is already
+ * unresolved, in which case re-firing every sync would just be spam. It
+ * clears the same way every alert does: the caregiver resolves it, or a
+ * future feature could auto-resolve on the next played session (out of
+ * scope here).
+ */
+async function checkMissedSessionsAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('alerts')
+    .select('id')
+    .eq('patient_id', patientId)
+    .eq('alert_type', 'missed_sessions')
+    .eq('is_resolved', false)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+
+  const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { data: summaries } = await supabase
+    .from('daily_summaries')
+    .select('summary_date')
+    .eq('patient_id', patientId)
+    .gte('summary_date', since);
+
+  if (!detectMissedSessions((summaries ?? []).map((s) => s.summary_date))) return;
+
+  const { data: patientRow } = await supabase
+    .from('patients')
+    .select('caregiver_id')
+    .eq('id', patientId)
+    .single();
+  if (!patientRow) return;
+
+  await supabase.from('alerts').insert({
+    id: uuid(),
+    patient_id: patientId,
+    caregiver_id: patientRow.caregiver_id,
+    alert_type: 'missed_sessions',
+    severity: 'yellow',
+    title: 'Patient missed 3+ consecutive days',
+    description:
+      'No game sessions recorded in the last 3 days. Regular engagement is important for cognitive maintenance.',
+    is_read: false,
+    is_resolved: false,
+    resolved_at: null,
+  });
+}
+
+/**
+ * Inserts a `low_adherence` (yellow) alert when 7-day reminder adherence
+ * (see lib/engine/adherence.ts — the same calc the caregiver's Adherence tab
+ * shows) drops below 50%, unless one is already unresolved.
+ */
+async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
+  const { data: existing } = await supabase
+    .from('alerts')
+    .select('id')
+    .eq('patient_id', patientId)
+    .eq('alert_type', 'low_adherence')
+    .eq('is_resolved', false)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+
+  const days = dateRange(7);
+  const earliest = days[0];
+  const [{ data: schedules }, { data: acks }] = await Promise.all([
+    supabase
+      .from('reminder_schedules')
+      .select('id, reminder_type, label, time_of_day, days_of_week')
+      .eq('patient_id', patientId)
+      .eq('is_active', true),
+    supabase
+      .from('reminder_acks')
+      .select('reminder_id, scheduled_at, acknowledged_at')
+      .eq('patient_id', patientId)
+      .gte('scheduled_at', `${earliest}T00:00:00.000Z`),
+  ]);
+  if (!schedules || schedules.length === 0) return;
+
+  const { overallPct } = computeAdherence(schedules, acks ?? [], days);
+  if (!detectLowAdherence(overallPct)) return;
+
+  const { data: patientRow } = await supabase
+    .from('patients')
+    .select('caregiver_id')
+    .eq('id', patientId)
+    .single();
+  if (!patientRow) return;
+
+  await supabase.from('alerts').insert({
+    id: uuid(),
+    patient_id: patientId,
+    caregiver_id: patientRow.caregiver_id,
+    alert_type: 'low_adherence',
+    severity: 'yellow',
+    title: 'Low reminder adherence',
+    description: `Only ${overallPct}% of reminders were acknowledged in the last 7 days.`,
     is_read: false,
     is_resolved: false,
     resolved_at: null,

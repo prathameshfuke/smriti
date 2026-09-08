@@ -412,7 +412,7 @@ CREATE TABLE memory_bank_entries (
   category TEXT NOT NULL CHECK (category IN ('person', 'schedule', 'life_fact', 'medication')),
   title TEXT NOT NULL,
   detail TEXT NOT NULL,
-  photo_url TEXT,             -- data-URL string for now; no Storage bucket set up yet
+  photo_url TEXT,             -- public URL in the memory-bank-photos Storage bucket (see MIGRATION 012); local Dexie keeps its own data-URL copy for offline/same-device rendering
   relationship TEXT,          -- only meaningful for category='person'
   active BOOLEAN NOT NULL DEFAULT true,
   created_by UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
@@ -703,4 +703,59 @@ CREATE POLICY caregiver_family_notes_direct ON family_notes
   FOR ALL USING (posted_by_caregiver_id IN (
     SELECT id FROM caregivers WHERE auth_id = auth.uid()
   ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 012: Memory Bank photo Storage bucket
+-- =============================================
+
+-- `memory_bank_entries.photo_url` (MIGRATION 004) was a data-URL string
+-- with no Storage bucket ("MVP scope cut" — see its column comment). That
+-- meant every photo shipped as a multi-MB base64 blob through `/api/sync`
+-- on every edit, and there was nowhere for a photo to live once a caregiver
+-- pulls their profile onto a second device.
+--
+-- Public bucket (deliberate choice, not an oversight): a memory-bank photo
+-- is a family photo, not medical/biometric data, and this app's own
+-- reminiscence-quiz kiosk device has no Supabase session to fetch a signed
+-- URL with — a plain public URL lets it (and any future cross-device
+-- caregiver view) render with a bare `<img src>`, no auth round trip.
+-- WRITE access is still RLS-scoped below, same as every other table here.
+--
+-- Object path convention: `{patient_id}/{entry_id}` — see
+-- `lib/db/sync.ts`'s `uploadMemoryBankPhotos`, which uploads with
+-- `upsert: true` so re-syncing an edited entry overwrites the same object
+-- instead of accumulating duplicates.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'memory-bank-photos',
+  'memory-bank-photos',
+  true,
+  5242880, -- 5MB — a family photo, not a video
+  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+)
+on conflict (id) do nothing;
+
+-- Public bucket only bypasses RLS for reads (served via the public URL
+-- endpoint); writes are still gated by RLS like every other table — a
+-- caregiver may only write under a path whose first segment is one of
+-- their own patients' ids.
+create policy caregiver_memory_bank_photos on storage.objects
+  for all using (
+    bucket_id = 'memory-bank-photos'
+    and (storage.foldername(name))[1]::uuid in (
+      select id from patients where caregiver_id in (
+        select id from caregivers where auth_id = auth.uid()
+      )
+    )
+  )
+  with check (
+    bucket_id = 'memory-bank-photos'
+    and (storage.foldername(name))[1]::uuid in (
+      select id from patients where caregiver_id in (
+        select id from caregivers where auth_id = auth.uid()
+      )
+    )
+  );
 ```

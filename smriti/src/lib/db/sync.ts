@@ -6,6 +6,7 @@ import {
   type LocalTelemetryEvent,
   type LocalDailySummary,
   type LocalReminderAck,
+  type LocalMemoryBankEntry,
 } from './schema';
 import { createBrowserClient } from '@/lib/supabase/client';
 
@@ -47,6 +48,89 @@ interface PatientSyncErrors {
   events?: string;
   dailySummaries?: string;
   reminderAcks?: string;
+  memoryBankEntries?: string;
+}
+
+/** Wire shape for `memory_bank_entries` — Supabase columns are snake_case,
+ * unlike the other row categories here, this table is mapped explicitly
+ * rather than sent as a raw camelCase pass-through. */
+interface WireMemoryBankEntry {
+  id: string;
+  patient_id: string;
+  category: string;
+  title: string;
+  detail: string;
+  photo_url: string | null;
+  relationship: string | null;
+  active: boolean;
+  created_by: string;
+  updated_at: string;
+}
+
+function toWireMemoryBankEntry(e: LocalMemoryBankEntry): WireMemoryBankEntry {
+  return {
+    id: e.id,
+    patient_id: e.patientId,
+    category: e.category,
+    title: e.title,
+    detail: e.detail,
+    photo_url: e.photoUrl,
+    relationship: e.relationship,
+    active: e.active,
+    created_by: e.createdBy,
+    updated_at: e.updatedAt,
+  };
+}
+
+/** Public Storage bucket for Memory Bank photos — see docs/03_DATABASE.md
+ * MIGRATION 012. Public so the reminiscence quiz and any future
+ * cross-device caregiver view can render a photo with a plain `<img src>`,
+ * no signed-URL round trip. Local Dexie keeps the original data-URL
+ * forever (that's what every same-device render — the caregiver form, the
+ * kiosk's reminiscence quiz — actually reads); only the copy pushed to
+ * Supabase is swapped for the uploaded URL, so the sync payload never ships
+ * a multi-MB base64 blob through `/api/sync` more than once. */
+const PHOTO_BUCKET = 'memory-bank-photos';
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mime = header.match(/data:(.*?);base64/)?.[1] ?? 'application/octet-stream';
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+/**
+ * Uploads any data-URL photo among these entries to Storage (object path
+ * `{patientId}/{entryId}`, `upsert: true` so re-syncing an edited entry
+ * overwrites the same object instead of accumulating duplicates), returning
+ * a copy with `photoUrl` swapped to the resulting public URL. An entry
+ * whose upload fails is dropped from the result entirely — not sent with a
+ * stale/missing photo and marked synced regardless, which would silently
+ * lose the photo for good. It simply stays `synced: false` and gets
+ * retried whole on the next sync attempt.
+ */
+async function uploadMemoryBankPhotos(entries: LocalMemoryBankEntry[]): Promise<LocalMemoryBankEntry[]> {
+  const supabase = createBrowserClient();
+  const results = await Promise.all(
+    entries.map(async (entry): Promise<LocalMemoryBankEntry | null> => {
+      if (!entry.photoUrl || !entry.photoUrl.startsWith('data:')) return entry;
+      try {
+        const blob = dataUrlToBlob(entry.photoUrl);
+        const path = `${entry.patientId}/${entry.id}`;
+        const { error } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .upload(path, blob, { contentType: blob.type, upsert: true });
+        if (error) return null;
+        const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+        return { ...entry, photoUrl: data.publicUrl };
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return results.filter((e): e is LocalMemoryBankEntry => e !== null);
 }
 
 interface SyncResponseBody {
@@ -66,6 +150,7 @@ interface PatientSyncPayload {
   events: LocalTelemetryEvent[];
   dailySummaries: LocalDailySummary[];
   reminderAcks: LocalReminderAck[];
+  memoryBankEntries: LocalMemoryBankEntry[];
 }
 
 /**
@@ -115,15 +200,23 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
 
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
-  const [sessions, events, dailySummaries, reminderAcks] = await Promise.all([
+  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries] = await Promise.all([
     db.gameSessions.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.telemetryEvents.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     // dailySummaries has no plain `patientId` index (only the compound
     // [patientId+summaryDate+gameType]), so `.where('patientId')` isn't valid here.
     db.dailySummaries.toCollection().filter((r) => r.patientId === patientId && !r.synced).toArray(),
     db.reminderAcks.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
+    db.memoryBankEntries.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
   ]);
-  return { patientId, sessions, events, dailySummaries, reminderAcks };
+  return {
+    patientId,
+    sessions,
+    events,
+    dailySummaries,
+    reminderAcks,
+    memoryBankEntries: await uploadMemoryBankPhotos(memoryBankEntries),
+  };
 }
 
 /**
@@ -140,7 +233,15 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
 async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncResponseBody): Promise<void> {
   await db.transaction(
     'rw',
-    [db.gameSessions, db.telemetryEvents, db.dailySummaries, db.reminderAcks, db.patients, db.reminderSchedules],
+    [
+      db.gameSessions,
+      db.telemetryEvents,
+      db.dailySummaries,
+      db.reminderAcks,
+      db.memoryBankEntries,
+      db.patients,
+      db.reminderSchedules,
+    ],
     async () => {
       for (const payload of payloads) {
         const errors = body.syncErrors?.[payload.patientId] ?? {};
@@ -155,6 +256,16 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
         }
         if (!errors.reminderAcks) {
           await db.reminderAcks.bulkPut(payload.reminderAcks.map((a) => ({ ...a, synced: true })) as never[]);
+        }
+        if (!errors.memoryBankEntries) {
+          // A partial `.update`, not `.bulkPut` of the full object: `payload.memoryBankEntries`
+          // here holds the upload-swapped copy (photoUrl -> Storage URL) built for the wire
+          // request, not the local one. Bulk-overwriting the local row with it would replace
+          // the local data-URL every same-device render actually uses with a remote URL that
+          // needs a network fetch — this only ever flips the one field that changed.
+          for (const e of payload.memoryBankEntries) {
+            await db.memoryBankEntries.update(e.id, { synced: true });
+          }
         }
       }
 
@@ -183,7 +294,13 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string): Pr
       body: JSON.stringify({
         deviceId: getDeviceId(),
         lastSyncTimestamp: null,
-        patients: payloads,
+        // memoryBankEntries is mapped to its snake_case wire shape here;
+        // every other category is sent as-is, matching the existing
+        // (pre-existing, out of scope) pattern for this endpoint.
+        patients: payloads.map((p) => ({
+          ...p,
+          memoryBankEntries: p.memoryBankEntries.map(toWireMemoryBankEntry),
+        })),
       }),
       signal: AbortSignal.timeout(SYNC_TIMEOUT_MS),
     });
@@ -229,7 +346,11 @@ export async function syncToServer(patientId: string): Promise<SyncResult> {
 
   const payload = await gatherUnsyncedRows(patientId);
   const isEmpty =
-    payload.sessions.length + payload.events.length + payload.dailySummaries.length + payload.reminderAcks.length ===
+    payload.sessions.length +
+      payload.events.length +
+      payload.dailySummaries.length +
+      payload.reminderAcks.length +
+      payload.memoryBankEntries.length ===
     0;
   if (isEmpty) return { success: true };
 
@@ -265,7 +386,9 @@ export async function syncAllPatients(): Promise<SyncResult> {
   const patients = await db.patients.toArray();
   const payloads = await Promise.all(patients.map((p) => gatherUnsyncedRows(p.id)));
   const nonEmpty = payloads.filter(
-    (p) => p.sessions.length + p.events.length + p.dailySummaries.length + p.reminderAcks.length > 0,
+    (p) =>
+      p.sessions.length + p.events.length + p.dailySummaries.length + p.reminderAcks.length + p.memoryBankEntries.length >
+      0,
   );
   if (nonEmpty.length === 0) return { success: true };
 

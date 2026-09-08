@@ -191,6 +191,28 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   }, [patientId, range]);
 
   useEffect(() => {
+    if (!patientId) return;
+    authedFetch<{
+      alerts: Array<{
+        id: string;
+        patient_id: string;
+        title: string;
+        description: string | null;
+        severity: TriageStatus;
+        is_resolved: boolean;
+      }>;
+    }>('/api/alerts')
+      .then((body) => {
+        setAlerts(
+          (body.alerts ?? [])
+            .filter((a) => a.patient_id === patientId && !a.is_resolved)
+            .map((a) => ({ id: a.id, title: a.title, description: a.description, severity: a.severity })),
+        );
+      })
+      .catch(() => setError(true));
+  }, [patientId]);
+
+  useEffect(() => {
     if (!patientId || tab !== 'reminders' || adherence) return;
     authedFetch<AdherenceResponse>(`/api/patients/${patientId}/adherence?range=7d`)
       .then(setAdherence)

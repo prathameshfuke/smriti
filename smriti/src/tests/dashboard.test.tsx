@@ -201,4 +201,36 @@ describe('Patient detail page', () => {
     const cells = await screen.findAllByTestId('calendar-day');
     expect(cells).toHaveLength(daysInMonth);
   });
+
+  it('renders an unresolved alert for this patient fetched from /api/alerts', async () => {
+    vi.stubGlobal(
+      'fetch',
+      fetchByUrl({
+        '/api/patients/p1/timeline': { points: [] },
+        '/api/patients': { patients: [patient({ id: 'p1' })] },
+        '/api/alerts': {
+          alerts: [
+            {
+              id: 'a1',
+              patient_id: 'p1',
+              title: 'Sudden drop in performance',
+              description: "Today's object hunt accuracy is well below the recent average.",
+              severity: 'red',
+              is_resolved: false,
+            },
+            // Other patient's alert and an already-resolved alert must both be filtered out.
+            { id: 'a2', patient_id: 'p2', title: 'Other patient', description: null, severity: 'red', is_resolved: false },
+            { id: 'a3', patient_id: 'p1', title: 'Old, resolved', description: null, severity: 'yellow', is_resolved: true },
+          ],
+        },
+      }),
+    );
+    const { default: PatientDetailPage } = await import('@/app/caregiver/patients/[id]/page');
+    render(<PatientDetailPage params={Promise.resolve({ id: 'p1' })} />);
+
+    expect(await screen.findByText('Sudden drop in performance')).toBeInTheDocument();
+    expect(screen.queryByText('Other patient')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old, resolved')).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
 });
