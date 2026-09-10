@@ -50,7 +50,7 @@ afterEach(() => {
 });
 
 describe('SmritiDB', () => {
-  it('creates all 12 tables', () => {
+  it('creates all 13 tables', () => {
     const names = db.tables.map((t) => t.name).sort();
     expect(names).toEqual(
       [
@@ -64,6 +64,7 @@ describe('SmritiDB', () => {
         'reminderAcks',
         'reminderSchedules',
         'reminiscenceQuizzes',
+        'speechCache',
         'syncQueue',
         'telemetryEvents',
       ].sort(),

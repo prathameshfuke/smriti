@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from 'react';
 import BigButton from './BigButton';
-import { playAudio } from '@/lib/audio/player';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import type { LocalReminderSchedule } from '@/lib/db/schema';
 import type { ReminderType } from '@/lib/supabase/types';
 
@@ -32,11 +33,12 @@ const DONE_LABEL = 'Done ✓';
  */
 export default function ReminderCard({ reminder, onAcknowledge, onSnooze }: ReminderCardProps) {
   const { language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const cardRef = useRef<HTMLDivElement>(null);
   const icon = ICON[reminder.reminderType];
 
   useEffect(() => {
-    playAudio('', reminder.label, language);
+    void narrate(reminder.label, language, isOnline);
     cardRef.current
       ?.querySelector<HTMLButtonElement>(`[aria-label="${DONE_LABEL}"]`)
       ?.focus();

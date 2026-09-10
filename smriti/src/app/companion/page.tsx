@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { FALLBACK_TEXT } from '@/lib/ai/llm-client';
 import { cacheAnswer, findCachedAnswer } from '@/lib/ai/companion-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
@@ -70,10 +70,13 @@ export default function CompanionPage() {
 
   const mediaRecorderSupported = typeof window !== 'undefined' && typeof window.MediaRecorder !== 'undefined';
 
+  // Shared by speakAnswer (TTS) and acquireTranscript (ASR) — both need to
+  // know which language this patient's device is in.
+  const patientLanguage =
+    currentPatient && isUILanguage(currentPatient.primaryLanguage) ? currentPatient.primaryLanguage : 'en';
+
   const speakAnswer = (text: string) => {
-    const language =
-      currentPatient && isUILanguage(currentPatient.primaryLanguage) ? currentPatient.primaryLanguage : 'en';
-    speak(text, language);
+    void narrate(text, patientLanguage, isOnline);
   };
 
   const showFallback = () => {
@@ -145,6 +148,7 @@ export default function CompanionPage() {
         const formData = new FormData();
         formData.append('audio', new Blob(chunksRef.current, { type: 'audio/webm' }), 'clip.webm');
         formData.append('deviceTrustToken', JSON.stringify(token));
+        formData.append('language', patientLanguage);
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
         if (res.ok) {
           const body = await res.json();

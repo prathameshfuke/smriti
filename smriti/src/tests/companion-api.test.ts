@@ -200,19 +200,34 @@ describe('POST /api/ai/transcribe', () => {
 
   beforeEach(() => {
     process.env.GROQ_API_KEY = 'test-groq-key';
+    process.env.BHASHINI_INFERENCE_API_KEY = 'test-bhashini-key';
   });
 
   afterEach(() => {
     process.env = { ...ORIGINAL_ENV };
   });
 
-  function makeRequest(deviceTrustToken: unknown) {
+  function makeRequest(deviceTrustToken: unknown, language?: string) {
     const formData = new FormData();
     formData.append('audio', new Blob(['fake-audio-bytes'], { type: 'audio/webm' }), 'clip.webm');
     if (deviceTrustToken !== undefined) {
       formData.append('deviceTrustToken', JSON.stringify(deviceTrustToken));
     }
+    if (language !== undefined) formData.append('language', language);
     return new Request('http://localhost/api/ai/transcribe', { method: 'POST', body: formData });
+  }
+
+  /** Branches on URL so one test can simulate Bhashini and Groq responding
+   * differently — the two providers this route now tries in sequence. */
+  function mockProviders(bhashini: { ok: boolean; status?: number; body?: unknown }, groq: { ok: boolean; status?: number; body?: unknown }) {
+    return vi.fn().mockImplementation((url: string) => {
+      const target = url.includes('dhruva-api.bhashini.gov.in') ? bhashini : groq;
+      return Promise.resolve({
+        ok: target.ok,
+        status: target.status ?? (target.ok ? 200 : 500),
+        json: async () => target.body,
+      });
+    });
   }
 
   it('returns 401 and never calls the provider when the device token is missing', async () => {
@@ -267,6 +282,55 @@ describe('POST /api/ai/transcribe', () => {
     const { POST } = await import('@/app/api/ai/transcribe/route');
     const res = await POST(req);
     expect(res.status).toBe(200);
+  });
+
+  it('routes Assamese to Bhashini ASR and never calls Groq when Bhashini succeeds', async () => {
+    const fetchMock = mockProviders(
+      { ok: true, body: { pipelineResponse: [{ output: [{ source: 'অসমীয়া প্ৰতিলিপি' }] }] } },
+      { ok: true, body: { text: 'this should never be returned' } },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { POST } = await import('@/app/api/ai/transcribe/route');
+    const res = await POST(makeRequest(makeDeviceToken('p1'), 'as'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.text).toBe('অসমীয়া প্ৰতিলিপি');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls through to Groq Whisper when Bhashini fails for a Bhashini-eligible language', async () => {
+    const fetchMock = mockProviders(
+      { ok: false, status: 500 },
+      { ok: true, body: { text: 'groq caught the fallback' } },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { POST } = await import('@/app/api/ai/transcribe/route');
+    const res = await POST(makeRequest(makeDeviceToken('p1'), 'hi'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.text).toBe('groq caught the fallback');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('never attempts Bhashini for English — Groq Whisper is called directly', async () => {
+    const fetchMock = mockProviders(
+      { ok: true, body: { pipelineResponse: [{ output: [{ source: 'should never be called' }] }] } },
+      { ok: true, body: { text: 'english via groq' } },
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { POST } = await import('@/app/api/ai/transcribe/route');
+    const res = await POST(makeRequest(makeDeviceToken('p1'), 'en'));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.text).toBe('english via groq');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0][0]).not.toContain('dhruva-api.bhashini.gov.in');
   });
 });
 

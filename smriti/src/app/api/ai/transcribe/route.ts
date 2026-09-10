@@ -1,6 +1,8 @@
 import { verifyDeviceTrust } from '@/lib/auth/deviceTrustServer';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { transcribeAudio } from '@/lib/ai/transcribe-client';
+import { transcribeBhashini, supportsBhashiniAsr } from '@/lib/ai/bhashini-asr-client';
+import { isUILanguage } from '@/lib/i18n/languages';
 
 /**
  * Two independent auth paths, same shape as /api/ai/complete: a kiosk's
@@ -40,6 +42,26 @@ export async function POST(request: Request) {
     const caregiverAuth = await authenticateRequest(request);
     if (!caregiverAuth) {
       return Response.json({ error: 'invalid_device_token' }, { status: 401 });
+    }
+  }
+
+  // Bhashini ASR first for as/hi — its whole value here (per Task 0
+  // verification) — falling through to the existing Groq Whisper path on
+  // any failure, same fallback contract as llm-client.ts's Groq→OpenRouter
+  // pattern. English never routes to Bhashini: the service ID used for
+  // as/hi coverage doesn't support English at all (confirmed empirically),
+  // and Groq Whisper is already excellent for English — nothing to fix
+  // there. Browser SpeechRecognition (client-side, untouched) stays the
+  // final fallback exactly as it was.
+  const languageRaw = formData.get('language');
+  const language = typeof languageRaw === 'string' && isUILanguage(languageRaw) ? languageRaw : 'en';
+
+  if (supportsBhashiniAsr(language)) {
+    try {
+      const result = await transcribeBhashini(audio, language);
+      return Response.json({ text: result.text });
+    } catch {
+      // Fall through to Groq Whisper below.
     }
   }
 

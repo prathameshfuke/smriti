@@ -166,6 +166,25 @@ export interface LocalFamilyMessage {
   ackSynced: boolean;
 }
 
+/**
+ * Local cache of Bhashini TTS output, keyed by exact (language, text) so
+ * repeat lines — reminder phrases, repeated companion answers — never
+ * re-hit the rate-limited PoC API. Patient-agnostic: the same line in the
+ * same language sounds identical regardless of whose device plays it, so
+ * unlike `aiConversationLog` there is no `patientId` scoping here.
+ */
+export interface LocalSpeechCache {
+  /** `${language} ${text}` — see `lib/ai/speech-cache.ts`. Using the
+   * exact content as the key means `put()` naturally dedupes identical
+   * lines instead of needing separate lookup-then-insert logic. */
+  id: string;
+  text: string;
+  language: string;
+  audioBase64: string;
+  audioFormat: string;
+  createdAt: string;
+}
+
 export interface SyncQueueItem {
   id: string;
   tableName: string;
@@ -189,6 +208,7 @@ export class SmritiDB extends Dexie {
   reminiscenceQuizzes!: Table<LocalReminiscenceQuiz>;
   syncQueue!: Table<SyncQueueItem>;
   familyMessages!: Table<LocalFamilyMessage>;
+  speechCache!: Table<LocalSpeechCache>;
 
   constructor() {
     super(DB_NAME);
@@ -219,6 +239,9 @@ export class SmritiDB extends Dexie {
     // self-heal on the next sync instead of needing a data migration.
     this.version(3).stores({
       memoryBankEntries: 'id, patientId, category, active, synced',
+    });
+    this.version(4).stores({
+      speechCache: 'id, createdAt',
     });
   }
 

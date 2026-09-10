@@ -303,7 +303,8 @@ Full schema, indexes, and Row Level Security policies live in [docs/03_DATABASE.
 | Offline storage | Dexie.js (IndexedDB) |
 | PWA / offline | `next-pwa` + Workbox service worker |
 | Backend | Supabase — PostgreSQL, Auth, Realtime, Row Level Security |
-| AI companion | Groq (`llama-3.1-8b-instant`) primary, OpenRouter fallback |
+| AI companion | Groq primary, OpenRouter fallback (model slugs change — see `src/lib/ai/llm-client.ts`) |
+| Speech synthesis | Bhashini TTS (Assamese/Hindi/English), browser `speechSynthesis` fallback |
 | Forms & validation | react-hook-form + zod |
 | Charts | Recharts |
 | Motion | Framer Motion |
@@ -401,6 +402,7 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side kiosk/device-trust routes | **Never expose to the browser or commit it** |
 | `GROQ_API_KEY` | AI companion (primary) | Free at [console.groq.com/keys](https://console.groq.com/keys) |
 | `OPENROUTER_API_KEY` | AI companion (fallback) | Used if Groq is rate-limited/unavailable — free at [openrouter.ai/keys](https://openrouter.ai/keys) |
+| `BHASHINI_INFERENCE_API_KEY` | Assamese/Hindi/English text-to-speech | Issued via [Bhashini-Udyat](https://bhashini.gov.in) app approval — used directly as the `Authorization` header, no Bearer prefix |
 | Google OAuth credentials | Caregiver "Sign in with Google" | See `src/app/api/auth/google/route.ts` |
 
 > [!NOTE]
@@ -432,7 +434,8 @@ Vitest + Testing Library, with `fake-indexeddb` standing in for Dexie's IndexedD
 - [x] **Phase 1 — Hackathon MVP:** core games, rule-based difficulty, Assamese/Hindi/English audio, reminders, caregiver dashboard, offline + sync, installable PWA
 - [x] Shipped beyond original MVP scope: 15 games (vs. 4 planned), ML-assisted difficulty model, AI companion, family notes, caregiver digests, Google OAuth
 - [x] Traffic-light triage dashboard
-- [ ] Bhashini ASR/TTS integration
+- [x] Bhashini TTS integration — companion answers + reminder narration, cached locally, browser-TTS fallback
+- [ ] Bhashini ASR integration (needs browser recording switched from webm/Opus to wav/flac — Bhashini's ASR only documents those formats)
 - [ ] Manipuri + Bodo language support
 - [ ] Per-domain Elo rating with dynamic K-value
 - [ ] ABHA health-record linkage exploration

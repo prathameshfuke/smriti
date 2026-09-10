@@ -34,3 +34,27 @@ export function playAudio(src: string, fallbackText?: string, language?: string)
     speakFallback(fallbackText, language);
   }
 }
+
+/**
+ * Plays base64-encoded audio (Bhashini TTS output, cached or freshly
+ * fetched) via a `data:` URI. Same never-throws/fallback contract as
+ * `playAudio` above — a bad decode or a blocked autoplay falls back to
+ * on-device speech synthesis rather than leaving the line unspoken.
+ */
+export function playBase64Audio(
+  audioBase64: string,
+  audioFormat: string,
+  fallbackText?: string,
+  language?: string,
+): void {
+  try {
+    const audio = new Audio(`data:audio/${audioFormat};base64,${audioBase64}`);
+    audio.addEventListener('error', () => speakFallback(fallbackText, language));
+    const playResult = audio.play();
+    if (playResult && typeof playResult.catch === 'function') {
+      playResult.catch(() => speakFallback(fallbackText, language));
+    }
+  } catch {
+    speakFallback(fallbackText, language);
+  }
+}
