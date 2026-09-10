@@ -40,22 +40,33 @@ function CountingBoxesPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onComplete = (accuracyPct: number, levelsPlayed: number) => {
-    const next = adjustDifficulty(difficulty, 'counting_boxes', accuracyPct, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
+  const onComplete = async (accuracyPct: number, levelsPlayed: number) => {
+    // Awaited and moved before adjustDifficulty: logEvent writes to Dexie
+    // before mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts).
+    // This previously fired fire-and-forget AFTER adjustDifficulty had
+    // already read sessionEvents, so the ML model never saw this session's
+    // own event — not racily, every single time, since this callback only
+    // ever logs once per session. difficultyLevel now records the level
+    // this round was actually played at (matches path-match's convention),
+    // since `next` doesn't exist yet at log time.
     if (currentPatient) {
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'counting_boxes', next.currentLevel);
-      void logEvent({
+      await logEvent({
         sessionId: activeSession?.id ?? '',
         patientId: currentPatient.id,
         gameType: 'counting_boxes',
-        difficultyLevel: next.currentLevel,
+        difficultyLevel: difficulty.currentLevel,
         roundNumber: levelsPlayed,
         isCorrect: accuracyPct >= 50,
         responseTimeMs: null,
         eventTimestamp: new Date().toISOString(),
         metadata: { accuracyPct },
       });
+    }
+    const next = adjustDifficulty(difficulty, 'counting_boxes', accuracyPct, useGameStore.getState().sessionEvents);
+    setDifficulty(next);
+    if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
+      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'counting_boxes', next.currentLevel);
     }
   };
 

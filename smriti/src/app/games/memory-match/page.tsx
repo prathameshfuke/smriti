@@ -98,10 +98,16 @@ function MemoryMatchPageInner() {
   }, [phase, t]);
 
   const completeRound = useCallback(
-    (finalWrongAttempts: number) => {
+    async (finalWrongAttempts: number) => {
       const timeUsedMs = Date.now() - playStartedAt;
+      // Awaited, not fire-and-forget: logEvent writes to Dexie before
+      // mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts),
+      // and keepGoing/finishSession read sessionEvents synchronously to
+      // feed the difficulty ML model. Without this await, finishing a
+      // session before that write lands would silently drop this round
+      // from what the model sees.
       if (currentPatient) {
-        void logEvent({
+        await logEvent({
           sessionId: activeSession?.id ?? '',
           patientId: currentPatient.id,
           gameType: 'memory_match',
@@ -152,7 +158,7 @@ function MemoryMatchPageInner() {
             const nextCount = c + 1;
             if (nextCount === level.pairs) {
               setWrongAttempts((w) => {
-                completeRound(w);
+                void completeRound(w);
                 return w;
               });
             }
@@ -178,6 +184,7 @@ function MemoryMatchPageInner() {
     const next = adjustDifficulty(difficulty, 'memory_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_match', next.currentLevel);
     }
     setRound((r) => r + 1);
@@ -188,6 +195,7 @@ function MemoryMatchPageInner() {
     const next = adjustDifficulty(difficulty, 'memory_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_match', next.currentLevel);
     }
     setPhase('session_complete');

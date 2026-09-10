@@ -48,9 +48,15 @@ function RoutineRecallPageInner() {
   }, []);
 
   const handleComplete = useCallback(
-    (correct: boolean) => {
+    async (correct: boolean) => {
+      // Awaited, not fire-and-forget: logEvent writes to Dexie before
+      // mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts),
+      // and adjustDifficulty below reads sessionEvents synchronously.
+      // Already called before adjustDifficulty (unlike the other games'
+      // read-then-log ordering bug) — this only needed the await, not a
+      // reorder.
       if (currentPatient) {
-        void logEvent({
+        await logEvent({
           sessionId: activeSession?.id ?? '',
           patientId: currentPatient.id,
           gameType: 'routine_recall',
@@ -67,6 +73,7 @@ function RoutineRecallPageInner() {
       const next = adjustDifficulty(difficulty, 'routine_recall', correct ? 100 : 0, useGameStore.getState().sessionEvents);
       setDifficulty(next);
       if (currentPatient) {
+        // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
         void usePatientStore.getState().updateDifficulty(currentPatient.id, 'routine_recall', next.currentLevel);
       }
       setPhase('session_complete');

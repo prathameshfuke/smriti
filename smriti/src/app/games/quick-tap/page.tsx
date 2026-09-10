@@ -128,7 +128,15 @@ function QuickTapPageInner() {
     queueMicrotask(() => setTarget(pickObjects(1)[0] ?? null));
   }, [phase, round]);
 
-  const logRoundItem = (index: number, tapped: boolean) => {
+  // logEvent writes to Dexie before mirroring into gameStore.sessionEvents
+  // (lib/engine/telemetry.ts). Unlike other games, this one calls it once
+  // PER SEQUENCE ITEM (up to 30 per round, not once per round) — keepGoing/
+  // finishSession read sessionEvents once the whole round ends, so every
+  // item's log must land, not just the round's last one. Returns a promise
+  // so both call sites can sequence their own next step (advancing
+  // itemIndex) after the write actually completes, closing the same race
+  // fixed in path-match/memory-match, at every item instead of once.
+  const logRoundItem = async (index: number, tapped: boolean): Promise<void> => {
     setSequence((prev) => {
       const next = [...prev];
       if (next[index]) next[index] = { ...next[index], tapped };
@@ -141,7 +149,7 @@ function QuickTapPageInner() {
     const isHit = item.isTarget && tapped;
     const isFalseAlarm = !item.isTarget && tapped;
 
-    void logEvent({
+    await logEvent({
       sessionId: activeSession?.id ?? '',
       patientId: currentPatient.id,
       gameType: 'quick_tap',
@@ -165,8 +173,7 @@ function QuickTapPageInner() {
     const timer = setTimeout(() => {
       if (handledRef.current) return;
       handledRef.current = true;
-      logRoundItem(itemIndex, false);
-      setItemIndex((i) => i + 1);
+      void logRoundItem(itemIndex, false).then(() => setItemIndex((i) => i + 1));
     }, level.displayMs);
     timersRef.current.push(timer);
 
@@ -181,14 +188,14 @@ function QuickTapPageInner() {
     const item = sequence[itemIndex];
     if (!item) return;
 
-    setRing(item.isTarget ? 'hit' : 'false_alarm');
-    logRoundItem(itemIndex, true);
-
-    const timer = setTimeout(() => {
-      setRing(null);
-      setItemIndex((i) => i + 1);
-    }, 250);
-    timersRef.current.push(timer);
+    void logRoundItem(itemIndex, true).then(() => {
+      setRing(item.isTarget ? 'hit' : 'false_alarm');
+      const timer = setTimeout(() => {
+        setRing(null);
+        setItemIndex((i) => i + 1);
+      }, 250);
+      timersRef.current.push(timer);
+    });
   };
 
   const currentItem = sequence[itemIndex];
@@ -204,6 +211,7 @@ function QuickTapPageInner() {
     const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
     }
     setRound((r) => r + 1);
@@ -214,6 +222,7 @@ function QuickTapPageInner() {
     const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
     }
     setPhase('session_complete');

@@ -59,6 +59,7 @@ function ReminiscenceQuizPageInner() {
     // No difficulty adjustment for this game — a fixed 5-question quiz has
     // no meaningful "harder" tier (see MAX_LEVEL.reminiscence_quiz).
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: no downstream sessionEvents read exists in this file (fixed 5-question quiz, no difficulty tier — see MAX_LEVEL.reminiscence_quiz)
       void logEvent({
         sessionId: activeSession?.id ?? '',
         patientId: currentPatient.id,

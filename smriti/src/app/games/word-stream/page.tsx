@@ -154,6 +154,7 @@ function WordStreamPageInner() {
     const next = adjustDifficulty(difficulty, 'word_stream', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'word_stream', next.currentLevel);
 
       await logEvent({

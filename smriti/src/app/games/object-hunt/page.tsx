@@ -222,6 +222,7 @@ function ObjectHuntPageInner() {
   const keepGoing = () => {
     const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
+    // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
     if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
     setRound((r) => r + 1);
     setPhase('reveal');
@@ -230,6 +231,7 @@ function ObjectHuntPageInner() {
   const finishSession = () => {
     const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
+    // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
     if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
     setPhase('session_complete');
   };

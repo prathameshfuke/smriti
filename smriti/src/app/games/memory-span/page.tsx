@@ -40,12 +40,15 @@ function MemorySpanPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onComplete = (score: number) => {
-    const next = adjustDifficulty(difficulty, 'memory_span', score, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
+  const onComplete = async (score: number) => {
+    // Awaited and moved before adjustDifficulty: logEvent writes to Dexie
+    // before mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts).
+    // This previously fired fire-and-forget AFTER adjustDifficulty had
+    // already read sessionEvents, so the ML model never saw this session's
+    // own event — not racily, every single time, since this callback only
+    // ever logs once per session.
     if (currentPatient) {
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_span', next.currentLevel);
-      void logEvent({
+      await logEvent({
         sessionId: activeSession?.id ?? '',
         patientId: currentPatient.id,
         gameType: 'memory_span',
@@ -56,6 +59,12 @@ function MemorySpanPageInner() {
         eventTimestamp: new Date().toISOString(),
         metadata: { score },
       });
+    }
+    const next = adjustDifficulty(difficulty, 'memory_span', score, useGameStore.getState().sessionEvents);
+    setDifficulty(next);
+    if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
+      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_span', next.currentLevel);
     }
   };
 

@@ -83,12 +83,20 @@ function PathMatchPageInner() {
   }, [phase, t]);
 
   const completeRound = useCallback(
-    (finalPairs: Array<{ from: number; to: number }>, finalWrongTaps: number) => {
+    async (finalPairs: Array<{ from: number; to: number }>, finalWrongTaps: number) => {
       const totalConnections = points.length - 1;
       const timeUsedMs = Date.now() - playStartedAt;
 
       if (currentPatient) {
-        void logEvent({
+        // Awaited, not fire-and-forget: logEvent writes to Dexie before
+        // mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts),
+        // and keepGoing/finishSession read sessionEvents synchronously to
+        // feed the difficulty ML model. Without this await, a patient
+        // tapping "Finish Session" before that write lands would silently
+        // fall back to the less-informed rule-based difficulty path instead
+        // — a real race on a slow/loaded device, this app's actual target
+        // hardware, not just a timing quirk in tests.
+        await logEvent({
           sessionId: activeSession?.id ?? '',
           patientId: currentPatient.id,
           gameType: 'path_match',
@@ -133,7 +141,7 @@ function PathMatchPageInner() {
     if (phase !== 'playing' || timeLeft !== 0) return;
     // Timer ran out mid-round: end here with whatever was completed so far.
     // Deferred one microtask per this codebase's convention for effect-derived state changes.
-    queueMicrotask(() => completeRound(completedPairs, wrongTaps));
+    queueMicrotask(() => void completeRound(completedPairs, wrongTaps));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, timeLeft]);
 
@@ -152,7 +160,7 @@ function PathMatchPageInner() {
         if (nextTarget % 3 === 0) speak('Good!');
 
         if (nextTarget > points.length) {
-          completeRound(nextPairs, wrongTaps);
+          void completeRound(nextPairs, wrongTaps);
         } else {
           setCurrentTarget(nextTarget);
         }
@@ -174,6 +182,7 @@ function PathMatchPageInner() {
     const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
     }
     setRound((r) => r + 1);
@@ -184,6 +193,7 @@ function PathMatchPageInner() {
     const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
       void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
     }
     setPhase('session_complete');

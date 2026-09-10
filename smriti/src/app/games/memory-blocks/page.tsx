@@ -40,24 +40,35 @@ function MemoryBlocksPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const onComplete = (score: number, levelReached: number) => {
+  const onComplete = async (score: number, levelReached: number) => {
     // Levels reached (3+) map onto this app's 1-8 difficulty scale for cross-session persistence.
     const normalizedAccuracy = Math.min(100, levelReached * 12);
-    const next = adjustDifficulty(difficulty, 'memory_blocks', normalizedAccuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
+    // Awaited and moved before adjustDifficulty: logEvent writes to Dexie
+    // before mirroring into gameStore.sessionEvents (lib/engine/telemetry.ts).
+    // This previously fired fire-and-forget AFTER adjustDifficulty had
+    // already read sessionEvents, so the ML model never saw this session's
+    // own event — not racily, every single time, since this callback only
+    // ever logs once per session. difficultyLevel now records the level
+    // this round was actually played at (matches path-match's convention),
+    // since `next` doesn't exist yet at log time.
     if (currentPatient) {
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_blocks', next.currentLevel);
-      void logEvent({
+      await logEvent({
         sessionId: activeSession?.id ?? '',
         patientId: currentPatient.id,
         gameType: 'memory_blocks',
-        difficultyLevel: next.currentLevel,
+        difficultyLevel: difficulty.currentLevel,
         roundNumber: levelReached,
         isCorrect: score > 0,
         responseTimeMs: null,
         eventTimestamp: new Date().toISOString(),
         metadata: { score, levelReached },
       });
+    }
+    const next = adjustDifficulty(difficulty, 'memory_blocks', normalizedAccuracy, useGameStore.getState().sessionEvents);
+    setDifficulty(next);
+    if (currentPatient) {
+      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
+      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_blocks', next.currentLevel);
     }
   };
 
