@@ -109,6 +109,21 @@ export async function checkPin(pin: string, stored: string | null): Promise<bool
  * real session could plausibly have expired. */
 const CAREGIVER_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Wrong-PIN lockout — previously lived as component `useState` in the PIN
+ * dialog (app/app/page.tsx), which meant a page reload silently reset both
+ * the attempt count and any active cooldown: an attacker could guess twice,
+ * reload, guess twice, reload, indefinitely, against a 10,000-combination
+ * PIN with the 3-strikes limit never actually engaging. Persisted here
+ * (same `persist` middleware as caregiverPinHash) so neither survives only
+ * as long as the component happens to stay mounted. `pinCooldownUntil` is
+ * an absolute timestamp, not a decrementing counter, so the remaining time
+ * is just `pinCooldownUntil - Date.now()` recomputed on mount — nothing to
+ * resume or lose across a reload.
+ */
+const MAX_PIN_ATTEMPTS = 3;
+const PIN_COOLDOWN_MS = 30_000;
+
 /** Single source of truth for language; I18nProvider reads through to this. */
 interface SettingsState {
   language: UILanguage;
@@ -118,6 +133,11 @@ interface SettingsState {
   /** Timestamp of the last confirmed-live caregiver login (magic-link
    * verify or onboarding) on this device. `null` until one has happened. */
   caregiverSessionVerifiedAt: number | null;
+  /** Wrong attempts since the last correct PIN (or the last time a cooldown
+   * expired and a fresh round started). */
+  pinAttempts: number;
+  /** Absolute ms timestamp the lockout ends, or null when not locked out. */
+  pinCooldownUntil: number | null;
   setLanguage: (language: UILanguage) => void;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
@@ -128,6 +148,17 @@ interface SettingsState {
    * re-checking the underlying session — false once it's old enough that the
    * real login could have expired, or if no login has ever been recorded. */
   isCaregiverSessionFresh: () => boolean;
+  /** Call after a failed verifyPin. Increments the persisted count and
+   * starts the persisted cooldown once MAX_PIN_ATTEMPTS is reached. */
+  recordWrongPinAttempt: () => void;
+  /** Call after a successful verifyPin, so a correct entry actually clears
+   * the slate instead of leaving a stale near-threshold count for next time. */
+  clearPinAttempts: () => void;
+  /** Whether entry is currently locked out — true while pinCooldownUntil is
+   * still in the future. Reading this (rather than comparing the raw
+   * timestamp inline everywhere) keeps the "in the past = not locked"
+   * interpretation in one place. */
+  isPinLocked: () => boolean;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -137,6 +168,8 @@ export const useSettingsStore = create<SettingsState>()(
       isFirstLaunch: true,
       caregiverPinHash: null,
       caregiverSessionVerifiedAt: null,
+      pinAttempts: 0,
+      pinCooldownUntil: null,
 
       setLanguage: (language) => set({ language }),
       setPin: async (pin) => {
@@ -148,6 +181,18 @@ export const useSettingsStore = create<SettingsState>()(
       isCaregiverSessionFresh: () => {
         const verifiedAt = get().caregiverSessionVerifiedAt;
         return verifiedAt !== null && Date.now() - verifiedAt < CAREGIVER_SESSION_MAX_AGE_MS;
+      },
+      recordWrongPinAttempt: () => {
+        const next = get().pinAttempts + 1;
+        set({
+          pinAttempts: next,
+          pinCooldownUntil: next >= MAX_PIN_ATTEMPTS ? Date.now() + PIN_COOLDOWN_MS : get().pinCooldownUntil,
+        });
+      },
+      clearPinAttempts: () => set({ pinAttempts: 0, pinCooldownUntil: null }),
+      isPinLocked: () => {
+        const until = get().pinCooldownUntil;
+        return until !== null && Date.now() < until;
       },
     }),
     { name: 'smriti.settings' },

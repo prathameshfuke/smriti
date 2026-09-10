@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
@@ -59,90 +59,103 @@ function RoutineRecallIcon() {
   );
 }
 
-const MAX_PIN_ATTEMPTS = 3;
-const COOLDOWN_SECONDS = 30;
 const PIN_LENGTH = 4;
 
 function PinDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const verifyPin = useSettingsStore((s) => s.verifyPin);
+  const pinCooldownUntil = useSettingsStore((s) => s.pinCooldownUntil);
+  const isPinLocked = useSettingsStore((s) => s.isPinLocked);
+  const recordWrongPinAttempt = useSettingsStore((s) => s.recordWrongPinAttempt);
+  const clearPinAttempts = useSettingsStore((s) => s.clearPinAttempts);
 
   const [digits, setDigits] = useState('');
-  const [, setAttempts] = useState(0);
-  const [cooldown, setCooldown] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  // The actual lockout is judged by isPinLocked()/pinCooldownUntil
+  // (settingsStore.ts, persisted) — a page reload mid-cooldown no longer
+  // resets it, since pinCooldownUntil is an absolute timestamp, not a
+  // decrementing counter. remainingSeconds is display-only, computed inside
+  // the effect (not during render — Date.now() read at render time is
+  // impure and this project's lint enforces that) and re-read every second
+  // while locked so the countdown text keeps ticking.
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const locked = isPinLocked();
 
   useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (cooldown <= 0 && intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, [cooldown]);
-
-  const startCooldown = () => {
-    setCooldown(COOLDOWN_SECONDS);
-    intervalRef.current = setInterval(() => {
-      setCooldown((s) => Math.max(0, s - 1));
-    }, 1000);
-  };
+    // No explicit reset when unlocked: the cooldown message itself stops
+    // rendering once `locked` is false, so a stale remainingSeconds sitting
+    // unused in state is harmless — the next lockout's tick() overwrites it
+    // before it's ever displayed again.
+    if (!locked || pinCooldownUntil === null) return;
+    const tick = () => setRemainingSeconds(Math.max(0, Math.ceil((pinCooldownUntil - Date.now()) / 1000)));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [locked, pinCooldownUntil]);
 
   const submitPin = async (candidate: string) => {
-    const ok = await verifyPin(candidate);
-    if (!ok) {
-      setDigits('');
-      setAttempts((prev) => {
-        const next = prev + 1;
-        if (next >= MAX_PIN_ATTEMPTS) startCooldown();
-        return next;
-      });
-      return;
-    }
+    // verifyPin runs a real PBKDF2 chain (100k iterations, settingsStore.ts)
+    // — deliberately slow, not instant. Without `verifying` gating input
+    // below, a caregiver (or an attacker brute-forcing this 4-digit PIN)
+    // typing the next attempt before this resolves would have it silently
+    // absorbed into `digits` past PIN_LENGTH and discarded when this attempt
+    // finally clears it — undercounting real wrong attempts against the
+    // lockout threshold, worse the slower the device. `finally` so a stuck
+    // `true` can't survive any exit path, including an unexpected throw.
+    setVerifying(true);
+    try {
+      const ok = await verifyPin(candidate);
+      if (!ok) {
+        setDigits('');
+        recordWrongPinAttempt();
+        return;
+      }
+      // A correct PIN actually clears the slate — previously implicit (the
+      // component's own state just wasn't there to inherit), now explicit
+      // since the count is persisted and would otherwise carry a stale
+      // near-threshold value into the next unrelated lockout window.
+      clearPinAttempts();
 
-    // The PIN is a fast unlock on top of a real login, not a second
-    // credential — once it's old enough to plausibly have expired, correct
-    // digits alone must not be enough. Skip the live check entirely while
-    // it's still fresh: that's the whole point of the PIN, and hitting
-    // Supabase on every unlock would also break it offline.
-    if (useSettingsStore.getState().isCaregiverSessionFresh()) {
+      // The PIN is a fast unlock on top of a real login, not a second
+      // credential — once it's old enough to plausibly have expired, correct
+      // digits alone must not be enough. Skip the live check entirely while
+      // it's still fresh: that's the whole point of the PIN, and hitting
+      // Supabase on every unlock would also break it offline.
+      if (useSettingsStore.getState().isCaregiverSessionFresh()) {
+        router.push('/caregiver/dashboard');
+        return;
+      }
+
+      const liveStatus = await checkLiveCaregiverSession();
+      if (liveStatus === 'invalid') {
+        // The underlying login has actually expired — the PIN can't paper
+        // over that. Send them through the real thing instead of bouncing
+        // between here and a dashboard that will just bounce them again.
+        router.push('/caregiver/login?next=/app');
+        return;
+      }
+      // 'valid' or 'offline': either the login is still genuinely live, or
+      // there's no way to check right now. Offline is let through rather than
+      // stranding a caregiver with no connectivity — it stays unverified and
+      // gets re-checked the next time this device is online.
+      if (liveStatus === 'valid') useSettingsStore.getState().markCaregiverSessionVerified();
       router.push('/caregiver/dashboard');
-      return;
+    } finally {
+      setVerifying(false);
     }
-
-    const liveStatus = await checkLiveCaregiverSession();
-    if (liveStatus === 'invalid') {
-      // The underlying login has actually expired — the PIN can't paper
-      // over that. Send them through the real thing instead of bouncing
-      // between here and a dashboard that will just bounce them again.
-      router.push('/caregiver/login?next=/app');
-      return;
-    }
-    // 'valid' or 'offline': either the login is still genuinely live, or
-    // there's no way to check right now. Offline is let through rather than
-    // stranding a caregiver with no connectivity — it stays unverified and
-    // gets re-checked the next time this device is online.
-    if (liveStatus === 'valid') useSettingsStore.getState().markCaregiverSessionVerified();
-    router.push('/caregiver/dashboard');
   };
 
   const onDigit = (digit: string) => {
-    if (cooldown > 0) return;
+    if (locked || verifying) return;
     const next = digits + digit;
     setDigits(next);
     if (next.length === PIN_LENGTH) void submitPin(next);
   };
 
   const onBackspace = () => {
-    if (cooldown > 0) return;
+    if (locked || verifying) return;
     setDigits((d) => d.slice(0, -1));
   };
-
-  const locked = cooldown > 0;
 
   return (
     <div
@@ -164,11 +177,11 @@ function PinDialog({ onClose }: { onClose: () => void }) {
 
         {locked ? (
           <p role="status" className="text-patient-sm text-danger">
-            Too many wrong attempts. Try again in {cooldown}s.
+            Too many wrong attempts. Try again in {remainingSeconds}s.
           </p>
         ) : null}
 
-        <PinPad onDigit={onDigit} onBackspace={onBackspace} disabled={locked} />
+        <PinPad onDigit={onDigit} onBackspace={onBackspace} disabled={locked || verifying} />
 
         <BigButton label="Cancel" variant="secondary" onClick={onClose} />
       </div>

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { LocalPatient } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -208,15 +208,46 @@ describe('Home page', () => {
       fireEvent.click(screen.getByRole('button', { name: '9' }));
       fireEvent.click(screen.getByRole('button', { name: '9' }));
       fireEvent.click(screen.getByRole('button', { name: '9' }));
-      // Let verifyPin's PBKDF2 promise chain (real Web Crypto) settle before
-      // the next round of clicks.
-      await act(async () => {
-        await new Promise((resolve) => setTimeout(resolve, 50));
+      // Wait for THIS round's real verifyPin (PBKDF2, real Web Crypto) to
+      // actually settle before the next round of clicks — not a fixed
+      // delay. A fixed setTimeout(50) here previously assumed 50ms was
+      // always enough; under full-suite CPU contention it sometimes
+      // wasn't, and the app's own `verifying` guard (app/app/page.tsx —
+      // correctly, this is what stops a real attacker from out-typing the
+      // lockout) then silently drops the next round's clicks because they
+      // land while still mid-verification, undercounting real wrong
+      // attempts in the test the same way the bug once did for a
+      // different reason. Waiting for the keypad to re-enable (or the
+      // cooldown message to appear, on the final round once the 3rd
+      // attempt triggers it) tracks the actual async completion instead
+      // of guessing a duration.
+      await waitFor(() => {
+        const nineButton = screen.getByRole('button', { name: '9' });
+        const cooldownVisible = screen.queryByText(/try again in/i) !== null;
+        expect(!nineButton.hasAttribute('disabled') || cooldownVisible).toBe(true);
       });
     }
 
     expect(await screen.findByText(/try again in/i)).toBeInTheDocument();
   }, 15000);
+
+  it('keeps a wrong-PIN lockout active across a reload, not just for as long as the dialog stays mounted', async () => {
+    // Regression coverage for the actual bug: attempts/cooldown used to be
+    // component useState, which reset on any remount — a reload (or just
+    // closing and reopening the PWA) fully cleared the 3-strikes lockout,
+    // no matter how many wrong attempts came before it. Setting the store
+    // directly here stands in for a real reload: zustand's persist
+    // middleware would already have written this to localStorage before
+    // the reload happened, so a fresh mount reads it back exactly like this.
+    await useSettingsStore.getState().setPin('1234');
+    usePatientStore.getState().setCurrentPatient(patient());
+    useSettingsStore.setState({ pinAttempts: 3, pinCooldownUntil: Date.now() + 30_000 });
+
+    render(<HomePage />);
+    fireEvent.click(screen.getByRole('button', { name: /my progress/i }));
+
+    expect(await screen.findByText(/try again in/i)).toBeInTheDocument();
+  });
 
   it('never shows a PIN prompt or any credential input until the caregiver icon is tapped', () => {
     usePatientStore.getState().setCurrentPatient(patient());
