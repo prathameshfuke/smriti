@@ -17,10 +17,14 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 describe('Landing page', () => {
-  it("renders the hero headline 'Cognitive Care for Your Loved Ones'", async () => {
+  it("renders the hero headline 'Care that stays with you, even offline'", async () => {
+    // Amigo-inspired restyle (docs/Design System_ Amigo-Inspired Clinical AI
+    // Platform.md §5.3: "headline should be short, declarative, and
+    // operational") replaced the old generic headline with this copy.
     const { default: LandingPage } = await import('@/app/page');
     render(<LandingPage />);
-    expect(screen.getByText(/cognitive care for your loved ones/i)).toBeInTheDocument();
+    expect(screen.getByText(/care that stays with you/i)).toBeInTheDocument();
+    expect(screen.getByText(/even offline/i)).toBeInTheDocument();
   });
 
   it("renders a 'Get Started' CTA linking to /login", async () => {
