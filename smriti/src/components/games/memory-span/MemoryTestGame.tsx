@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { useTranslations } from 'next-intl';
 import { Trophy, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { speak } from '@/lib/audio/speech';
+import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'instruction' | 'presentation' | 'recall' | 'setup' | 'results';
 
@@ -49,6 +51,17 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
       setCurrentWords(shuffled.slice(0, 12));
     }
   }, [wordBank, currentWords.length]);
+
+  // Narrate the instructions aloud whenever the word-presentation screen is
+  // (re)entered — this game's instruction moment, mirroring how the app's
+  // original games speak their instruction text on entry.
+  useEffect(() => {
+    if (gameState !== 'presentation') return;
+    speak(`${t('memorizeTheseWords')} ${t('studyAtYourPace')}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState]);
+
+  const stars = results ? starsFromRate(results.score / 100) : 1;
 
   const proceedToRecall = useCallback(() => {
     setGameState('recall');
@@ -354,6 +367,10 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                 <h3 className="font-serif-display text-patient-heading text-ink">
                   {t('results.title')}
                 </h3>
+                <p className="text-4xl text-primary" aria-hidden="true">
+                  {'⭐'.repeat(stars)}
+                  {'☆'.repeat(5 - stars)}
+                </p>
                 <p className="text-patient-body text-ink-muted">
                   {results.score >= 80 ? t('results.excellent') :
                    results.score >= 60 ? t('results.good') :
@@ -420,34 +437,6 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Missed Words Section */}
-              {currentWords.filter(word => !results.correctWords.includes(word)).length > 0 && (
-                <Card className="bg-surface-card border-line200 shadow-sm max-w-4xl mx-auto">
-                  <CardHeader>
-                    <CardTitle className="font-serif-display text-patient-body text-ink">
-                      {t('results.missedWords')}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                      {currentWords
-                        .filter(word => !results.correctWords.includes(word))
-                        .map((word, index) => (
-                          <div
-                            key={index}
-                            className="flex items-center gap-2 px-3 py-2 bg-danger/10 rounded-control text-patient-sm"
-                          >
-                            <div className="w-4 h-4 bg-danger rounded-full flex items-center justify-center">
-                              <span className="text-ink-inverse text-xs font-bold">×</span>
-                            </div>
-                            <span className="font-medium text-ink">{word}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
 
               {/* Encouragement Section */}
               <div className="bg-surface-card rounded-panel p-6 max-w-4xl mx-auto border border-line200 shadow-sm">

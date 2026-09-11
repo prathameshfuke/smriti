@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useTimeout } from '@/hooks/useTimeout'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
+import { speak } from '@/lib/audio/speech'
+import { starsFromRate } from '@/lib/engine/scoring'
 
 interface Block {
     id: number
@@ -95,6 +97,20 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
             setBestScore(parseInt(savedBestScore, 10))
         }
     }, [])
+
+    // Narrate the instructions aloud whenever a new pattern is about to be
+    // shown — this game's instruction moment, mirroring how the app's
+    // original games speak their instruction text on entry.
+    useEffect(() => {
+        if (gameState !== 'showing') return
+        speak(t('watchSequence'))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState])
+
+    // Floored 1-5 star rating for the results screen, from how many levels
+    // were reached — the same levelReached-to-percentage mapping this game's
+    // page wrapper already uses to bridge into the difficulty engine.
+    const blockStars = starsFromRate(Math.min(100, level * 12) / 100)
 
     const updateBestScore = useCallback((newScore: number) => {
         if (newScore > bestScore) {
@@ -310,6 +326,10 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                             <h3 className="font-serif-display text-patient-heading text-ink mb-4">
                                 {t('gameOver')}
                             </h3>
+                            <p className="text-4xl text-primary" aria-hidden="true">
+                                {'★'.repeat(blockStars)}
+                                {'☆'.repeat(5 - blockStars)}
+                            </p>
                             <div className="space-y-2 text-left w-full text-patient-body text-ink">
                                 <p className="flex justify-between gap-4">
                                     <span>{t('finalScore')}:</span>

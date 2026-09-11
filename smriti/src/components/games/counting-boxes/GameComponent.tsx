@@ -11,6 +11,8 @@ import { CheckCircle, XCircle } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import './styles.css';
 import confetti from 'canvas-confetti';
+import { speak } from '@/lib/audio/speech';
+import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'start' | 'observing' | 'input' | 'result' | 'gameOver' | 'animating';
 
@@ -657,6 +659,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         // 其他gameState不再触发generateLevel
     }, [gameState, generateLevel, startTimer]);
 
+    // 朗读指示 - 每次进入观察阶段时读出指示语，与原始游戏的语音提示保持一致
+    useEffect(() => {
+        if (gameState !== 'observing') return;
+        speak(t('observing'));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState]);
+
     // 结算页全对时触发礼花动画
     useEffect(() => {
         if (
@@ -740,6 +749,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
+
+    // Floored 1-5 star rating for the game-over screen — never reads as a zero-star session.
+    const boxesStars = starsFromRate(
+        gameStats.totalLevels > 0 ? gameStats.correctAnswers / gameStats.totalLevels : 0
+    );
 
     return (
         <div className="flex flex-col items-center gap-5 text-ink p-4">
@@ -840,6 +854,12 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                         <h2 className="font-serif-display text-patient-heading text-ink text-center mb-4">
                                             {t('gameOver')}
                                         </h2>
+
+                                        {/* Floored 1-5 star rating — never reads as a zero-star session */}
+                                        <p className="text-4xl text-primary text-center mb-4" aria-hidden="true">
+                                            {'★'.repeat(boxesStars)}
+                                            {'☆'.repeat(5 - boxesStars)}
+                                        </p>
 
                                         {/* 总体统计 */}
                                         <div className="space-y-3 mb-6 text-patient-sm text-ink">

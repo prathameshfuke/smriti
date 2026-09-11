@@ -8,12 +8,12 @@ import {
   Check,
   Gauge,
   LocateFixed,
+  Minus,
   Play,
   RotateCcw,
   Settings2,
   Trophy,
   Truck,
-  X,
 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { Button } from '@/components/ui/button'
@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
+import { starsFromRate } from '@/lib/engine/scoring'
+import { speak } from '@/lib/audio/speech'
 import {
   DOUBLE_DECISION_MAX_DISPLAY_MS,
   DOUBLE_DECISION_MIN_DISPLAY_MS,
@@ -679,11 +681,23 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
     [finishTrial, phase, trial.targetPosition],
   )
 
+  // Narrate the instructions aloud whenever the intro screen is shown —
+  // this game's instruction moment, mirroring how the app's original games
+  // speak their instruction text on entry.
+  useEffect(() => {
+    if (phase !== 'intro') return
+    speak(`${t('title')}. ${t('intro')}`)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase])
+
   const completedRounds = trialIndex + (phase === 'results' ? 1 : 0)
   const currentAccuracy = Math.round(
     (correctCount / Math.max(1, completedRounds)) * 100,
   )
   const decisionRating = calculateDoubleDecisionScore(pointsTotal, totalTrials)
+  // Floored 1-5 star rating for the results screen — never reads as a
+  // zero-star session.
+  const decisionStars = starsFromRate(currentAccuracy / 100)
   const feedbackCorrect =
     outcome?.vehicleCorrect === true && outcome.locationCorrect === true
   const visibleRound =
@@ -825,16 +839,16 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
             'flex min-h-[280px] flex-col items-center justify-center gap-5 p-8 pt-16 text-center motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:min-h-[320px]',
             feedbackCorrect
               ? 'bg-success/10 text-success'
-              : 'bg-warning/10 text-warning',
+              : 'bg-surface-muted text-ink-muted',
           )}
         >
           <div
             className={cn(
               'flex h-16 w-16 items-center justify-center rounded-full motion-safe:animate-in motion-safe:zoom-in-50 motion-safe:duration-300',
-              feedbackCorrect ? 'bg-success text-ink-inverse' : 'bg-warning text-ink-inverse',
+              feedbackCorrect ? 'bg-success text-ink-inverse' : 'bg-ink-muted text-ink-inverse',
             )}
           >
-            {feedbackCorrect ? <Check className="h-9 w-9" /> : <X className="h-9 w-9" />}
+            {feedbackCorrect ? <Check className="h-9 w-9" /> : <Minus className="h-9 w-9" />}
           </div>
           <div className="motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
             <h3 className="font-serif-display text-patient-heading">
@@ -863,6 +877,10 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
           </div>
           <p className="mt-1 text-patient-sm font-medium text-ink-muted">
             {t('ratingUnit')}
+          </p>
+          <p className="mt-3 text-4xl text-primary" aria-hidden="true">
+            {'★'.repeat(decisionStars)}
+            {'☆'.repeat(5 - decisionStars)}
           </p>
           <h2 className="mt-4 font-serif-display text-patient-heading text-ink">{t('resultsTitle')}</h2>
           <p className="mt-2 text-patient-sm text-ink-muted">

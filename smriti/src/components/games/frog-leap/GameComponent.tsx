@@ -10,7 +10,10 @@ import { Settings } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
+import { speak } from '@/lib/audio/speech';
+import { starsFromRate } from '@/lib/engine/scoring';
 import {
     GamePhase,
     PadPosition,
@@ -122,9 +125,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         return () => ro.disconnect();
     }, []);
 
-    // Scale game elements based on container width (600px = desktop baseline)
-    const scale = Math.max(0.6, Math.min(1, containerWidth / 600));
-    const lilyPadSize = Math.round(75 * scale);
+    // Scale game elements based on container width. This app's page is
+    // capped at max-w-patient (480px), so the old 600px desktop baseline
+    // left the lily pads — the actual tap targets — as small as ~45-56px on
+    // real phone widths, under this app's 64px touch-target floor. Rebase
+    // against the app's real max width and floor the lily pad at that size
+    // (the frog sprite itself isn't tappable, so it keeps scaling freely).
+    const scale = Math.max(1, containerWidth / 480);
+    const lilyPadSize = Math.max(TOUCH_TARGET_MIN_PX, Math.round(75 * scale));
     const frogSize = Math.round(50 * scale);
     const idleFrogSize = Math.round(80 * scale);
 
@@ -244,6 +252,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         // After a brief pause, start demo
         setTimeout(() => {
             setMessage(t('watch'));
+            speak(`${params.jumpCount} ${t('watch')}`);
             playDemo(seq, pads, jumpDurations);
         }, 1500);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -368,6 +377,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const frogPos = getFrogPosition();
     const progressPct = progressTotal > 0 ? Math.max(0, 1 - progressElapsed / progressTotal) : 0;
     const params = getLevelParams(level);
+
+    // Floored 1-5 star rating for the end-of-session screen, from how many
+    // levels were reached — the same levelReached-to-percentage mapping this
+    // game's page wrapper already uses to bridge into the difficulty engine.
+    const frogStars = starsFromRate(Math.min(100, level * 12) / 100);
 
     return (
         <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
@@ -574,23 +588,29 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             key="fail-btns"
                             initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="flex gap-3"
+                            className="flex flex-col items-center gap-1"
                         >
-                            <Button
-                                size="lg"
-                                variant="outline"
-                                onClick={retryLevel}
-                                className="font-semibold py-5 px-8 text-patient-body rounded-tile focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                            >
-                                {t('tryAgain')}
-                            </Button>
-                            <Button
-                                size="lg"
-                                onClick={restartGame}
-                                className="font-semibold py-5 px-8 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
-                            >
-                                {t('start')}
-                            </Button>
+                            <p className="text-2xl text-primary" aria-hidden="true">
+                                {'★'.repeat(frogStars)}
+                                {'☆'.repeat(5 - frogStars)}
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    size="lg"
+                                    variant="outline"
+                                    onClick={retryLevel}
+                                    className="font-semibold py-5 px-8 text-patient-body rounded-tile focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                >
+                                    {t('tryAgain')}
+                                </Button>
+                                <Button
+                                    size="lg"
+                                    onClick={restartGame}
+                                    className="font-semibold py-5 px-8 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                >
+                                    {t('start')}
+                                </Button>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>
@@ -621,7 +641,12 @@ function GameSettingsDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
+                    className="shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>

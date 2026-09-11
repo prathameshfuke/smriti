@@ -10,11 +10,13 @@ import confetti from "canvas-confetti";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { ProgressShareModal } from "@/components/ui/ProgressShareModal";
 import { useTranslations, useLocale } from "next-intl";
-import { Link } from "@/i18n/navigation";
 import GameSettings, { GameSettings as GameSettingsType } from "./GameSettings";
 import GameDemo from "./GameDemo";
 import { analytics } from "@/lib/analytics";
 import { submitScoreToLeaderboard } from "@/lib/leaderboard";
+import { speak } from "@/lib/audio/speech";
+import { starsFromRate } from "@/lib/engine/scoring";
+import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import {
     getProgressInsights,
     ProgressCardData,
@@ -243,6 +245,20 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
             }
         }
     });
+
+    // Floored 1-5 star rating for the results screen, from this session's
+    // overall accuracy across every trial (same figure used for onComplete
+    // and the progress-share card) — never reads as a zero-star session.
+    const nBackStars = starsFromRate(getOverallStats(results).overallAccuracy / 100);
+
+    // Narrate the challenge instructions aloud whenever the idle/start screen
+    // is shown — this is the game's instruction moment, mirroring how the
+    // app's original games speak their instruction text on entry.
+    useEffect(() => {
+        if (gameState !== "idle") return;
+        speak(`${t('challenge')}. ${t('improveMemorySubtitle')}`);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState]);
 
     const startGame = useCallback(() => {
         // 记录游戏开始时间和追踪事件
@@ -669,18 +685,6 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                         {isLoading ? t('starting') : t('startTraining')}
                                     </span>
                                 </ShimmerButton>
-
-                                <div className="text-center">
-                                    <Link href="/get-started" target="_blank">
-                                        <Button
-                                            variant="ghost"
-                                            className="text-patient-sm text-ink-muted"
-                                        >
-                                            {t('testMyLevel')}
-                                        </Button>
-                                    </Link>
-                                </div>
-
                             </div>
                         </div>
                     ) : gameState === "playing" ? (
@@ -739,6 +743,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     <Button
                                         onClick={() => handleResponse("position")}
                                         variant="ghost"
+                                        style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
                                         className={cn(
                                             "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isPositionHighlight &&
@@ -753,6 +758,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     <Button
                                         onClick={() => handleResponse("audio")}
                                         variant="ghost"
+                                        style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
                                         className={cn(
                                             "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isAudioHighlight &&
@@ -775,6 +781,10 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                             <h2 className="font-serif-display text-patient-heading font-semibold mb-4 text-ink">
                                 {t('trainingResults')}
                             </h2>
+                            <p className="text-4xl text-primary mb-4" aria-hidden="true">
+                                {'★'.repeat(nBackStars)}
+                                {'☆'.repeat(5 - nBackStars)}
+                            </p>
                             <div className="bg-surface-muted p-6 rounded-card mb-6 max-w-md mx-auto">
                                 <div
                                     className={cn(
@@ -930,7 +940,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     <div className="flex justify-center gap-2">
                                         <Button
                                             variant="ghost"
-                                            size="sm"
+                                            style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
                                             onClick={() => {
                                                 analytics.navigation.recommendation({
                                                     game_from: 'dual-n-back',

@@ -12,6 +12,8 @@ import { useTranslations } from 'next-intl';
 import { useInterval } from '@/hooks/useInterval';
 import { useTimeout } from '@/hooks/useTimeout';
 import confetti from 'canvas-confetti';
+import { speak } from '@/lib/audio/speech';
+import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'idle' | 'playing' | 'complete';
 type NumberOption = { value: number; position: 'left' | 'right' };
@@ -267,6 +269,18 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         }
     }, [gameState]);
 
+    // Narrate the challenge instructions aloud whenever the idle/start screen
+    // is shown — this game's instruction moment, mirroring how the app's
+    // original games speak their instruction text on entry.
+    useEffect(() => {
+        if (gameState !== "idle") return;
+        speak(t("challenge", {
+            attempts: currentDifficulty.attempts,
+            accuracy: currentDifficulty.accuracy,
+        }));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gameState]);
+
     // Handle player selection
     const handleSelection = useCallback(
         (option: NumberOption) => {
@@ -423,6 +437,17 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             <h2 className="font-serif-display text-patient-heading text-ink mb-4">
                                 {t("timeUp")}
                             </h2>
+
+                            {/* Floored 1-5 star rating — never reads as a zero-star session */}
+                            {(() => {
+                                const stars = starsFromRate(calculateAccuracy() / 100);
+                                return (
+                                    <p className="text-4xl text-primary mb-4" aria-hidden="true">
+                                        {'★'.repeat(stars)}
+                                        {'☆'.repeat(5 - stars)}
+                                    </p>
+                                );
+                            })()}
 
                             {/* Challenge result */}
                             {challengeResult && (

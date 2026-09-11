@@ -10,7 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
+import { speak } from '@/lib/audio/speech';
+import { starsFromRate } from '@/lib/engine/scoring';
 
 interface GameSettings {
     startLevel: number;
@@ -111,9 +114,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         return () => ro.disconnect();
     }, []);
 
-    // Scale fish size based on container width (800px = desktop baseline)
-    const fishScale = Math.max(0.6, Math.min(1, cWidth / 800));
-    const fishSize = Math.round(60 * fishScale);
+    // Scale fish size based on container width. This app's page is capped
+    // at max-w-patient (480px), so the old 800px desktop baseline was never
+    // reachable — fishScale was always clamped to its 0.6 floor, pinning
+    // every fish at ~36px regardless of device, well under this app's 64px
+    // touch-target floor for the only tappable target in this game. Rebase
+    // against the app's real max width and enforce that floor directly.
+    const fishScale = Math.max(1, cWidth / 480);
+    const fishSize = Math.max(TOUCH_TARGET_MIN_PX, Math.round(60 * fishScale));
     const fishOffset = fishSize / 2;
 
     // Progress bar animation loop
@@ -168,6 +176,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const startGame = useCallback(() => {
         setPhase('watching');
         setMessage(t('start'));
+        speak(t('start'));
         setRoundPoints(null);
         setRoundResult(null);
 
@@ -257,6 +266,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
     // Progress bar percentage
     const progressPct = progressTotal > 0 ? Math.max(0, 1 - progressElapsed / progressTotal) : 0;
+
+    // Floored 1-5 star rating for this round's result screen — never reads as a zero-star failure.
+    const fishStars = roundResult && roundResult.total > 0
+        ? starsFromRate(roundResult.correct / roundResult.total)
+        : 5;
 
     return (
         <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
@@ -487,9 +501,15 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             className="flex flex-col items-center gap-2"
                         >
                             {roundResult && (
-                                <div className="text-patient-sm font-medium text-ink-muted">
-                                    {roundResult.correct}/{roundResult.total} {t('scorePrefix')} {roundPoints !== null ? `+${roundPoints}` : ''}
-                                </div>
+                                <>
+                                    <p className="text-2xl text-primary" aria-hidden="true">
+                                        {'★'.repeat(fishStars)}
+                                        {'☆'.repeat(5 - fishStars)}
+                                    </p>
+                                    <div className="text-patient-sm font-medium text-ink-muted">
+                                        {roundResult.correct}/{roundResult.total} {t('scorePrefix')} {roundPoints !== null ? `+${roundPoints}` : ''}
+                                    </div>
+                                </>
                             )}
                             {!roundResult?.isPerfect && (
                                 <Button
@@ -530,7 +550,12 @@ function GameSettingsDialog({
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogTrigger asChild>
-                <Button variant="outline" size="icon" className="w-10 h-10 shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary">
+                <Button
+                    variant="outline"
+                    size="icon"
+                    style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
+                    className="shadow-sm rounded-full focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                >
                     <Settings className="w-5 h-5" />
                 </Button>
             </DialogTrigger>
