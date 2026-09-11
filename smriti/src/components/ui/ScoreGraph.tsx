@@ -10,22 +10,20 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { GAME_LABELS } from '@/lib/dashboard/gameLabels';
+import type { GameType } from '@/lib/supabase/types';
 
-export type GameType =
-  | 'object_hunt'
-  | 'word_recall'
-  | 'path_trace'
-  | 'quick_tap'
-  | 'memory_match'
-  | 'memory_blocks'
-  | 'frog_leap'
-  | 'counting_boxes'
-  | 'n_back'
-  | 'larger_number'
-  | 'memory_span'
-  | 'fish_trace'
-  | 'double_decision'
-  | 'routine_recall';
+/**
+ * Re-exported so existing importers (`app/caregiver/patients/[id]/page.tsx`
+ * historically imported this as `ScoreGameType`) keep working. This used to
+ * be its OWN narrower union (`word_recall`/`path_trace`, no
+ * `reminiscence_quiz`) — one of 3 copies of a canonical<->narrower game-type
+ * mapping that existed only to feed this component (the others were
+ * page.tsx's `SCORE_GAME_FOR` and the timeline API route's `GAME_TYPE_MAP`,
+ * both now deleted). Now a plain alias of the canonical union, so there is
+ * nothing left to translate.
+ */
+export type { GameType };
 
 export interface ScorePoint {
   /** ISO date, YYYY-MM-DD. */
@@ -39,40 +37,35 @@ export interface ScoreGraphProps {
   height?: number;
 }
 
-/** One colour per game, so a caregiver can tell the four lines apart. */
+/**
+ * One colour per game, so a caregiver can tell the lines apart. Values are
+ * intentionally NOT all design tokens — tailwind.config.ts's palette is a
+ * small brand palette, not a 15-hue qualitative data scale — except
+ * `frog_leap` and `memory_match`, which used to be leftover hex values from
+ * the app's retired cyan palette (`#059669`, `#0E7490`) rather than anything
+ * ever defined in the current config; those two now point at real tokens
+ * (`terra700`, `navy`).
+ */
 const GAME_COLOR: Record<GameType, string> = {
-  object_hunt: '#8B6914',
-  word_recall: '#2E7D32',
-  path_trace: '#1565C0',
+  object_hunt: '#8B6914', // muga-dark
+  word_stream: '#2E7D32',
+  path_match: '#1565C0',
   quick_tap: '#6A1B9A',
-  memory_match: '#0E7490',
-  memory_blocks: '#BE3A34',
-  frog_leap: '#059669',
+  memory_match: '#151312', // navy
+  memory_blocks: '#BE3A34', // gamosa
+  frog_leap: '#933A27', // terra700 / primary.dark
   counting_boxes: '#C2410C',
   n_back: '#7C3AED',
   larger_number: '#0284C7',
   memory_span: '#BE185D',
   fish_trace: '#0D9488',
   double_decision: '#B45309',
+  reminiscence_quiz: '#E7B2A2', // rose100
   routine_recall: '#65A30D',
 };
 
-const GAME_LABEL: Record<GameType, string> = {
-  object_hunt: 'Object Hunt',
-  word_recall: 'Word Recall',
-  path_trace: 'Path Trace',
-  quick_tap: 'Quick Tap',
-  memory_match: 'Memory Match',
-  memory_blocks: 'Memory Blocks',
-  frog_leap: 'Frog Leap',
-  counting_boxes: 'Counting Boxes',
-  n_back: 'N-Back',
-  larger_number: 'Larger Number',
-  memory_span: 'Memory Span',
-  fish_trace: 'Fish Trace',
-  double_decision: 'Double Decision',
-  routine_recall: 'Routine Recall',
-};
+/** Shared with the per-game breakdown chart and the page — see gameLabels.ts. */
+const GAME_LABEL = GAME_LABELS;
 
 const RANGES = [
   { id: '7d', days: 7 },
@@ -193,18 +186,21 @@ export default function ScoreGraph({ data, height = 240 }: ScoreGraphProps) {
       <div style={{ height }} className="w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={rows} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0EDE6" />
-            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6B6560' }} tickLine={false} />
+            {/* Literal hex, not Tailwind classes: recharts renders raw SVG
+                presentation attributes. line200 (#D8D2CB) and ink-muted
+                (#4B4541) — this used to be non-token #F0EDE6 / #6B6560. */}
+            <CartesianGrid strokeDasharray="3 3" stroke="#D8D2CB" />
+            <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#4B4541' }} tickLine={false} />
             <YAxis
               domain={[0, 100]}
-              tick={{ fontSize: 12, fill: '#6B6560' }}
+              tick={{ fontSize: 12, fill: '#4B4541' }}
               tickLine={false}
               width={36}
             />
             <Tooltip
               contentStyle={{
                 background: '#FFFFFF',
-                border: '1px solid #F0EDE6',
+                border: '1px solid #D8D2CB',
                 borderRadius: 12,
               }}
               formatter={(v, name) => [`${Number(v)}%`, GAME_LABEL[name as GameType] ?? name]}

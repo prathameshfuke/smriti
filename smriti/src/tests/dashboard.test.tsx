@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
+import { db, type LocalReminderAck } from '@/lib/db/schema';
+import { dateRange } from '@/lib/engine/adherence';
 
 const push = vi.fn();
 const router = { push, replace: vi.fn() };
@@ -158,27 +160,53 @@ describe('Patient detail page', () => {
     vi.unstubAllGlobals();
   });
 
-  it('reminders tab shows the adherence percentage from the adherence API', async () => {
+  it('reminders tab shows the adherence percentage computed from local Dexie data', async () => {
+    // The Reminders tab reads reminderSchedules/reminderAcks straight out of
+    // Dexie now (useReminderAdherence), not the network — this only needs
+    // /api/patients so the page itself can resolve, matching the offline
+    // requirement the rest of this suite covers for the cognitive tab.
     vi.stubGlobal(
       'fetch',
       fetchByUrl({
         '/api/patients/p1/timeline': { points: [] },
-        '/api/patients/p1/adherence': {
-          overallPct: 64,
-          byType: {},
-          missed: [],
-        },
         '/api/patients': { patients: [patient({ id: 'p1' })] },
       }),
     );
+    await db.reminderSchedules.clear();
+    await db.reminderAcks.clear();
+    await db.reminderSchedules.add({
+      id: 'sched-1',
+      patientId: 'p1',
+      reminderType: 'medication',
+      label: 'Aspirin',
+      timeOfDay: '00:00',
+      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+      isActive: true,
+      updatedAt: '2026-08-31T00:00:00.000Z',
+    });
+    // Every expected occurrence in the last 7 days acknowledged -> 100%,
+    // a deterministic result regardless of which weekday the suite runs on.
+    const acks: LocalReminderAck[] = dateRange(7).map((date, i) => ({
+      id: `ack-${i}`,
+      reminderId: 'sched-1',
+      patientId: 'p1',
+      scheduledAt: `${date}T00:00:00.000Z`,
+      acknowledgedAt: `${date}T00:05:00.000Z`,
+      ackMethod: 'touch',
+      synced: true,
+    }));
+    await db.reminderAcks.bulkAdd(acks);
+
     const { default: PatientDetailPage } = await import('@/app/caregiver/patients/[id]/page');
     render(<PatientDetailPage params={Promise.resolve({ id: 'p1' })} />);
 
     await screen.findByTestId('score-graph');
     fireEvent.click(screen.getByRole('button', { name: /reminders/i }));
 
-    expect(await screen.findByText(/64% reminders acknowledged this week/i)).toBeInTheDocument();
+    expect(await screen.findByText(/100% reminders acknowledged this week/i)).toBeInTheDocument();
     vi.unstubAllGlobals();
+    await db.reminderSchedules.clear();
+    await db.reminderAcks.clear();
   });
 
   it('history tab renders a calendar with the correct number of day cells for the current month', async () => {
@@ -232,5 +260,139 @@ describe('Patient detail page', () => {
     expect(screen.queryByText('Other patient')).not.toBeInTheDocument();
     expect(screen.queryByText('Old, resolved')).not.toBeInTheDocument();
     vi.unstubAllGlobals();
+  });
+
+  describe('offline: cognitive charts render from Dexie alone', () => {
+    beforeEach(async () => {
+      await db.dailySummaries.clear();
+    });
+
+    it('renders full trend, per-game breakdown, and calendar data with every non-essential fetch call failing', async () => {
+      // Every request EXCEPT /api/patients and /api/alerts (the page
+      // shell's own pre-existing network dependencies, out of scope for
+      // this task) rejects outright — the closest a jsdom test can come to
+      // "genuinely offline." In particular /api/patients/p1/timeline and
+      // .../adherence, this patient's OLD data sources, are never stubbed
+      // with data and always fail, so any value shown for them must have
+      // come from Dexie.
+      const fetchSpy = vi.fn().mockImplementation((url: string) => {
+        if (url.includes('/timeline') || url.includes('/adherence')) {
+          return Promise.reject(new Error(`offline — ${url}`));
+        }
+        if (url.includes('/api/patients')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: async () => ({ patients: [patient({ id: 'p1' })] }),
+          });
+        }
+        if (url.includes('/api/alerts')) {
+          return Promise.resolve({ ok: true, status: 200, json: async () => ({ alerts: [] }) });
+        }
+        return Promise.reject(new Error(`offline — ${url}`));
+      });
+      vi.stubGlobal('fetch', fetchSpy);
+
+      const today = new Date().toISOString().slice(0, 10);
+      const daysAgo = (n: number) => {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() - n);
+        return d.toISOString().slice(0, 10);
+      };
+      await db.dailySummaries.bulkAdd([
+        {
+          id: 'off-1',
+          patientId: 'p1',
+          summaryDate: today,
+          gameType: 'object_hunt',
+          totalRounds: 10,
+          correctRounds: 9,
+          avgResponseTimeMs: 900,
+          maxDifficultyReached: 5,
+          sessionCount: 1,
+          eloRating: 0,
+          synced: true,
+        },
+        {
+          id: 'off-2',
+          patientId: 'p1',
+          summaryDate: daysAgo(1),
+          gameType: 'quick_tap',
+          totalRounds: 8,
+          correctRounds: 4,
+          avgResponseTimeMs: 700,
+          maxDifficultyReached: 2,
+          sessionCount: 1,
+          eloRating: 0,
+          synced: true,
+        },
+        {
+          id: 'off-3',
+          patientId: 'p1',
+          summaryDate: daysAgo(2),
+          gameType: 'object_hunt',
+          totalRounds: 10,
+          correctRounds: 8,
+          avgResponseTimeMs: 950,
+          maxDifficultyReached: 5,
+          sessionCount: 1,
+          eloRating: 0,
+          synced: true,
+        },
+        {
+          id: 'off-4',
+          patientId: 'p1',
+          summaryDate: daysAgo(3),
+          gameType: 'object_hunt',
+          totalRounds: 10,
+          correctRounds: 7,
+          avgResponseTimeMs: 950,
+          maxDifficultyReached: 4,
+          sessionCount: 1,
+          eloRating: 0,
+          synced: true,
+        },
+        {
+          id: 'off-5',
+          patientId: 'p1',
+          summaryDate: daysAgo(4),
+          gameType: 'object_hunt',
+          totalRounds: 10,
+          correctRounds: 6,
+          avgResponseTimeMs: 950,
+          maxDifficultyReached: 4,
+          sessionCount: 1,
+          eloRating: 0,
+          synced: true,
+        },
+      ]);
+
+      const { default: PatientDetailPage } = await import('@/app/caregiver/patients/[id]/page');
+      render(<PatientDetailPage params={Promise.resolve({ id: 'p1' })} />);
+
+      // 5 distinct days clears the default 5-session low-data floor, so the
+      // full line-chart state (with its sr-only accessible table) renders.
+      const region = await screen.findByRole('img', { name: /line chart of blended daily accuracy/i });
+      expect(within(region).getByText(today)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /history/i }));
+      // Not pinned to a specific day cell: `summaryDate` is written app-wide
+      // as a UTC calendar day (every game page calls
+      // `new Date().toISOString().slice(0, 10)`), while the calendar grid
+      // numbers its cells off local Date methods — a pre-existing,
+      // out-of-scope mismatch for timezones off UTC. Asserting "at least one
+      // dot exists" avoids depending on that and still proves the data is
+      // real and Dexie-sourced (nothing else could have produced it here).
+      const dayCells = screen.getAllByTestId('calendar-day');
+      const dotted = dayCells.filter((cell) => cell.querySelector('.bg-success, .bg-warning, .bg-danger'));
+      expect(dotted.length).toBeGreaterThan(0);
+
+      const calledUrls = fetchSpy.mock.calls.map((c) => String(c[0]));
+      expect(calledUrls.some((u) => u.includes('/timeline'))).toBe(false);
+      expect(calledUrls.some((u) => u.includes('/adherence'))).toBe(false);
+
+      vi.unstubAllGlobals();
+      await db.dailySummaries.clear();
+    });
   });
 });

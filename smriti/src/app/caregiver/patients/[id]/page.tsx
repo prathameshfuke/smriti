@@ -6,11 +6,15 @@ import PatientNav from '@/components/layout/PatientNav';
 import BigButton from '@/components/ui/BigButton';
 import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
-import ScoreGraph, { type GameType as ScoreGameType } from '@/components/ui/ScoreGraph';
+import CognitiveTrendChart from '@/components/caregiver/CognitiveTrendChart';
+import GameBreakdownChart from '@/components/caregiver/GameBreakdownChart';
+import SessionCalendar from '@/components/caregiver/SessionCalendar';
 import { authedFetch } from '@/lib/api/client';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { MAX_LEVEL } from '@/lib/engine/difficulty';
-import type { GameType, ReminderType } from '@/lib/supabase/types';
+import { useCognitiveTrend, type TrendRange } from '@/hooks/useCognitiveTrend';
+import { useReminderAdherence } from '@/hooks/useReminderAdherence';
+import { aggregateDailyBlended, classifyVelocity } from '@/lib/dashboard/trend';
+import type { ReminderType } from '@/lib/supabase/types';
 
 type Tab = 'cognitive' | 'reminders' | 'history' | 'companion' | 'family';
 
@@ -29,7 +33,6 @@ interface FamilyNoteRow {
   status: string;
   created_at: string;
 }
-type RangeOption = '30d' | '90d' | '180d';
 
 interface DetailPatient {
   id: string;
@@ -44,19 +47,6 @@ interface AlertRow {
   title: string;
   description: string | null;
   severity: TriageStatus;
-}
-
-interface TimelinePoint {
-  date: string;
-  accuracy: number;
-  gameType: ScoreGameType;
-  maxDifficultyReached: number;
-}
-
-interface AdherenceResponse {
-  overallPct: number;
-  byType: Record<string, { acked: number; total: number }>;
-  missed: Array<{ date: string; time: string; label: string }>;
 }
 
 interface CompanionQuestion {
@@ -75,62 +65,6 @@ interface DigestEntry {
   generatedAt: string;
 }
 
-const CANONICAL_GAMES: GameType[] = [
-  'object_hunt',
-  'word_stream',
-  'quick_tap',
-  'path_match',
-  'memory_match',
-  'memory_blocks',
-  'frog_leap',
-  'counting_boxes',
-  'n_back',
-  'larger_number',
-  'memory_span',
-  'fish_trace',
-  'double_decision',
-  'reminiscence_quiz',
-  'routine_recall',
-];
-const GAME_LABELS: Record<GameType, string> = {
-  object_hunt: 'Object Hunt',
-  word_stream: 'Word Stream',
-  quick_tap: 'Quick Tap',
-  path_match: 'Path Match',
-  memory_match: 'Memory Match',
-  memory_blocks: 'Memory Blocks',
-  frog_leap: 'Frog Leap',
-  counting_boxes: 'Counting Boxes',
-  n_back: 'N-Back',
-  larger_number: 'Larger Number',
-  memory_span: 'Memory Span',
-  fish_trace: 'Fish Trace',
-  double_decision: 'Double Decision',
-  reminiscence_quiz: 'Memory Match: Family & Life',
-  routine_recall: 'Routine Recall',
-};
-// reminiscence_quiz has no difficulty progression (see MAX_LEVEL.reminiscence_quiz)
-// and so no meaningful entry in ScoreGraph's own, narrower GameType union — it's
-// mapped to its own literal (not a ScoreGameType) purely so the per-game
-// breakdown card below can still show "last played", never plotted on
-// ScoreGraph's line chart.
-const SCORE_GAME_FOR: Partial<Record<GameType, ScoreGameType | 'reminiscence_quiz'>> = {
-  object_hunt: 'object_hunt',
-  word_stream: 'word_recall',
-  quick_tap: 'quick_tap',
-  path_match: 'path_trace',
-  memory_match: 'memory_match',
-  memory_blocks: 'memory_blocks',
-  frog_leap: 'frog_leap',
-  counting_boxes: 'counting_boxes',
-  n_back: 'n_back',
-  larger_number: 'larger_number',
-  memory_span: 'memory_span',
-  fish_trace: 'fish_trace',
-  double_decision: 'double_decision',
-  reminiscence_quiz: 'reminiscence_quiz',
-  routine_recall: 'routine_recall',
-};
 const REMINDER_TYPES: ReminderType[] = ['medication', 'hydration', 'activity', 'appointment'];
 const REMINDER_ICON: Record<ReminderType, string> = {
   medication: '💊',
@@ -144,10 +78,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patient, setPatient] = useState<DetailPatient | null>(null);
   const [tab, setTab] = useState<Tab>('cognitive');
-  const [range, setRange] = useState<RangeOption>('30d');
-  const [points, setPoints] = useState<TimelinePoint[] | null>(null);
+  const [range, setRange] = useState<TrendRange>('30d');
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
-  const [adherence, setAdherence] = useState<AdherenceResponse | null>(null);
   const [companionQuestions, setCompanionQuestions] = useState<CompanionQuestion[] | null>(null);
   const [familyShares, setFamilyShares] = useState<FamilyShareRow[] | null>(null);
   const [familyNotes, setFamilyNotes] = useState<FamilyNoteRow[] | null>(null);
@@ -164,7 +96,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     { kind: 'idle' } | { kind: 'loading' } | { kind: 'done' } | { kind: 'needs_facts'; have: number; needed: number } | { kind: 'error' }
   >({ kind: 'idle' });
   const [error, setError] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
+  // Both Dexie-backed (dexie-react-hooks' useLiveQuery under the hood) — no
+  // network call, so the cognitive tab and the reminders tab keep working
+  // offline. See each hook's own doc comment for the cross-device caveat
+  // (a summary/ack only ever exists locally on the device that wrote it;
+  // `/api/sync` never sends `daily_summaries` back down — lib/db/sync.ts).
+  const trend = useCognitiveTrend(patientId, range);
+  const adherence = useReminderAdherence(patientId);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,13 +121,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       .then((body) => setPatient(body.patients.find((p) => p.id === patientId) ?? null))
       .catch(() => setError(true));
   }, [patientId]);
-
-  useEffect(() => {
-    if (!patientId) return;
-    authedFetch<{ points: TimelinePoint[] }>(`/api/patients/${patientId}/timeline?range=${range}`)
-      .then((body) => setPoints(body.points))
-      .catch(() => setError(true));
-  }, [patientId, range]);
 
   useEffect(() => {
     if (!patientId) return;
@@ -211,13 +143,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       })
       .catch(() => setError(true));
   }, [patientId]);
-
-  useEffect(() => {
-    if (!patientId || tab !== 'reminders' || adherence) return;
-    authedFetch<AdherenceResponse>(`/api/patients/${patientId}/adherence?range=7d`)
-      .then(setAdherence)
-      .catch(() => setError(true));
-  }, [patientId, tab, adherence]);
 
   useEffect(() => {
     if (!patientId || tab !== 'companion' || companionQuestions) return;
@@ -372,45 +297,18 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     setAlerts((prev) => prev.filter((a) => a.id !== alertId));
   };
 
-  const velocity = useMemo(() => {
-    if (!points || points.length === 0) return null;
-    const sorted = [...points].sort((a, b) => a.date.localeCompare(b.date));
-    const last7 = sorted.slice(-7);
-    const prev7 = sorted.slice(-14, -7);
-    if (last7.length === 0 || prev7.length === 0) return null;
-    const avg = (xs: TimelinePoint[]) => xs.reduce((s, p) => s + p.accuracy, 0) / xs.length;
-    const last7Avg = avg(last7);
-    const prev7Avg = avg(prev7);
-    if (last7Avg > prev7Avg + 5) return { label: '↑ Improving', className: 'text-success' };
-    if (last7Avg < prev7Avg - 5) return { label: '↓ Declining', className: 'text-danger' };
-    return { label: '→ Stable', className: 'text-ink-muted' };
-  }, [points]);
-
-  const difficultyByGame = useMemo(() => {
-    const map = new Map<GameType, { level: number; lastPlayed: string }>();
-    for (const canonical of CANONICAL_GAMES) {
-      const matching = (points ?? []).filter((p) => p.gameType === SCORE_GAME_FOR[canonical]);
-      if (matching.length === 0) continue;
-      const latest = matching.reduce((a, b) => (a.date > b.date ? a : b));
-      map.set(canonical, { level: latest.maxDifficultyReached, lastPlayed: latest.date });
-    }
-    return map;
-  }, [points]);
+  // Rounds-weighted (see lib/dashboard/trend.ts) so a 3-round game never
+  // moves this as much as a 30-round one — the bug in the old per-row
+  // unweighted mean this replaces.
+  const dailyBlended = useMemo(() => aggregateDailyBlended(trend.points), [trend.points]);
+  const velocity = useMemo(() => classifyVelocity(dailyBlended), [dailyBlended]);
+  const velocityClassName =
+    velocity?.direction === 'up' ? 'text-success' : velocity?.direction === 'down' ? 'text-danger' : 'text-ink-muted';
 
   const { year, month } = useMemo(() => {
     const now = new Date();
     return { year: now.getFullYear(), month: now.getMonth() };
   }, []);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekday = new Date(year, month, 1).getDay();
-  const accuracyByDate = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const p of points ?? []) {
-      if (!p.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)) continue;
-      map.set(p.date, p.accuracy);
-    }
-    return map;
-  }, [points, year, month]);
 
   if (error) {
     return (
@@ -563,68 +461,44 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               </div>
             ))}
 
-            <div role="group" aria-label="Timeline range" className="flex gap-2">
-              {(['30d', '90d', '180d'] as RangeOption[]).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  aria-pressed={range === r}
-                  className={
-                    'rounded-card px-3 py-2 text-caregiver-body font-semibold ' +
-                    (range === r ? 'bg-teal text-white' : 'bg-white text-gray-600 border border-gray-300')
-                  }
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-
-            {points === null ? (
-              <Skeleton height={240} />
-            ) : (
-              <div data-testid="score-graph" className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
-                <div className="h-1.5 bg-muga" />
-                <div className="p-4">
-                  <ScoreGraph data={points} />
-                </div>
+            <div data-testid="score-graph" className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+              <div className="h-1.5 bg-muga" />
+              <div className="p-4">
+                <CognitiveTrendChart
+                  points={trend.points}
+                  sessionDays={trend.sessionDays}
+                  range={range}
+                  onRangeChange={setRange}
+                  isLoading={trend.isLoading}
+                />
               </div>
-            )}
+            </div>
 
             {velocity ? (
               <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
                 <div className="h-1.5 bg-muga" />
                 <div className="p-4">
                   <p className="text-caregiver-body text-gray-600">Cognitive Trend</p>
-                  <p className={`font-serif-display text-2xl font-bold ${velocity.className}`}>
+                  <p className={`font-serif-display text-2xl font-bold ${velocityClassName}`}>
                     {velocity.label}
                   </p>
                 </div>
               </div>
             ) : null}
 
-            <div className="grid grid-cols-2 gap-3">
-              {CANONICAL_GAMES.map((game) => {
-                const info = difficultyByGame.get(game);
-                return (
-                  <div key={game} className="rounded-card border border-gray-300 bg-white p-3 shadow-sm">
-                    <p className="font-bold text-navy">{GAME_LABELS[game]}</p>
-                    <p className="text-caregiver-body text-gray-600">
-                      {info ? `Level ${info.level} / ${MAX_LEVEL[game]}` : 'No sessions yet'}
-                    </p>
-                    {info ? (
-                      <p className="text-patient-sm text-gray-600">Last played {info.lastPlayed}</p>
-                    ) : null}
-                  </div>
-                );
-              })}
+            <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+              <div className="h-1.5 bg-muga" />
+              <div className="flex flex-col gap-3 p-4">
+                <p className="font-serif-display text-lg font-semibold text-navy">Per-Game Breakdown</p>
+                <GameBreakdownChart points={trend.points} isLoading={trend.isLoading} />
+              </div>
             </div>
           </div>
         ) : null}
 
         {tab === 'reminders' ? (
           <div className="flex flex-col gap-4">
-            {adherence === null ? (
+            {adherence.isLoading ? (
               <Skeleton height={120} />
             ) : (
               <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
@@ -674,77 +548,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
           </div>
         ) : null}
 
-        {tab === 'history' ? (
-          <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
-            <div className="grid grid-cols-7 gap-1 text-center">
-              {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => (
-                <span key={i} className="text-patient-sm text-gray-600">
-                  {d}
-                </span>
-              ))}
-              {Array.from({ length: firstWeekday }, (_, i) => (
-                <span key={`pad-${i}`} aria-hidden="true" />
-              ))}
-              {Array.from({ length: daysInMonth }, (_, i) => {
-                const day = i + 1;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const accuracy = accuracyByDate.get(dateStr);
-                const hasData = accuracy !== undefined;
-                const dotColor =
-                  accuracy === undefined
-                    ? undefined
-                    : accuracy > 75
-                      ? 'bg-success'
-                      : accuracy >= 50
-                        ? 'bg-warning'
-                        : 'bg-danger';
-                return (
-                  <button
-                    key={dateStr}
-                    type="button"
-                    data-testid="calendar-day"
-                    onClick={() => hasData && setSelectedDay(dateStr)}
-                    style={{ height: 40, width: 40 }}
-                    className="mx-auto flex flex-col items-center justify-center"
-                  >
-                    <span className={hasData ? 'text-ink' : 'text-ink-muted'}>{day}</span>
-                    {dotColor ? (
-                      <span
-                        aria-hidden="true"
-                        style={{ height: 12, width: 12 }}
-                        className={`rounded-full ${dotColor}`}
-                      />
-                    ) : null}
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedDay ? (
-              <div
-                className="fixed inset-x-0 bottom-16 z-40 rounded-t-tile bg-surface-card p-4 shadow-2xl transition-transform duration-300 md:bottom-4 md:mx-auto md:max-w-md md:rounded-tile"
-                role="dialog"
-                aria-label={`Details for ${selectedDay}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => setSelectedDay(null)}
-                  className="mb-2 text-caregiver-body text-ink-muted"
-                >
-                  Close
-                </button>
-                <p className="font-bold text-ink">{selectedDay}</p>
-                {(points ?? [])
-                  .filter((p) => p.date === selectedDay)
-                  .map((p, i) => (
-                    <p key={i} className="text-caregiver-body text-ink">
-                      {p.gameType}: {p.accuracy}%
-                    </p>
-                  ))}
-              </div>
-            ) : null}
-          </div>
-        ) : null}
+        {tab === 'history' ? <SessionCalendar year={year} month={month} points={trend.points} /> : null}
 
         {tab === 'companion' ? (
           <div className="flex flex-col gap-3">

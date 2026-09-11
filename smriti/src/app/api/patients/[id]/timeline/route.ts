@@ -1,24 +1,4 @@
 import { authenticateRequest } from '@/lib/supabase/server-auth';
-import type { GameType } from '@/lib/supabase/types';
-
-/** ScoreGraph's own GameType union predates the DB's naming for 2 of 4 games. */
-const GAME_TYPE_MAP: Record<GameType, string> = {
-  object_hunt: 'object_hunt',
-  word_stream: 'word_recall',
-  quick_tap: 'quick_tap',
-  path_match: 'path_trace',
-  memory_match: 'memory_match',
-  memory_blocks: 'memory_blocks',
-  frog_leap: 'frog_leap',
-  counting_boxes: 'counting_boxes',
-  n_back: 'n_back',
-  larger_number: 'larger_number',
-  memory_span: 'memory_span',
-  fish_trace: 'fish_trace',
-  double_decision: 'double_decision',
-  reminiscence_quiz: 'reminiscence_quiz',
-  routine_recall: 'routine_recall',
-};
 
 const RANGE_DAYS: Record<string, number> = { '30d': 30, '90d': 90, '180d': 180 };
 
@@ -60,10 +40,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .gte('summary_date', sinceStr)
     .order('summary_date', { ascending: true });
 
+  // `game_type` is already the canonical GameType union (see
+  // lib/supabase/types.ts) — this used to run through `GAME_TYPE_MAP` to
+  // translate into ScoreGraph's own narrower vocabulary (`word_recall`,
+  // `path_trace`, ...). Every dashboard chart is now typed on the same
+  // canonical union, so there is nothing left to translate.
   const points = (rows ?? []).map((r) => ({
     date: r.summary_date,
     accuracy: r.accuracy_pct,
-    gameType: GAME_TYPE_MAP[r.game_type],
+    gameType: r.game_type,
     maxDifficultyReached: r.max_difficulty_reached,
   }));
 
