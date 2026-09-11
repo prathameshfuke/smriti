@@ -1,6 +1,6 @@
 <a name="top"></a>
 <p align="center">
-  <img src="smriti/public/icons/icon-512.png" width="130" alt="SMRITI logo" />
+  <img src="smriti/src/appicon.png" width="130" alt="SMRITI logo" />
 </p>
 
 <h1 align="center">SMRITI</h1>
@@ -56,11 +56,11 @@ Everything works with the screen off the internet. When connectivity returns, it
 
 | | SMRITI | BrainHQ / Lumosity |
 |---|---|---|
-| Works fully offline | ✅ | ❌ online-dependent |
-| Assamese / Hindi audio-first UI | ✅ | ❌ English-only |
-| Designed for caregiver-mediated sessions | ✅ | ❌ solo play |
-| Games mapped to validated clinical assessments (CANTAB, MoCA, TMT) | ✅ | Partial |
-| Built for low-literacy, low-vision rural users | ✅ | ❌ Western-normed UX |
+| Works fully offline | Yes | No — online-dependent |
+| Assamese / Hindi audio-first UI | Yes | No — English-only |
+| Designed for caregiver-mediated sessions | Yes | No — solo play |
+| Games mapped to validated clinical assessments (CANTAB, MoCA, TMT) | Yes | Partial |
+| Built for low-literacy, low-vision rural users | Yes | No — Western-normed UX |
 | Monthly running cost | **$0** (free tiers) | Subscription |
 
 > [!NOTE]
@@ -72,7 +72,7 @@ Everything works with the screen off the internet. When connectivity returns, it
 <tr>
 <td valign="top" width="50%">
 
-**🧓 Patient Mode** *(on caregiver's device)*
+**Patient Mode** *(on caregiver's device)*
 - 15 cognitive games spanning 4 clinical domains
 - Adaptive, ML-assisted difficulty per patient
 - Audio-first — no reading required
@@ -84,8 +84,8 @@ Everything works with the screen off the internet. When connectivity returns, it
 </td>
 <td valign="top" width="50%">
 
-**🏥 Caregiver Dashboard**
-- Traffic-light triage (🔴/🟡/🟢) across all patients
+**Caregiver Dashboard**
+- Traffic-light triage (red/yellow/green) across all patients
 - Longitudinal cognitive graphs (30/90/180 day)
 - Reminder adherence tracking
 - Sudden cognitive drop detection (>2 SD threshold)
@@ -466,9 +466,9 @@ Designed using evidence from **CANTAB**, **MoCA**, and 25+ peer-reviewed studies
 ---
 
 <p align="center">
-  <img src="smriti/public/icons/icon-192.png" width="28" alt="" />
+  <img src="smriti/src/app/icon.png" width="28" alt="SMRITI web icon" />
   <br />
   <sub>Built for caregivers and ASHA workers, not wealthy urban users.</sub>
   <br />
-  <a href="#top">⬆ back to top</a>
+  <a href="#top">back to top</a>
 </p>
