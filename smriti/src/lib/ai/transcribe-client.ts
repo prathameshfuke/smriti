@@ -11,6 +11,13 @@
 const GROQ_TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_MODEL = 'whisper-large-v3-turbo';
 
+/** A hung connection must not block the companion's recording→thinking flow
+ * forever — same 15s bound as llm-client.ts's provider timeout. This was the
+ * one external call in the whole ASR/TTS/LLM pipeline without an enforced
+ * timeout; the Bhashini-first routing for hi/as now falls through here on
+ * every ASR failure, turning a pre-existing gap into a reachable hang. */
+const GROQ_TIMEOUT_MS = 15_000;
+
 export interface TranscribeResult {
   text: string;
   model: string;
@@ -37,6 +44,7 @@ export async function transcribeAudio(audio: Blob): Promise<TranscribeResult> {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
+    signal: AbortSignal.timeout(GROQ_TIMEOUT_MS),
   });
 
   if (!response.ok) {
