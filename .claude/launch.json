@@ -4,6 +4,13 @@
     {
       "name": "smriti-dev",
       "url": "http://localhost:3000"
+    },
+    {
+      "name": "smriti-dev-start",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "smriti",
+      "port": 3000
     }
   ]
 }
