@@ -4,6 +4,12 @@ import { findCachedSpeech, cacheSpeech } from '@/lib/ai/speech-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import type { UILanguage } from '@/lib/i18n/languages';
 
+/** Bounds the whole /api/ai/speak round trip client-side, independent of the
+ * server's own 20s Bhashini timeout — defense in depth against a hung
+ * connection to this app's own server (cold start, platform hiccup), not
+ * just a hung upstream provider. */
+const SPEAK_FETCH_TIMEOUT_MS = 25_000;
+
 /**
  * Speaks a line of dynamic text aloud — a companion answer, a reminder
  * label — via Bhashini TTS, cached locally so a repeated line never re-hits
@@ -39,6 +45,7 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, language, deviceTrustToken: token }),
+      signal: AbortSignal.timeout(SPEAK_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error('speak route failed');
     const body = await res.json();

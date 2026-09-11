@@ -20,6 +20,13 @@ interface AnswerState {
 
 const MIC_SIZE_PX = 96;
 
+/** Bounds the whole /api/ai/transcribe round trip client-side — covers the
+ * server's own worst case (20s Bhashini timeout + 15s Groq Whisper timeout)
+ * plus margin, so a hung connection to this app's own server can't leave
+ * the UI stuck in "thinking" indefinitely even if every server-side timeout
+ * is honored correctly. */
+const TRANSCRIBE_FETCH_TIMEOUT_MS = 40_000;
+
 /** Browser dictation, used both as the Groq-failure/offline fallback and as
  * the sole transcript source when MediaRecorder can't record at all. No
  * true live partial-transcript display (see plan Decision 8) — Groq
@@ -149,7 +156,11 @@ export default function CompanionPage() {
         formData.append('audio', new Blob(chunksRef.current, { type: 'audio/webm' }), 'clip.webm');
         formData.append('deviceTrustToken', JSON.stringify(token));
         formData.append('language', patientLanguage);
-        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
+        const res = await fetch('/api/ai/transcribe', {
+          method: 'POST',
+          body: formData,
+          signal: AbortSignal.timeout(TRANSCRIBE_FETCH_TIMEOUT_MS),
+        });
         if (res.ok) {
           const body = await res.json();
           if (typeof body.text === 'string' && body.text.length > 0) return body.text;

@@ -160,6 +160,28 @@ describe('CompanionPage', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('reaches the fallback phase, never stays stuck in "thinking", when /api/ai/transcribe hangs past its timeout', async () => {
+    // Simulates what AbortSignal.timeout() produces on the client once every
+    // server-side provider (Bhashini ASR, then Groq Whisper) has exhausted
+    // its own timeout and the transcribe route itself never responds —
+    // same rejected-fetch approach as sync.test.ts, no real waiting.
+    installMediaRecorder();
+    const fetchMock = vi.fn().mockRejectedValue(new Error('The operation was aborted'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    const micButton = screen.getByRole('button', { name: /ask/i });
+    fireEvent.click(micButton);
+    await screen.findByRole('button', { name: /stop/i });
+    fireEvent.click(micButton);
+
+    expect(
+      await screen.findByText(/can't check that right now|try again in a moment/i),
+    ).toBeInTheDocument();
+  });
+
   it('shows the fallback and does not cache it when /api/ai/complete returns the LLM-outage sentinel (200 OK, both providers down)', async () => {
     installMediaRecorder();
     const fetchMock = vi.fn().mockImplementation((url: string) => {
