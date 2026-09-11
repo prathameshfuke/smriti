@@ -196,6 +196,43 @@ describe('Home page', () => {
     expect(await screen.findByText(/hello, baba/i)).toBeInTheDocument();
   });
 
+  it('REPRO: reaches the patient home screen fully offline when this device already completed onboarding', async () => {
+    // Simulates the exact caregiver-reported bug: a device that has already
+    // finished onboarding (a local caregiver+patient row and a device-trust
+    // token already sit in Dexie/IndexedDB from a prior online session) is
+    // then opened with zero connectivity. Reaching the patient's home screen
+    // must never depend on a live network call succeeding.
+    await db.caregivers.put({
+      id: 'c1',
+      authUserId: 'u1',
+      displayName: 'Test Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    await db.patients.put(patient());
+    deviceTrustToken = {
+      patientId: 'p1',
+      issuedAt: Date.now(),
+      issuedBy: 'c1',
+      signature: 'server-issued-signature-opaque-to-the-client',
+    };
+
+    Object.defineProperty(window.navigator, 'onLine', { value: false, configurable: true });
+    getSession.mockRejectedValue(new Error('should never be called while offline'));
+    const fetchSpy = vi.fn().mockRejectedValue(new Error('NetworkError: offline'));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    render(<HomePage />);
+
+    expect(await screen.findByText(/hello, aai/i)).toBeInTheDocument();
+    expect(screen.queryByText(/no patient selected/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
+    expect(getSession).not.toHaveBeenCalled();
+
+    Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });
+    vi.unstubAllGlobals();
+  });
+
   it('shows a cooldown message after 3 wrong PIN attempts', async () => {
     await useSettingsStore.getState().setPin('1234');
     usePatientStore.getState().setCurrentPatient(patient());

@@ -50,13 +50,14 @@ afterEach(() => {
 });
 
 describe('SmritiDB', () => {
-  it('creates all 13 tables', () => {
+  it('creates all 14 tables', () => {
     const names = db.tables.map((t) => t.name).sort();
     expect(names).toEqual(
       [
         'aiConversationLog',
         'caregivers',
         'dailySummaries',
+        'deviceTrust',
         'familyMessages',
         'gameSessions',
         'memoryBankEntries',

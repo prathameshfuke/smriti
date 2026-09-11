@@ -195,6 +195,31 @@ export interface SyncQueueItem {
   attempts: number;
 }
 
+/**
+ * The one signed token a kiosk device holds, proving to the server which
+ * single patient it's allowed to act as while offline (see
+ * lib/auth/deviceTrust.ts and lib/auth/deviceTrustServer.ts). Keyed by a
+ * constant string key (out-of-line key — see the `deviceTrust: ''` schema
+ * below), never by `id`, since there is only ever one per device.
+ *
+ * This used to live in a second, independently-versioned native IndexedDB
+ * connection that `lib/auth/deviceTrust.ts` opened by hand against this same
+ * `smriti` database name, hardcoded at version 1. Once Dexie (this file) had
+ * opened the real database at a higher version — which every onboarding run
+ * guarantees, since it writes the caregiver/patient via Dexie before device
+ * trust is ever touched — that second connection's version-1 request became
+ * a permanent `VersionError` for the rest of the app's life: device trust
+ * could never actually be stored or read again. One physical IndexedDB
+ * database must have exactly one version authority, so it is a table here
+ * like everything else this app persists locally.
+ */
+export interface DeviceTrustToken {
+  patientId: string;
+  issuedAt: number;
+  issuedBy: string;
+  signature: string;
+}
+
 export class SmritiDB extends Dexie {
   caregivers!: Table<LocalCaregiver>;
   patients!: Table<LocalPatient>;
@@ -209,6 +234,9 @@ export class SmritiDB extends Dexie {
   syncQueue!: Table<SyncQueueItem>;
   familyMessages!: Table<LocalFamilyMessage>;
   speechCache!: Table<LocalSpeechCache>;
+  /** Out-of-line keys (see `DeviceTrustToken`'s own doc comment) — always
+   * read/written via an explicit key, never `db.deviceTrust.add()`. */
+  deviceTrust!: Table<DeviceTrustToken, string>;
 
   constructor() {
     super(DB_NAME);
@@ -242,6 +270,15 @@ export class SmritiDB extends Dexie {
     });
     this.version(4).stores({
       speechCache: 'id, createdAt',
+    });
+    // New store only, same as versions 2-4 above — existing installs
+    // upgrade in place with no data loss. Out-of-line primary key (`''`):
+    // there's exactly one row, addressed by a constant key, not an `id`
+    // field on the value itself (see DeviceTrustToken's doc comment for why
+    // this now lives here instead of a second, separately-versioned native
+    // IndexedDB connection to this same database name).
+    this.version(5).stores({
+      deviceTrust: '',
     });
   }
 

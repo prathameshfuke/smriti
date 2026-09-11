@@ -7,71 +7,39 @@
  * with no secret at all (`btoa(patientId:caregiverId)`), which meant any
  * caller could forge a valid-looking token for any patient; that path is
  * gone.
+ *
+ * Storage itself is a plain Dexie table (`db.deviceTrust`, see
+ * lib/db/schema.ts) — this module used to open a second, hand-rolled native
+ * IndexedDB connection to that same `smriti` database, independently
+ * versioned at a hardcoded 1. Two connections to one physical database each
+ * claiming their own version is invalid by construction: as soon as Dexie
+ * (opened for anything else — every onboarding writes the caregiver/patient
+ * via Dexie before device trust is ever touched) bumped the real on-disk
+ * version past 1, this module's own `indexedDB.open(DB_NAME, 1)` became a
+ * permanent `VersionError`, silently caught here and surfaced only as "no
+ * token" / a swallowed `console.error` in the onboarding UI — device trust
+ * could never actually be established, though `restoreLocalSession`'s
+ * first-active-patient fallback masked it for a single-patient device.
  */
 
 import { authedFetch } from '@/lib/api/client';
+import { db, type DeviceTrustToken } from '@/lib/db/schema';
 
-const STORE_NAME = 'deviceTrust';
-const DB_NAME = 'smriti';
-const DB_VERSION = 1;
+export type { DeviceTrustToken };
+
 const TOKEN_KEY = 'deviceTrustToken';
-
-export interface DeviceTrustToken {
-  patientId: string;
-  issuedAt: number;
-  issuedBy: string;
-  signature: string;
-}
-
-let dbPromise: Promise<IDBDatabase> | null = null;
-
-async function getDatabase(): Promise<IDBDatabase> {
-  if (dbPromise) return dbPromise;
-
-  dbPromise = new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onerror = () => reject(req.error);
-    req.onsuccess = () => resolve(req.result);
-
-    req.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME);
-      }
-    };
-  });
-
-  return dbPromise;
-}
+const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
 
 export async function getDeviceTrustToken(): Promise<DeviceTrustToken | null> {
   try {
-    const db = await getDatabase();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readonly');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.get(TOKEN_KEY);
+    const token = await db.deviceTrust.get(TOKEN_KEY);
+    if (!token) return null;
 
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => {
-        const token = req.result;
-        if (!token) {
-          resolve(null);
-          return;
-        }
+    // Validate token expiry (365 days)
+    const age = Date.now() - token.issuedAt;
+    if (age > MAX_AGE_MS) return null;
 
-        // Validate token expiry (365 days)
-        const age = Date.now() - token.issuedAt;
-        const maxAge = 365 * 24 * 60 * 60 * 1000;
-        if (age > maxAge) {
-          resolve(null);
-          return;
-        }
-
-        resolve(token);
-      };
-    });
+    return token;
   } catch {
     return null;
   }
@@ -92,15 +60,7 @@ export async function setDeviceTrustToken(patientId: string): Promise<void> {
       body: JSON.stringify({ patientId }),
     });
 
-    const db = await getDatabase();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.put(token, TOKEN_KEY);
-
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve();
-    });
+    await db.deviceTrust.put(token, TOKEN_KEY);
   } catch (err) {
     throw new Error(`Failed to set device trust token: ${err}`);
   }
@@ -108,15 +68,7 @@ export async function setDeviceTrustToken(patientId: string): Promise<void> {
 
 export async function clearDeviceTrustToken(): Promise<void> {
   try {
-    const db = await getDatabase();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE_NAME, 'readwrite');
-      const store = tx.objectStore(STORE_NAME);
-      const req = store.delete(TOKEN_KEY);
-
-      req.onerror = () => reject(req.error);
-      req.onsuccess = () => resolve();
-    });
+    await db.deviceTrust.delete(TOKEN_KEY);
   } catch (err) {
     throw new Error(`Failed to clear device trust token: ${err}`);
   }
