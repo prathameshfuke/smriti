@@ -25,14 +25,28 @@ export const ROUTINE_RECALL_LEVELS: Record<number, { sequenceLength: number }> =
   5: { sequenceLength: 7 },
 };
 
+/**
+ * Both this and daysAgoKey must key on the *local* calendar day, not UTC —
+ * "today's routine" means the patient's own local today. Acks are recorded
+ * from a local wall-clock time (e.g. 8am) but stored as UTC ISO strings, so
+ * slicing the ISO string directly (UTC date) used to disagree with a
+ * same-day comparison built from local getters whenever local time and UTC
+ * fall on different calendar dates — which for IST is every day between
+ * local midnight and ~5:30am. Parsing back to local components keeps both
+ * sides in the same frame regardless of the device's UTC offset.
+ */
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function dateKey(iso: string): string {
-  return iso.slice(0, 10);
+  return localDateKey(new Date(iso));
 }
 
 function daysAgoKey(daysAgo: number): string {
   const d = new Date();
   d.setDate(d.getDate() - daysAgo);
-  return d.toISOString().slice(0, 10);
+  return localDateKey(d);
 }
 
 /**
