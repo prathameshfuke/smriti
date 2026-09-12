@@ -283,7 +283,7 @@ function QuickTapPageInner() {
               {currentItem ? (
                 <div
                   className={
-                    'flex h-[140px] w-[140px] items-center justify-center rounded-card bg-game-tile shadow-sm text-6xl transition-shadow ' +
+                    'flex h-[140px] w-[140px] items-center justify-center rounded-card bg-game-tile text-6xl transition-shadow ' +
                     (ring === 'hit'
                       ? 'ring-4 ring-success'
                       : ring === 'false_alarm'

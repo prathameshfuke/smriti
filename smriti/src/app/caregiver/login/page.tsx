@@ -222,7 +222,7 @@ function CaregiverLoginPageInner() {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="123456"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-center text-caregiver-heading tracking-[0.3em] text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-center text-caregiver-heading tracking-[0.3em] text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
 
           <BigButton
@@ -256,7 +256,7 @@ function CaregiverLoginPageInner() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
 
           <BigButton

@@ -261,7 +261,7 @@ function ObjectHuntPageInner() {
         {phase === 'instruction' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.objectHunt.instruction')}</p>
-            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 shadow-sm motion-reduce:animate-none" />
+            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 motion-reduce:animate-none" />
           </div>
         ) : null}
 

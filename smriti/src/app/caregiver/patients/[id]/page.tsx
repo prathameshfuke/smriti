@@ -398,7 +398,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
         {tab === 'cognitive' ? (
           <div className="flex flex-col gap-4">
-            <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-card border border-line200 bg-white">
               <div className="h-1.5 bg-primary" />
               <div className="flex flex-col gap-2 p-4">
                 <div className="flex items-center justify-between">
@@ -461,7 +461,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               </div>
             ))}
 
-            <div data-testid="score-graph" className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+            <div data-testid="score-graph" className="overflow-hidden rounded-card border border-line200 bg-white">
               <div className="h-1.5 bg-muga" />
               <div className="p-4">
                 <CognitiveTrendChart
@@ -475,7 +475,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {velocity ? (
-              <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-card border border-line200 bg-white">
                 <div className="h-1.5 bg-muga" />
                 <div className="p-4">
                   <p className="text-caregiver-body text-ink-muted">Cognitive Trend</p>
@@ -486,7 +486,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               </div>
             ) : null}
 
-            <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+            <div className="overflow-hidden rounded-card border border-line200 bg-white">
               <div className="h-1.5 bg-muga" />
               <div className="flex flex-col gap-3 p-4">
                 <p className="font-serif-display text-lg font-semibold text-navy">Per-Game Breakdown</p>
@@ -501,7 +501,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             {adherence.isLoading ? (
               <Skeleton height={120} />
             ) : (
-              <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-card border border-line200 bg-white">
                 <div className="h-1.5 bg-primary" />
                 <div className="flex flex-col gap-4 p-4">
                 <p className="font-serif-display text-patient-heading font-bold text-primary">
@@ -568,7 +568,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   ? 'border-primary bg-primary/5'
                   : 'border-line200 bg-white';
               return (
-                <div key={q.id} className={`rounded-card border p-3 shadow-sm ${cardClass}`}>
+                <div key={q.id} className={`rounded-card border p-3 ${cardClass}`}>
                   <p className="font-bold text-navy">{q.question}</p>
                   <p className="text-caregiver-body text-ink-muted">{q.answer}</p>
                   {q.flaggedForFollowup ? (
@@ -592,7 +592,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
         {tab === 'family' ? (
           <div className="flex flex-col gap-6">
-            <div className="rounded-card border border-line200 bg-white p-4 shadow-sm">
+            <div className="rounded-card border border-line200 bg-white p-4">
               <p className="font-serif-display text-lg font-semibold text-navy">Share with family</p>
               <p className="mt-1 text-patient-sm text-ink-muted">
                 Read-only weekly summary, plus this week&apos;s engagement. No raw session data, Memory
@@ -621,7 +621,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <div className="rounded-card border border-line200 bg-white p-4 shadow-sm">
+            <div className="rounded-card border border-line200 bg-white p-4">
               <p className="font-serif-display text-lg font-semibold text-navy">Post a message</p>
               <p className="mt-1 text-patient-sm text-ink-muted">
                 Goes straight to the patient&apos;s home screen — no review link needed. Shown as a short
@@ -695,7 +695,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 return (
                   <div
                     key={share.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-white p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-white p-3"
                   >
                     <div>
                       <p className="font-bold text-navy">{share.label}</p>
@@ -728,7 +728,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-caregiver-body text-ink-muted">Nothing waiting for review.</p>
               ) : null}
               {(familyNotes ?? []).map((note) => (
-                <div key={note.id} className="rounded-card border border-line200 bg-white p-3 shadow-sm">
+                <div key={note.id} className="rounded-card border border-line200 bg-white p-3">
                   <p className="text-caregiver-body text-ink">&ldquo;{note.text}&rdquo;</p>
                   <div className="mt-2 flex gap-3">
                     <button

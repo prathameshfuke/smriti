@@ -99,7 +99,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
               onClick={() => selectOption(i)}
               disabled={selected !== null}
               style={{ minHeight: TOUCH_TARGET_MIN_PX }}
-              className={`rounded-tile border border-line200 bg-white px-4 text-patient-body font-semibold text-ink shadow-sm ${revealClass}`}
+              className={`rounded-tile border border-line200 bg-white px-4 text-patient-body font-semibold text-ink ${revealClass}`}
             >
               {option}
             </button>

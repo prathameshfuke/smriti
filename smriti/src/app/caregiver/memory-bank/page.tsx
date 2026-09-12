@@ -347,7 +347,7 @@ export default function MemoryBankPage() {
       ) : null}
 
       {!hasAnyEntries ? (
-        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center">
           <p className="text-caregiver-body text-ink-muted">
             Add the people and facts your loved one might ask about.
           </p>
@@ -363,7 +363,7 @@ export default function MemoryBankPage() {
                   type="button"
                   onClick={() => startAdd(category)}
                   style={{ minHeight: 44 }}
-                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left shadow-sm hover:border-primary hover:bg-primary/5"
+                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left hover:border-primary hover:bg-primary/5"
                 >
                   <span
                     aria-hidden="true"
@@ -411,7 +411,7 @@ export default function MemoryBankPage() {
                     {sectionEntries.map((entry) => (
                       <li
                         key={entry.id}
-                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4 shadow-sm"
+                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3">

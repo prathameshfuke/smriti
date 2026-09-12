@@ -73,9 +73,14 @@ const config: Config = {
       fontSize: {
         'patient-sm': ['1rem', { lineHeight: '1.6' }],
         'patient-body': ['1.375rem', { lineHeight: '1.6' }],
-        'patient-heading': ['2.25rem', { lineHeight: '1.3' }],
+        /* Tightened to a display-headline treatment (near-1.0 line-height,
+         * slight negative tracking) rather than a body-scale line-height —
+         * these are always short, single-purpose titles ("Overview", "Ask
+         * Smriti"), never wrapping body copy, so the tighter block reads as
+         * a considered display face instead of oversized paragraph text. */
+        'patient-heading': ['2.25rem', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
         'caregiver-body': ['1.125rem', { lineHeight: '1.6' }],
-        'caregiver-heading': ['1.75rem', { lineHeight: '1.3' }],
+        'caregiver-heading': ['1.75rem', { lineHeight: '1.05', letterSpacing: '-0.015em' }],
         hero: ['3.5rem', { lineHeight: '1.1', fontWeight: '600' }],
         headline: ['2.25rem', { lineHeight: '1.2', fontWeight: '600' }],
         subheadline: ['1.5rem', { lineHeight: '1.3', fontWeight: '500' }],
@@ -88,10 +93,12 @@ const config: Config = {
         'touch-gap': '12px',
       },
       borderRadius: {
-        card: '1.25rem',
-        tile: '16px',
-        control: '0.65rem',
-        panel: '2rem',
+        /* Tightened toward a stricter, more architectural container scale —
+         * same card > tile > control hierarchy, less generously rounded. */
+        card: '1rem',
+        tile: '0.75rem',
+        control: '0.5rem',
+        panel: '1.5rem',
       },
       maxWidth: {
         patient: '480px',

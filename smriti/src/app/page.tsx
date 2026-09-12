@@ -193,7 +193,7 @@ export default function LandingPage() {
         </span>
         <Link
           href="/login"
-          className="flex h-12 items-center justify-center rounded-control bg-terra600 px-6 text-base font-semibold text-paper50 shadow-sm transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
+          className="flex h-12 items-center justify-center rounded-control bg-terra600 px-6 text-base font-semibold text-paper50 transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
         >
           Get Started
         </Link>

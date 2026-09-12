@@ -229,7 +229,7 @@ function PathMatchPageInner() {
               {[1, 2, 3].map((n) => (
                 <span
                   key={n}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse shadow-sm animate-pulse motion-reduce:animate-none"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse animate-pulse motion-reduce:animate-none"
                 >
                   {n}
                 </span>

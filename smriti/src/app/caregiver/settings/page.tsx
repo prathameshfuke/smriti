@@ -205,7 +205,7 @@ export default function CaregiverSettingsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white">
           <div className="h-1.5 bg-muga" />
           <div className="flex flex-col gap-3 p-6">
             <h2 className="font-serif-display text-lg font-semibold text-navy">Language</h2>
@@ -214,7 +214,7 @@ export default function CaregiverSettingsPage() {
         </section>
 
         {dangerStage === 'closed' ? (
-          <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-card border border-line200 bg-white">
             <div className="h-1.5 bg-primary" />
             <div className="flex flex-col gap-3 p-6">
               <h2 className="font-serif-display text-lg font-semibold text-navy">Change PIN</h2>
@@ -227,7 +227,7 @@ export default function CaregiverSettingsPage() {
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm md:col-span-2">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white md:col-span-2">
           <div className="h-1.5 bg-gamosa" />
           <div className="flex flex-col gap-2 p-6 text-caregiver-body text-ink-muted">
             <h2 className="font-serif-display text-lg font-semibold text-navy">About SMRITI</h2>
@@ -238,7 +238,7 @@ export default function CaregiverSettingsPage() {
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white shadow-sm md:col-span-2">
+        <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white md:col-span-2">
           <div className="h-1.5 bg-danger" />
           <div className="flex flex-col gap-3 p-6">
             <h2 className="font-serif-display text-lg font-semibold text-danger">Danger Zone</h2>

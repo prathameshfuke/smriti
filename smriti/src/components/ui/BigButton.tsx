@@ -14,9 +14,9 @@ export interface BigButtonProps {
 }
 
 const VARIANTS = {
-  primary: 'bg-primary text-ink-inverse shadow-sm hover:bg-primary-dark hover:shadow-md',
-  secondary: 'bg-surface-card text-ink border-2 border-primary shadow-sm hover:bg-surface-muted',
-  success: 'bg-success text-ink-inverse shadow-sm hover:brightness-95 hover:shadow-md',
+  primary: 'bg-primary text-ink-inverse hover:bg-primary-dark hover:shadow-md',
+  secondary: 'bg-surface-card text-ink border-2 border-primary hover:bg-surface-muted',
+  success: 'bg-success text-ink-inverse hover:brightness-95 hover:shadow-md',
 } as const;
 
 /**

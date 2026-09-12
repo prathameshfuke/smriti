@@ -75,7 +75,7 @@ export default function CaregiverPatientsPage() {
       ) : null}
 
       {patients && patients.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-card border border-line200 bg-white py-12 text-center">
           <p className="text-caregiver-body text-ink-muted">Add a patient to begin a supervised activity.</p>
         </div>
       ) : null}
@@ -92,7 +92,7 @@ export default function CaregiverPatientsPage() {
             return (
               <li
                 key={patient.id}
-                className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-line200 bg-white shadow-sm"
+                className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-line200 bg-white"
               >
                 <div className={`h-full w-1.5 self-stretch shrink-0 ${stripColor}`} aria-hidden="true" />
                 <button
