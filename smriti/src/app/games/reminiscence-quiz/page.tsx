@@ -91,7 +91,7 @@ function ReminiscenceQuizPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col">
-        <NextIntlClientProvider locale={language} messages={REMINISCENCE_QUIZ_MESSAGES[language]}>
+        <NextIntlClientProvider locale={language} messages={REMINISCENCE_QUIZ_MESSAGES[language as keyof typeof REMINISCENCE_QUIZ_MESSAGES] ?? REMINISCENCE_QUIZ_MESSAGES.en}>
           {quiz === undefined ? null : quiz === null ? (
             <NoQuizYet />
           ) : (

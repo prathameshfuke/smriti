@@ -85,7 +85,7 @@ function MemorySpanPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col px-4 py-6">
-        <NextIntlClientProvider locale={language} messages={MEMORY_SPAN_MESSAGES[language]}>
+        <NextIntlClientProvider locale={language} messages={MEMORY_SPAN_MESSAGES[language as keyof typeof MEMORY_SPAN_MESSAGES] ?? MEMORY_SPAN_MESSAGES.en}>
           <MemoryTestGame onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>

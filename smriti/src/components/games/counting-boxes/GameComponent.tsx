@@ -8,10 +8,12 @@ import { useTimeout } from '@/hooks/useTimeout';
 import { useInterval } from '@/hooks/useInterval';
 import { PatternGenerators } from './patterns/PatternGenerators';
 import { CheckCircle, XCircle } from 'lucide-react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import './styles.css';
 import confetti from 'canvas-confetti';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'start' | 'observing' | 'input' | 'result' | 'gameOver' | 'animating';
@@ -163,6 +165,9 @@ export interface GameComponentProps {
 export default function GameComponent({ onComplete }: GameComponentProps) {
     // 翻译
     const t = useTranslations('games.countingBoxes.gameUI');
+    const locale = useLocale();
+    const language = isUILanguage(locale) ? locale : 'en';
+    const { isOnline } = useOfflineStatus();
 
     // 游戏状态
     const [gameState, setGameState] = useState<GameState>('start');
@@ -662,7 +667,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     // 朗读指示 - 每次进入观察阶段时读出指示语，与原始游戏的语音提示保持一致
     useEffect(() => {
         if (gameState !== 'observing') return;
-        speak(t('observing'));
+        void narrate(t('observing'), language, isOnline);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 

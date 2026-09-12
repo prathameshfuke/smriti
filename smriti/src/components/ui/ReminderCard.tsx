@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import BigButton from './BigButton';
 import { narrate } from '@/lib/audio/narrate';
-import { useTranslation } from '@/lib/i18n/provider';
+import { useTranslation, type UILanguage } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import type { LocalReminderSchedule } from '@/lib/db/schema';
 import type { ReminderType } from '@/lib/supabase/types';
@@ -23,7 +23,31 @@ export const REMINDER_ICON: Record<ReminderType, { emoji: string; bg: string }> 
 };
 const ICON = REMINDER_ICON;
 
-const DONE_LABEL = 'Done ✓';
+/** Script ranges for the two non-Latin UI languages. Used to detect a
+ * reminder's caregiver-typed `label` that's plainly in English (no matching
+ * script present) so it can fall back to the translated per-type phrase
+ * instead of reading/showing English text to a Hindi/Assamese-only patient.
+ * `label` is freeform caregiver text (see reminders/page.tsx), never one of
+ * the catalog's own English defaults verbatim, so an exact-string match
+ * against the catalog would essentially never fire — script detection is
+ * the only heuristic that actually catches the common case. */
+const SCRIPT_RANGE: Partial<Record<UILanguage, RegExp>> = {
+  hi: /[ऀ-ॿ]/,
+  as: /[ঀ-৿]/,
+  // Bodo and Nepali both use Devanagari here, same range as Hindi.
+  brx: /[ऀ-ॿ]/,
+  ne: /[ऀ-ॿ]/,
+  // Bengali, and Manipuri (written in Bengali script in this app — see
+  // languages.ts), share the same Unicode block as Assamese.
+  bn: /[ঀ-৿]/,
+  mni: /[ঀ-৿]/,
+};
+
+function displayLabel(label: string, reminderType: ReminderType, language: UILanguage, t: (key: string) => string): string {
+  const script = SCRIPT_RANGE[language];
+  if (!script || script.test(label)) return label;
+  return t(`reminder.${reminderType}`);
+}
 
 /**
  * Full-screen overlay for a due reminder. Snooze only dismisses the card:
@@ -32,15 +56,17 @@ const DONE_LABEL = 'Done ✓';
  * which can't outlive a card that unmounts on dismiss.
  */
 export default function ReminderCard({ reminder, onAcknowledge, onSnooze }: ReminderCardProps) {
-  const { language } = useTranslation();
+  const { language, t } = useTranslation();
   const { isOnline } = useOfflineStatus();
   const cardRef = useRef<HTMLDivElement>(null);
   const icon = ICON[reminder.reminderType];
+  const doneLabel = `${t('reminder.done')} ✓`;
+  const label = displayLabel(reminder.label, reminder.reminderType, language, t);
 
   useEffect(() => {
-    void narrate(reminder.label, language, isOnline);
+    void narrate(label, language, isOnline);
     cardRef.current
-      ?.querySelector<HTMLButtonElement>(`[aria-label="${DONE_LABEL}"]`)
+      ?.querySelector<HTMLButtonElement>(`[aria-label="${doneLabel}"]`)
       ?.focus();
     // Fire once, when this reminder appears.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -56,13 +82,13 @@ export default function ReminderCard({ reminder, onAcknowledge, onSnooze }: Remi
           >
             <span className="text-5xl">{icon.emoji}</span>
           </div>
-          <p className="text-caregiver-body text-ink-muted">It is time for:</p>
-          <p className="text-patient-heading font-bold text-ink">{reminder.label}</p>
+          <p className="text-caregiver-body text-ink-muted">{t('reminder.timeFor')}</p>
+          <p className="text-patient-heading font-bold text-ink">{label}</p>
 
-          <BigButton label={DONE_LABEL} variant="success" onClick={onAcknowledge} />
+          <BigButton label={doneLabel} variant="success" onClick={onAcknowledge} />
 
           <button type="button" onClick={onSnooze} className="text-ink-muted underline">
-            Remind me in 15 minutes
+            {t('reminder.remindLater')}
           </button>
         </div>
       </div>

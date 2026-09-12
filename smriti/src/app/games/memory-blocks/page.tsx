@@ -89,7 +89,7 @@ function MemoryBlocksPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col px-4 py-6">
-        <NextIntlClientProvider locale={language} messages={MEMORY_BLOCKS_MESSAGES[language]}>
+        <NextIntlClientProvider locale={language} messages={MEMORY_BLOCKS_MESSAGES[language as keyof typeof MEMORY_BLOCKS_MESSAGES] ?? MEMORY_BLOCKS_MESSAGES.en}>
           <PatternRecallGame onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>

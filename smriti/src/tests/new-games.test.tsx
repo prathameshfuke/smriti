@@ -39,6 +39,9 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/games',
 }));
 
+const { narrateMock } = vi.hoisted(() => ({ narrateMock: vi.fn().mockResolvedValue(undefined) }));
+vi.mock('@/lib/audio/narrate', () => ({ narrate: narrateMock }));
+
 import MemoryBlocksPage from '@/app/games/memory-blocks/page';
 import FrogLeapPage from '@/app/games/frog-leap/page';
 import CountingBoxesPage from '@/app/games/counting-boxes/page';
@@ -67,6 +70,7 @@ const patient = (over: Partial<LocalPatient> = {}): LocalPatient => ({
 beforeEach(async () => {
   push.mockClear();
   replace.mockClear();
+  narrateMock.mockClear();
   usePatientStore.setState(usePatientStore.getInitialState(), true);
   useGameStore.setState(useGameStore.getInitialState(), true);
   await db.patients.clear();
@@ -116,5 +120,33 @@ describe('New games — smoke render + PatientNav back always present', () => {
   it('N-Back renders its start control', () => {
     renderPage(<NBackPage />);
     expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
+  });
+});
+
+describe('New games — instruction audio goes through narrate(), not raw browser speak()', () => {
+  // These 9 games previously called the browser speechSynthesis API directly
+  // with no language argument, so a Hindi/Assamese UI still picked an
+  // English voice to read the (correctly translated) instruction text —
+  // mispronounced audio, not just missing audio. narrate() is this app's
+  // established cache -> Bhashini TTS -> browser-speak pipeline, already
+  // proven for the companion and reminders; every game's instruction moment
+  // must route through it with the real UI language, matching that pattern.
+  it('N-Back speaks its idle-screen challenge instructions through narrate() with the current language', () => {
+    renderPage(<NBackPage />);
+    expect(narrateMock).toHaveBeenCalled();
+    const [text, language] = narrateMock.mock.calls[0];
+    expect(typeof text).toBe('string');
+    expect(text.length).toBeGreaterThan(0);
+    expect(language).toBe('en');
+  });
+
+  it('Memory Span speaks its presentation-phase instruction through narrate()', () => {
+    renderPage(<MemorySpanPage />);
+    expect(narrateMock).toHaveBeenCalled();
+  });
+
+  it('Double Decision speaks its intro instruction through narrate()', () => {
+    renderPage(<DoubleDecisionPage />);
+    expect(narrateMock).toHaveBeenCalled();
   });
 });

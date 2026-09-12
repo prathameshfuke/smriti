@@ -12,7 +12,9 @@ import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { OBJECTS } from '@/lib/engine/objects';
 import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -65,7 +67,8 @@ export default function MemoryMatchPage() {
 
 function MemoryMatchPageInner() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
@@ -94,8 +97,9 @@ function MemoryMatchPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    speak(t('game.memoryMatch.instruction'));
-  }, [phase, t]);
+    void narrate(t('game.memoryMatch.instruction'), language, isOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const completeRound = useCallback(
     async (finalWrongAttempts: number) => {
@@ -149,7 +153,7 @@ function MemoryMatchPageInner() {
       setInputLocked(true);
 
       if (tiles[first].pairId === tiles[index].pairId) {
-        speak('Good match');
+        speak(t('game.memoryMatch.goodMatch'), language);
         setTimeout(() => {
           setTiles((prev) => prev.map((tl, i) => (i === first || i === index ? { ...tl, matched: true } : tl)));
           setFaceUpIndices([]);
@@ -166,7 +170,7 @@ function MemoryMatchPageInner() {
           });
         }, MATCH_DELAY_MS);
       } else {
-        speak("Let's try another one");
+        speak(t('game.memoryMatch.tryAnotherOne'), language);
         setWrongAttempts((w) => w + 1);
         setTimeout(() => {
           setFaceUpIndices([]);
@@ -174,7 +178,7 @@ function MemoryMatchPageInner() {
         }, MISMATCH_DELAY_MS);
       }
     },
-    [inputLocked, tiles, faceUpIndices, level.pairs, completeRound],
+    [inputLocked, tiles, faceUpIndices, level.pairs, completeRound, t, language],
   );
 
   const score = level.pairs / (level.pairs + wrongAttempts);

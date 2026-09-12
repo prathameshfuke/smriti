@@ -15,7 +15,7 @@ import {
   Trophy,
   Truck,
 } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -27,7 +27,9 @@ import {
 import { cn } from '@/lib/utils'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
 import { starsFromRate } from '@/lib/engine/scoring'
-import { speak } from '@/lib/audio/speech'
+import { narrate } from '@/lib/audio/narrate'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { isUILanguage } from '@/lib/i18n/languages'
 import {
   DOUBLE_DECISION_MAX_DISPLAY_MS,
   DOUBLE_DECISION_MIN_DISPLAY_MS,
@@ -448,6 +450,9 @@ export interface PeripheralSpeedGameProps {
 
 export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {}) {
   const t = useTranslations('games.doubleDecision.gameUI')
+  const locale = useLocale()
+  const language = isUILanguage(locale) ? locale : 'en'
+  const { isOnline } = useOfflineStatus()
   const [phase, setPhase] = useState<Phase>('intro')
   const [isPracticeRun, setIsPracticeRun] = useState(false)
   const [trialIndex, setTrialIndex] = useState(0)
@@ -686,7 +691,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
   // speak their instruction text on entry.
   useEffect(() => {
     if (phase !== 'intro') return
-    speak(`${t('title')}. ${t('intro')}`)
+    void narrate(`${t('title')}. ${t('intro')}`, language, isOnline)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 

@@ -7,11 +7,22 @@ import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 /**
  * Language names are written in their own script, never translated: a patient
  * looking for Assamese scans for "অসমীয়া", not for the word "Assamese".
+ *
+ * STOPGAP: this flat list scales badly past 3 languages — the real
+ * region-grouped, capability-labeled selector (multilingual-expansion plan,
+ * Part 4/Step 5) replaces this component's body next. These 4 new entries
+ * exist only so UILanguage's widening compiles; Manipuri is written in
+ * Bengali script here (Meitei Mayek has no font loaded in this app yet —
+ * see languages.ts).
  */
 const NATIVE_NAME: Record<UILanguage, string> = {
   as: 'অসমীয়া',
   hi: 'हिन्दी',
   en: 'English',
+  brx: 'बड़ो',
+  mni: 'মৈতৈলোন্',
+  bn: 'বাংলা',
+  ne: 'नेपाली',
 };
 
 export default function LanguagePicker() {

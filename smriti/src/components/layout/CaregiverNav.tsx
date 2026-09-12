@@ -15,7 +15,7 @@ import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
 const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Dashboard', Icon: LayoutDashboard },
   { href: '/caregiver/patients', label: 'Patients', Icon: Users },
-  { href: '/caregiver/memory-bank', label: 'Memory Bank', Icon: Images },
+  { href: '/caregiver/memory-bank', label: 'Memory', Icon: Images },
   { href: '/caregiver/settings', label: 'Settings', Icon: Settings },
   { href: '/app', label: 'Patient View', Icon: Home },
 ] as const;
@@ -37,13 +37,13 @@ export default function CaregiverNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={
-              'flex flex-1 flex-col items-center justify-center gap-1 ' +
+              'flex flex-1 min-w-0 flex-col items-center justify-center gap-1 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ' +
               (active ? 'text-primary' : 'text-ink-muted')
             }
           >
             <Icon size={22} aria-hidden="true" />
-            <span className="text-xs">{label}</span>
+            <span className="w-full truncate text-center text-xs">{label}</span>
           </Link>
         );
       })}

@@ -9,6 +9,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
 import { authedFetch } from '@/lib/api/client';
 import { useSync } from '@/hooks/useSync';
+import { useTranslation } from '@/lib/i18n/provider';
 
 interface DashboardPatient {
   id: string;
@@ -44,6 +45,7 @@ export default function CaregiverDashboardPage() {
 
 function CaregiverDashboardPageInner() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { syncStatus, lastSynced, syncNow } = useSync();
 
   const [patients, setPatients] = useState<DashboardPatient[] | null>(null);
@@ -105,16 +107,16 @@ function CaregiverDashboardPageInner() {
             <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-caregiver-body font-semibold text-navy">
-                  {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'offline' ? 'Offline' : 'Synced'}
+                  {syncStatus === 'syncing' ? t('sync.syncing') : syncStatus === 'offline' ? t('sync.offline') : t('sync.synced')}
                 </p>
                 <p className="text-patient-sm text-ink-muted">
-                  {lastSynced ? new Date(lastSynced).toLocaleTimeString() : 'Not synced yet'}
+                  {lastSynced ? new Date(lastSynced).toLocaleTimeString() : t('sync.notSyncedYet')}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => void syncNow()}
-                aria-label="Sync now"
+                aria-label={t('caregiver.syncNow')}
                 className="flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-primary/10"
               >
                 <RefreshCw size={18} aria-hidden="true" />

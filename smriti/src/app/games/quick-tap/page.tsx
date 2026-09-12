@@ -6,12 +6,13 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
-import { pickObjects, type SmritiObject } from '@/lib/engine/objects';
+import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { computeDPrime, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -73,7 +74,8 @@ export default function QuickTapPage() {
 
 function QuickTapPageInner() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
@@ -105,8 +107,9 @@ function QuickTapPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    speak(t('game.quickTap.instruction'));
-  }, [phase, t]);
+    void narrate(t('game.quickTap.instruction'), language, isOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -253,7 +256,7 @@ function QuickTapPageInner() {
             <span className="text-[96px] leading-none" aria-hidden="true">
               {target.emoji}
             </span>
-            <p className="font-serif-display text-patient-heading text-ink">{target.name.en}</p>
+            <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
             <BigButton label="Start!" variant="primary" onClick={startRound} />
           </div>
         ) : null}

@@ -11,6 +11,7 @@ import {
 import { playAudio } from '@/lib/audio/player';
 import ReminderCard from '@/components/ui/ReminderCard';
 import { I18nProvider } from '@/lib/i18n/provider';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 function withI18n(node: ReactNode) {
   return <I18nProvider>{node}</I18nProvider>;
@@ -124,6 +125,62 @@ describe('ReminderCard', () => {
     );
     fireEvent.click(screen.getByText(/remind me in 15 minutes/i));
     expect(onSnooze).toHaveBeenCalledTimes(1);
+  });
+
+  describe('language wiring', () => {
+    beforeEach(() => {
+      useSettingsStore.setState(useSettingsStore.getInitialState(), true);
+    });
+
+    it('shows the Hindi "time for" prompt and Done/snooze labels, not the hardcoded English text', () => {
+      useSettingsStore.getState().setLanguage('hi');
+      render(
+        withI18n(
+          <ReminderCard
+            reminder={schedule({ reminderType: 'hydration', label: 'पानी पीने का समय' })}
+            onAcknowledge={() => {}}
+            onSnooze={() => {}}
+          />,
+        ),
+      );
+      expect(screen.getByText('समय हो गया है:')).toBeInTheDocument();
+      expect(screen.getByText('पानी पीने का समय')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'हो गया ✓' })).toBeInTheDocument();
+      expect(screen.getByText('मुझे 15 मिनट में याद दिलाएं')).toBeInTheDocument();
+    });
+
+    it('falls back to the translated per-type label when the stored label is plain English under a non-English UI language', () => {
+      // A caregiver typed the label in English ("Morning pill") while the
+      // patient's device is set to Hindi — reading/showing that raw English
+      // text to a Hindi-only patient defeats the point of the language
+      // setting, so this falls back to the translated reminder-type phrase.
+      useSettingsStore.getState().setLanguage('hi');
+      render(
+        withI18n(
+          <ReminderCard
+            reminder={schedule({ reminderType: 'medication', label: 'Morning pill' })}
+            onAcknowledge={() => {}}
+            onSnooze={() => {}}
+          />,
+        ),
+      );
+      expect(screen.queryByText('Morning pill')).not.toBeInTheDocument();
+      expect(screen.getByText('दवाई लेने का समय')).toBeInTheDocument();
+    });
+
+    it('trusts a label already written in the matching script, even under a non-English UI language', () => {
+      useSettingsStore.getState().setLanguage('hi');
+      render(
+        withI18n(
+          <ReminderCard
+            reminder={schedule({ reminderType: 'medication', label: 'शाम की दवाई' })}
+            onAcknowledge={() => {}}
+            onSnooze={() => {}}
+          />,
+        ),
+      );
+      expect(screen.getByText('शाम की दवाई')).toBeInTheDocument();
+    });
   });
 });
 

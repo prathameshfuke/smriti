@@ -38,6 +38,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('next-intl', () => ({
   useTranslations: () => (key: string) => QUIZ_UI_EN[key as keyof typeof QUIZ_UI_EN] ?? key,
+  useLocale: () => 'en',
   NextIntlClientProvider: ({ children }: { children: ReactNode }) => children,
 }));
 

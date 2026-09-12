@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, within } from '@testing-library/react';
 import { db, type LocalReminderAck } from '@/lib/db/schema';
 import { dateRange } from '@/lib/engine/adherence';
+import { I18nProvider } from '@/lib/i18n/provider';
+
+// CaregiverDashboardPage's sync status/label now calls useTranslation().
+function render(ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) {
+  return rtlRender(ui, { wrapper: I18nProvider, ...options });
+}
 
 const push = vi.fn();
 const router = { push, replace: vi.fn() };

@@ -6,11 +6,20 @@ import { DEFAULT_LANGUAGE, type UILanguage } from './languages';
 import as from './locales/as.json';
 import en from './locales/en.json';
 import hi from './locales/hi.json';
+import brx from './locales/brx.json';
+import mni from './locales/mni.json';
+import bn from './locales/bn.json';
+import ne from './locales/ne.json';
 
 export { LANGUAGES, DEFAULT_LANGUAGE, isUILanguage, type UILanguage } from './languages';
 
 type Messages = Record<string, unknown>;
-const CATALOGS: Record<UILanguage, Messages> = { as, hi, en };
+/** brx/mni are best-effort machine translations from the Part 2 language
+ * expansion, not yet verified by a native speaker — see
+ * .claude/plans/multilingual-expansion.plan.md. bn/ne are real, confident
+ * translations. `t()`'s own English fallback below means an actually-wrong
+ * entry here degrades to English, never to broken/garbled text. */
+const CATALOGS: Record<UILanguage, Messages> = { as, hi, en, brx, mni, bn, ne };
 
 /** Resolves a dot-path such as `home.greeting` against a catalog. */
 function lookup(catalog: Messages, key: string): string | undefined {

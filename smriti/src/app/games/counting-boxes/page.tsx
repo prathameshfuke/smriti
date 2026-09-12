@@ -87,7 +87,7 @@ function CountingBoxesPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col">
-        <NextIntlClientProvider locale={language} messages={COUNTING_BOXES_MESSAGES[language]}>
+        <NextIntlClientProvider locale={language} messages={COUNTING_BOXES_MESSAGES[language as keyof typeof COUNTING_BOXES_MESSAGES] ?? COUNTING_BOXES_MESSAGES.en}>
           <GameComponent onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>

@@ -2,7 +2,9 @@
 
 import { useEffect } from 'react';
 import BigButton from '@/components/ui/BigButton';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import type { GameType } from '@/lib/supabase/types';
 
 export interface SessionCompleteProps {
@@ -17,12 +19,12 @@ export interface SessionCompleteProps {
  * Messages never use a fail/error vocabulary — a low-star session is still
  * framed as progress, never as a mistake the patient made.
  */
-const ENCOURAGEMENT: Record<number, string> = {
-  5: 'Perfect! Wonderful work today!',
-  4: 'Excellent! You are doing great!',
-  3: 'Great job today! Keep it up!',
-  2: 'Good effort! Every session helps.',
-  1: 'Well done for trying! Each day gets better.',
+const ENCOURAGEMENT_KEY: Record<number, string> = {
+  5: 'game.sessionEnd.star5',
+  4: 'game.sessionEnd.star4',
+  3: 'game.sessionEnd.star3',
+  2: 'game.sessionEnd.star2',
+  1: 'game.sessionEnd.star1',
 };
 
 export default function SessionComplete({
@@ -31,11 +33,13 @@ export default function SessionComplete({
   totalCount,
   onGoHome,
 }: SessionCompleteProps) {
+  const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const safeStars = Math.max(1, Math.min(5, Math.round(stars)));
-  const message = ENCOURAGEMENT[safeStars];
+  const message = t(ENCOURAGEMENT_KEY[safeStars]);
 
   useEffect(() => {
-    speak(message);
+    void narrate(message, language, isOnline);
     // Speak once, when this screen appears.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

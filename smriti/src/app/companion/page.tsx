@@ -181,10 +181,20 @@ export default function CompanionPage() {
       recorder.onstop = () => {
         setPhase('thinking');
         void (async () => {
-          const text = await acquireTranscript();
-          if (text) {
-            await handleTranscript(text);
-          } else {
+          try {
+            const text = await acquireTranscript();
+            if (text) {
+              await handleTranscript(text);
+            } else {
+              showFallback();
+            }
+          } catch {
+            // Last-resort net: acquireTranscript/handleTranscript already
+            // catch everything they know about, but neither can catch a
+            // synchronous throw from SpeechRecognition's constructor/start()
+            // (thrown inside its own Promise executor, which auto-rejects).
+            // Without this, phase stays 'thinking' forever with no code
+            // path back out — exactly the hang this page must never allow.
             showFallback();
           }
         })();

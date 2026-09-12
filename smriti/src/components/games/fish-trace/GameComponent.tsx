@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useFishEngine, getLevelParams, GamePhase } from './hooks/useFishEngine';
 import { SunfishSVG } from './SunfishSVG';
@@ -12,7 +12,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 
 interface GameSettings {
@@ -33,6 +35,9 @@ export interface GameComponentProps {
 
 export default function GameComponent({ onComplete }: GameComponentProps) {
     const t = useTranslations('games.fishTrace');
+    const locale = useLocale();
+    const language = isUILanguage(locale) ? locale : 'en';
+    const { isOnline } = useOfflineStatus();
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Settings
@@ -176,7 +181,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const startGame = useCallback(() => {
         setPhase('watching');
         setMessage(t('start'));
-        speak(t('start'));
+        void narrate(t('start'), language, isOnline);
         setRoundPoints(null);
         setRoundResult(null);
 
@@ -216,7 +221,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
             }, glowDuration);
         }, 100);
-    }, [t, level, initFishes, startMovement, stopMovement]);
+    }, [t, level, initFishes, startMovement, stopMovement, language, isOnline]);
 
     const handleFishClick = (id: number) => {
         if (phase !== 'selecting') return;

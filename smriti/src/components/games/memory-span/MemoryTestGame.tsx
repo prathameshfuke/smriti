@@ -5,10 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { Trophy, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'instruction' | 'presentation' | 'recall' | 'setup' | 'results';
@@ -33,7 +35,10 @@ export interface MemoryTestGameProps {
 
 export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const t = useTranslations('games.freeShortTermMemoryTest');
-  
+  const locale = useLocale();
+  const language = isUILanguage(locale) ? locale : 'en';
+  const { isOnline } = useOfflineStatus();
+
   // Get word bank from translations
   const wordBank = t.raw('wordBank') as string[];
   
@@ -57,7 +62,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   // original games speak their instruction text on entry.
   useEffect(() => {
     if (gameState !== 'presentation') return;
-    speak(`${t('memorizeTheseWords')} ${t('studyAtYourPace')}`);
+    void narrate(`${t('memorizeTheseWords')} ${t('studyAtYourPace')}`, language, isOnline);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState]);
 

@@ -8,11 +8,13 @@ import { GAME_CONFIG, DifficultySettings } from './config';
 import { cn } from '@/lib/utils';
 import { PlayCircle, Clock, Share2, ArrowDown } from 'lucide-react';
 import { ShareModal } from '@/components/ui/ShareModal';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useInterval } from '@/hooks/useInterval';
 import { useTimeout } from '@/hooks/useTimeout';
 import confetti from 'canvas-confetti';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'idle' | 'playing' | 'complete';
@@ -29,6 +31,9 @@ export interface GameComponentProps {
 
 export default function GameComponent({ onComplete }: GameComponentProps) {
     const t = useTranslations("games.largerNumber.gameUI");
+    const locale = useLocale();
+    const language = isUILanguage(locale) ? locale : 'en';
+    const { isOnline } = useOfflineStatus();
 
     const [gameState, setGameState] = useState<GameState>("idle");
     const [timeLeft, setTimeLeft] = useState<number>(GAME_CONFIG.gameTime);
@@ -274,10 +279,10 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     // original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== "idle") return;
-        speak(t("challenge", {
+        void narrate(t("challenge", {
             attempts: currentDifficulty.attempts,
             accuracy: currentDifficulty.accuracy,
-        }));
+        }), language, isOnline);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 

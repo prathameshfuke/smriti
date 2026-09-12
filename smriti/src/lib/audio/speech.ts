@@ -1,10 +1,18 @@
 import type { UILanguage } from '@/lib/i18n/languages';
 
-/** BCP-47 tags to match against installed voices' `.lang`. */
+/** BCP-47 tags to match against installed voices' `.lang`. Bodo (`brx`) and
+ * Manipuri (`mni`) have no standard BCP-47 tag with real browser voice
+ * support anywhere near universal — mapped to their ISO codes anyway; no
+ * matching voice simply means this stays silent, the same honest "no voice
+ * installed" behavior every other unsupported language already gets here. */
 const LANG_TAG: Record<UILanguage, string> = {
   en: 'en',
   hi: 'hi',
   as: 'as',
+  brx: 'brx',
+  mni: 'mni',
+  bn: 'bn',
+  ne: 'ne',
 };
 
 /**

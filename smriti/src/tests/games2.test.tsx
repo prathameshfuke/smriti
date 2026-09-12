@@ -83,13 +83,15 @@ describe('starsFromRate', () => {
 describe('SessionComplete', () => {
   it('always renders at least 1 star regardless of input', () => {
     const { container } = render(
-      <SessionComplete
-        gameType="path_match"
-        stars={0}
-        correctCount={0}
-        totalCount={5}
-        onGoHome={() => {}}
-      />,
+      <I18nProvider>
+        <SessionComplete
+          gameType="path_match"
+          stars={0}
+          correctCount={0}
+          totalCount={5}
+          onGoHome={() => {}}
+        />
+      </I18nProvider>,
     );
     expect(container.textContent?.match(/⭐/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
   });
@@ -97,13 +99,15 @@ describe('SessionComplete', () => {
   it('output HTML never contains the words "wrong" or "failed"', () => {
     for (let stars = 1; stars <= 5; stars += 1) {
       const { container, unmount } = render(
-        <SessionComplete
-          gameType="quick_tap"
-          stars={stars}
-          correctCount={stars}
-          totalCount={5}
-          onGoHome={() => {}}
-        />,
+        <I18nProvider>
+          <SessionComplete
+            gameType="quick_tap"
+            stars={stars}
+            correctCount={stars}
+            totalCount={5}
+            onGoHome={() => {}}
+          />
+        </I18nProvider>,
       );
       const html = container.innerHTML.toLowerCase();
       expect(html).not.toContain('wrong');

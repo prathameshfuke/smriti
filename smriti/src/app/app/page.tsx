@@ -18,6 +18,7 @@ import { restoreLocalSession, checkLiveCaregiverSession } from '@/lib/auth/local
 import { speak } from '@/lib/audio/speech';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useTranslation } from '@/lib/i18n/provider';
 
 const GAMES = [
   { gameName: 'Object Hunt', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.svg' },
@@ -191,6 +192,7 @@ function PinDialog({ onClose }: { onClose: () => void }) {
 
 export default function HomePage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const [showPin, setShowPin] = useState(false);
   const { pendingReminder, clearPendingReminder } = useReminders();
@@ -355,7 +357,7 @@ export default function HomePage() {
       <div className="flex flex-col gap-3">
         <BigButton label="Ask Smriti" variant="primary" onClick={() => router.push('/companion')} />
         <BigButton label="Reminders" variant="secondary" onClick={() => router.push('/reminders')} />
-        <BigButton label="My Progress" variant="secondary" onClick={() => setShowPin(true)} />
+        <BigButton label={t('home.myProgress')} variant="secondary" onClick={() => setShowPin(true)} />
       </div>
 
       {showPin ? <PinDialog onClose={() => setShowPin(false)} /> : null}

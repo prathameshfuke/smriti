@@ -1,8 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
 import { db } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
+import { I18nProvider } from '@/lib/i18n/provider';
+
+// The patient-home HomePage rendered below calls useTranslation() (My Progress button).
+function render(ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) {
+  return rtlRender(ui, { wrapper: I18nProvider, ...options });
+}
 
 const push = vi.fn();
 const router = { push, replace: vi.fn() };
@@ -243,6 +249,35 @@ describe('CompanionPage', () => {
     expect(await screen.findByText('One red pill after breakfast.')).toBeInTheDocument();
     expect(screen.getByText(/from earlier/i)).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/ai/complete'), expect.anything());
+  });
+
+  it('reaches the fallback phase, never stays stuck in "thinking", when browser dictation throws synchronously (SpeechRecognition.start() failure)', async () => {
+    // Forces the network path to fall through so acquireTranscript reaches
+    // its SpeechRecognition fallback, then makes that constructor throw —
+    // the one failure mode neither acquireTranscript's nor handleTranscript's
+    // own try/catch can see, since it happens inside a Promise executor.
+    installMediaRecorder();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+    vi.stubGlobal(
+      'SpeechRecognition',
+      class {
+        constructor() {
+          throw new Error('SpeechRecognition.start() failed');
+        }
+      },
+    );
+
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    const micButton = screen.getByRole('button', { name: /ask/i });
+    fireEvent.click(micButton);
+    await screen.findByRole('button', { name: /stop/i });
+    fireEvent.click(micButton);
+
+    expect(
+      await screen.findByText(/can't check that right now|try again in a moment/i),
+    ).toBeInTheDocument();
   });
 });
 

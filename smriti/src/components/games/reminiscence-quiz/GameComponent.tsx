@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import BigButton from '@/components/ui/BigButton';
 import SessionComplete from '@/components/games/SessionComplete';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { speak } from '@/lib/audio/speech';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import type { LocalReminiscenceQuiz } from '@/lib/db/schema';
 
@@ -27,6 +28,8 @@ export interface ReminiscenceQuizGameProps {
  */
 export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, onGoHome }: ReminiscenceQuizGameProps) {
   const t = useTranslations('games.reminiscenceQuiz.gameUI');
+  const locale = useLocale();
+  const language = isUILanguage(locale) ? locale : 'en';
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -41,7 +44,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
     setSelected(i);
     const isCorrect = i === question.correctIndex;
     if (isCorrect) setCorrectCount((c) => c + 1);
-    speak(isCorrect ? t('correct') : t('tryTogether'));
+    speak(isCorrect ? t('correct') : t('tryTogether'), language);
   };
 
   const advance = () => {

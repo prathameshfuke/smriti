@@ -10,6 +10,7 @@ import { db, SmritiDB } from '@/lib/db/schema';
 import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useTranslation } from '@/lib/i18n/provider';
 
 const PIN_LENGTH = 4;
 type PinChangeStage = 'current' | 'new' | 'confirm';
@@ -17,6 +18,7 @@ type DangerStage = 'closed' | 'confirmDelete' | 'confirmDeletePin';
 
 export default function CaregiverSettingsPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const verifyPin = useSettingsStore((s) => s.verifyPin);
   const setPin = useSettingsStore((s) => s.setPin);
   const hasPin = useSettingsStore((s) => s.caregiverPinHash !== null);
@@ -232,10 +234,7 @@ export default function CaregiverSettingsPage() {
             <p>Version 1.0.0-hackathon</p>
             <p>Built for Smart India Hackathon 2026 — SIH26003</p>
             <p>Supported by the Ministry of Development of North Eastern Region (MDoNER)</p>
-            <p>
-              SMRITI supports cognitive wellness. It does not diagnose or treat dementia, and it
-              does not replace a doctor.
-            </p>
+            <p>{t('disclaimer')}</p>
           </div>
         </section>
 

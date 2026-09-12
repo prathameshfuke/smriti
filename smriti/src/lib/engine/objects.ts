@@ -2,11 +2,22 @@ import type { UILanguage } from '@/lib/i18n/languages';
 
 export interface SmritiObject {
   id: string;
-  name: Record<UILanguage, string>;
+  /** English is the only guaranteed key — every UILanguage widening since
+   * (bn/brx/mni/ne) does NOT require re-translating all 66 items here
+   * immediately; `objectName()` below falls back to English exactly like
+   * the app's own `t()` does ("falling back to English, then to the key").
+   * Fill in a language's entry when it has a real translation, not before. */
+  name: Partial<Record<UILanguage, string>> & { en: string };
   emoji: string;
   category: string;
   /** Hex without alpha — callers append their own alpha suffix. */
   categoryColor: string;
+}
+
+/** The name to display/speak for one object in one language, falling back
+ * to English when this object has no translation for it yet. */
+export function objectName(object: SmritiObject, language: UILanguage): string {
+  return object.name[language] ?? object.name.en;
 }
 
 /**

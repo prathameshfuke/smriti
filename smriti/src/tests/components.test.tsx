@@ -15,6 +15,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import AudioPrompt from '@/components/ui/AudioPrompt';
 import ScoreGraph from '@/components/ui/ScoreGraph';
 import LanguagePicker from '@/components/layout/LanguagePicker';
+import { LANGUAGES } from '@/lib/i18n/languages';
 import PatientNav from '@/components/layout/PatientNav';
 import CaregiverNav from '@/components/layout/CaregiverNav';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -273,7 +274,7 @@ describe('Skeleton', () => {
 describe('LanguagePicker', () => {
   it('renders one button per supported language', () => {
     render(<LanguagePicker />);
-    expect(screen.getAllByRole('button')).toHaveLength(3);
+    expect(screen.getAllByRole('button')).toHaveLength(LANGUAGES.length);
   });
 
   it('updates settingsStore when a language is chosen', () => {
@@ -324,5 +325,14 @@ describe('CaregiverNav', () => {
     render(<CaregiverNav />);
     expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /patients/i })).toBeInTheDocument();
+  });
+
+  it('keeps each label column shrinkable so it cannot overflow the nav row at narrow widths', () => {
+    render(<CaregiverNav />);
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.className).toMatch(/\bmin-w-0\b/);
+      const label = link.querySelector('span');
+      expect(label?.className).toMatch(/\btruncate\b/);
+    }
   });
 });

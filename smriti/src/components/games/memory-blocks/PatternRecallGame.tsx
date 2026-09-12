@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PlayCircle, Trophy, Loader2 } from 'lucide-react'
 import { ShareModal } from '@/components/ui/ShareModal'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useTimeout } from '@/hooks/useTimeout'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
-import { speak } from '@/lib/audio/speech'
+import { narrate } from '@/lib/audio/narrate'
+import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { isUILanguage } from '@/lib/i18n/languages'
 import { starsFromRate } from '@/lib/engine/scoring'
 
 interface Block {
@@ -31,6 +33,9 @@ export interface PatternRecallGameProps {
 
 export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
     const t = useTranslations('games.blockMemoryChallenge.gameUI')
+    const locale = useLocale()
+    const language = isUILanguage(locale) ? locale : 'en'
+    const { isOnline } = useOfflineStatus()
     const [gameState, setGameState] = useState<'idle' | 'showing' | 'guessing' | 'complete' | 'failed'>('idle')
     const [level, setLevel] = useState(START_LEVEL)
     const [startLevel, setStartLevel] = useState(START_LEVEL)
@@ -103,7 +108,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
     // original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== 'showing') return
-        speak(t('watchSequence'))
+        void narrate(t('watchSequence'), language, isOnline)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState])
 

@@ -1,10 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
 import { v4 as uuid } from 'uuid';
 import { db } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import RoutineRecall from '@/components/games/RoutineRecall';
+import { I18nProvider } from '@/lib/i18n/provider';
+
+// The dynamically-imported HomePage below calls useTranslation() (My Progress button).
+function render(ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) {
+  return rtlRender(ui, { wrapper: I18nProvider, ...options });
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),

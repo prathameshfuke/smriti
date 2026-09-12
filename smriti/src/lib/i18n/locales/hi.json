@@ -3,7 +3,7 @@
     "greeting": "नमस्ते",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
-    "myProgress": "My Progress"
+    "myProgress": "मेरी प्रगति"
   },
   "game": {
     "objectHunt": {
@@ -45,33 +45,47 @@
     "correct": "सही!",
     "tryAgain": "फिर कोशिश करें",
     "sessionComplete": "शाबाश! आपने आज का सत्र पूरा किया।",
-    "stars": "अर्जित सितारे"
+    "stars": "अर्जित सितारे",
+    "sessionEnd": {
+      "star5": "बहुत बढ़िया! आज शानदार काम किया!",
+      "star4": "शानदार! आप बहुत अच्छा कर रहे हैं!",
+      "star3": "आज बहुत अच्छा किया! ऐसे ही करते रहें!",
+      "star2": "अच्छी कोशिश! हर सत्र मदद करता है।",
+      "star1": "कोशिश करने के लिए शाबाश! हर दिन बेहतर होता जाएगा।"
+    }
   },
   "reminder": {
     "medication": "दवाई लेने का समय",
     "hydration": "पानी पीने का समय",
-    "activity": "Time for your walk",
-    "appointment": "Time for your appointment",
+    "activity": "टहलने का समय हो गया है",
+    "appointment": "आपकी अपॉइंटमेंट का समय हो गया है",
     "done": "हो गया",
-    "snooze": "Later"
+    "snooze": "बाद में",
+    "timeFor": "समय हो गया है:",
+    "remindLater": "मुझे 15 मिनट में याद दिलाएं"
   },
   "caregiver": {
     "dashboard": "Dashboard",
     "patients": "Patients",
     "alerts": "Alerts",
     "lastSynced": "Last synced",
-    "syncNow": "Sync now"
+    "syncNow": "अभी सिंक करें"
   },
   "sync": {
     "synced": "सिंक हो गया",
     "offline": "ऑफलाइन",
-    "syncing": "Syncing",
-    "pending": "Waiting to sync"
+    "syncing": "सिंक हो रहा है",
+    "pending": "सिंक होने की प्रतीक्षा में",
+    "notSyncedYet": "अभी तक सिंक नहीं हुआ"
   },
-  "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
+  "disclaimer": "SMRITI संज्ञानात्मक देखभाल में सहायता करता है, लेकिन किसी भी चिकित्सीय स्थिति का निदान या उपचार नहीं करता। कृपया हमेशा किसी योग्य चिकित्सक से सलाह लें।",
   "lang": {
     "as": "অসমীয়া",
     "hi": "हिन्दी",
-    "en": "English"
+    "en": "English",
+    "brx": "बड़ो",
+    "mni": "মৈতৈলোন্",
+    "bn": "বাংলা",
+    "ne": "नेपाली"
   }
 }

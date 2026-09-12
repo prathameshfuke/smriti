@@ -87,7 +87,7 @@ function NBackPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col px-4 py-6">
-        <NextIntlClientProvider locale={language} messages={N_BACK_MESSAGES[language]}>
+        <NextIntlClientProvider locale={language} messages={N_BACK_MESSAGES[language as keyof typeof N_BACK_MESSAGES] ?? N_BACK_MESSAGES.en}>
           <GameComponent onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>

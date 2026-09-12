@@ -7,11 +7,13 @@ import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import ObjectGrid from '@/components/games/ObjectGrid';
 import SessionComplete from '@/components/games/SessionComplete';
-import { pickObjects, type SmritiObject } from '@/lib/engine/objects';
+import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -86,7 +88,8 @@ export default function ObjectHuntPage() {
 
 function ObjectHuntPageInner() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
@@ -118,7 +121,7 @@ function ObjectHuntPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    speak(t('game.objectHunt.instruction'));
+    void narrate(t('game.objectHunt.instruction'), language, isOnline);
     const timer = setTimeout(() => setPhase('reveal'), INSTRUCTION_SECONDS * 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -145,7 +148,7 @@ function ObjectHuntPageInner() {
       setTargetPos(0);
       setCorrectCount(0);
       setRevealedIndex(order[0]?.index ?? -1);
-      speak(order[0]?.object.name.en ?? '');
+      speak(order[0] ? objectName(order[0].object, language) : '', language);
 
       interval = setInterval(() => {
         i += 1;
@@ -155,7 +158,7 @@ function ObjectHuntPageInner() {
           return;
         }
         setRevealedIndex(order[i].index);
-        speak(order[i].object.name.en);
+        speak(objectName(order[i].object, language), language);
       }, level.revealSeconds * 1000);
     });
 
@@ -171,7 +174,7 @@ function ObjectHuntPageInner() {
     queueMicrotask(() => {
       setRevealedIndex(-1);
       setRoundStartedAt(Date.now());
-      if (target) speak(`Where was the ${target.object.name.en}?`);
+      if (target) speak(`${t('game.objectHunt.whereWasThe')} ${objectName(target.object, language)}?`, language);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, targetPos]);
@@ -185,7 +188,7 @@ function ObjectHuntPageInner() {
     const responseTimeMs = Date.now() - roundStartedAt;
 
     setFlash({ index: isCorrect ? currentTarget.index : index, correct: isCorrect });
-    speak(isCorrect ? t('game.correct') : t('game.tryAgain'));
+    speak(isCorrect ? t('game.correct') : t('game.tryAgain'), language);
     if (isCorrect) setCorrectCount((c) => c + 1);
 
     await logEvent({

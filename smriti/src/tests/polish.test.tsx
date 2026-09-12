@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { I18nProvider } from '@/lib/i18n/provider';
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -55,9 +56,13 @@ describe('Disclaimer', () => {
     // which isn't transformed in this test environment — testing the
     // component the layout renders, not the layout's font/metadata plumbing.
     const { default: Disclaimer } = await import('@/components/layout/Disclaimer');
-    render(<Disclaimer />);
+    render(
+      <I18nProvider>
+        <Disclaimer />
+      </I18nProvider>,
+    );
     expect(
-      screen.getByText(/does not diagnose or treat any condition/i),
+      screen.getByText(/does not diagnose or treat any medical condition/i),
     ).toBeInTheDocument();
   });
 
@@ -65,12 +70,12 @@ describe('Disclaimer', () => {
     const { default: Disclaimer } = await import('@/components/layout/Disclaimer');
     const { default: HomePage } = await import('@/app/page');
     render(
-      <>
+      <I18nProvider>
         <HomePage />
         <Disclaimer />
-      </>,
+      </I18nProvider>,
     );
-    const disclaimer = screen.getByText(/does not diagnose or treat any condition/i);
+    const disclaimer = screen.getByText(/does not diagnose or treat any medical condition/i);
     expect(disclaimer).toBeVisible();
   });
 });

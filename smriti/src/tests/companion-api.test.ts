@@ -200,7 +200,9 @@ describe('POST /api/ai/transcribe', () => {
 
   beforeEach(() => {
     process.env.GROQ_API_KEY = 'test-groq-key';
-    process.env.BHASHINI_INFERENCE_API_KEY = 'test-bhashini-key';
+    process.env.BHASHINI_USER_ID = 'test-user-id';
+    process.env.BHASHINI_ULCA_API_KEY = 'test-ulca-key';
+    process.env.BHASHINI_INFERENCE_API_KEY = 'test-legacy-key';
   });
 
   afterEach(() => {
@@ -218,10 +220,24 @@ describe('POST /api/ai/transcribe', () => {
   }
 
   /** Branches on URL so one test can simulate Bhashini and Groq responding
-   * differently — the two providers this route now tries in sequence. */
+   * differently — the two providers this route now tries in sequence.
+   * `bhashini` is used for BOTH the discovery-resolved compute call and the
+   * legacy-fallback compute call, since both hit the same dhruva-api URL. */
+  const ulcaConfigSuccess: { ok: boolean; status?: number; body?: unknown } = {
+    ok: true,
+    body: {
+      pipelineResponseConfig: [{ config: [{ serviceId: 'ai4bharat/conformer-hi-gpu--t4' }] }],
+      pipelineInferenceAPIEndPoint: { inferenceApiKey: { name: 'Authorization', value: 'dynamic-key' } },
+    },
+  };
+
   function mockProviders(bhashini: { ok: boolean; status?: number; body?: unknown }, groq: { ok: boolean; status?: number; body?: unknown }) {
     return vi.fn().mockImplementation((url: string) => {
-      const target = url.includes('dhruva-api.bhashini.gov.in') ? bhashini : groq;
+      const target = url.includes('meity-auth.ulcacontrib.org')
+        ? ulcaConfigSuccess
+        : url.includes('dhruva-api.bhashini.gov.in')
+          ? bhashini
+          : groq;
       return Promise.resolve({
         ok: target.ok,
         status: target.status ?? (target.ok ? 200 : 500),
@@ -297,7 +313,8 @@ describe('POST /api/ai/transcribe', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.text).toBe('অসমীয়া প্ৰতিলিপি');
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 2 calls: the ULCA config call, then the Bhashini compute call — never Groq.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('falls through to Groq Whisper when Bhashini fails for a Bhashini-eligible language', async () => {
@@ -313,7 +330,9 @@ describe('POST /api/ai/transcribe', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.text).toBe('groq caught the fallback');
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 4 calls: the ULCA config call, the failing primary compute call, the
+    // legacy-fallback compute call (also mocked to fail here), then Groq.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it('never attempts Bhashini for English — Groq Whisper is called directly', async () => {

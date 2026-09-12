@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LilyPadSVG } from './LilyPadSVG';
 import { FrogSVG } from './FrogSVG';
@@ -12,7 +12,9 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
-import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 import {
     GamePhase,
@@ -41,6 +43,9 @@ export interface GameComponentProps {
 
 export default function GameComponent({ onComplete }: GameComponentProps) {
     const t = useTranslations('games.frogMemoryLeap.gameUI');
+    const locale = useLocale();
+    const language = isUILanguage(locale) ? locale : 'en';
+    const { isOnline } = useOfflineStatus();
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Settings
@@ -252,11 +257,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         // After a brief pause, start demo
         setTimeout(() => {
             setMessage(t('watch'));
-            speak(`${params.jumpCount} ${t('watch')}`);
+            void narrate(`${params.jumpCount} ${t('watch')}`, language, isOnline);
             playDemo(seq, pads, jumpDurations);
         }, 1500);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [t]);
+    }, [t, language, isOnline]);
 
     // ── Play demo sequence ──
     const playDemo = (seq: number[], pads: PadPosition[], durations: number[]) => {

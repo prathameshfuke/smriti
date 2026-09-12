@@ -3,7 +3,7 @@
     "greeting": "নমস্কাৰ",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
-    "myProgress": "My Progress"
+    "myProgress": "মোৰ অগ্ৰগতি"
   },
   "game": {
     "objectHunt": {
@@ -45,33 +45,47 @@
     "correct": "শুদ্ধ!",
     "tryAgain": "পুনৰ চেষ্টা কৰক",
     "sessionComplete": "বাহ! আপুনি আজিৰ অনুশীলন সম্পূৰ্ণ কৰিলে।",
-    "stars": "অৰ্জিত তৰা"
+    "stars": "অৰ্জিত তৰা",
+    "sessionEnd": {
+      "star5": "বহুত ভাল! আজি অসাধাৰণ কাম কৰিলে!",
+      "star4": "উৎকৃষ্ট! আপুনি বহুত ভাল কৰি আছে!",
+      "star3": "আজি বহুত ভাল কৰিলে! এনেদৰেই কৰি থাকক!",
+      "star2": "ভাল প্ৰচেষ্টা! প্ৰতিটো অনুশীলনে সহায় কৰে।",
+      "star1": "চেষ্টা কৰাৰ বাবে বাহ! প্ৰতিদিনে ভাল হৈ যাব।"
+    }
   },
   "reminder": {
-    "medication": "Time for your medicine",
-    "hydration": "Time to drink water",
-    "activity": "Time for your walk",
-    "appointment": "Time for your appointment",
+    "medication": "আপোনাৰ ঔষধ খোৱাৰ সময় হ'ল",
+    "hydration": "পানী খোৱাৰ সময় হ'ল",
+    "activity": "খোজ কঢ়াৰ সময় হ'ল",
+    "appointment": "আপোনাৰ সাক্ষাৎৰ সময় হ'ল",
     "done": "হয়",
-    "snooze": "Later"
+    "snooze": "পিছত",
+    "timeFor": "সময় হ'ল:",
+    "remindLater": "মোক ১৫ মিনিটৰ পিছত মনত পেলাই দিয়ক"
   },
   "caregiver": {
     "dashboard": "Dashboard",
     "patients": "Patients",
     "alerts": "Alerts",
     "lastSynced": "Last synced",
-    "syncNow": "Sync now"
+    "syncNow": "এতিয়া চিংক্ৰনাইজ কৰক"
   },
   "sync": {
     "synced": "চিংক্ৰনাইজ হৈছে",
     "offline": "অফলাইন",
-    "syncing": "Syncing",
-    "pending": "Waiting to sync"
+    "syncing": "চিংক্ৰনাইজ হৈ আছে",
+    "pending": "চিংক্ৰনাইজ কৰাৰ বাবে অপেক্ষা কৰি আছে",
+    "notSyncedYet": "এতিয়াও চিংক্ৰনাইজ হোৱা নাই"
   },
-  "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
+  "disclaimer": "SMRITI-য়ে জ্ঞানমূলক যত্নত সহায় কৰে, কিন্তু কোনো চিকিৎসাগত অৱস্থাৰ নিৰ্ণয় বা চিকিৎসা নকৰে। অনুগ্ৰহ কৰি সদায় এজন যোগ্য চিকিৎসকৰ পৰামৰ্শ লওক।",
   "lang": {
     "as": "অসমীয়া",
     "hi": "हिन्दी",
-    "en": "English"
+    "en": "English",
+    "brx": "बड़ो",
+    "mni": "মৈতৈলোন্",
+    "bn": "বাংলা",
+    "ne": "नेपाली"
   }
 }

@@ -12,7 +12,9 @@ import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { generatePointLayout } from '@/lib/games/pathMatchLayout';
 import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -45,7 +47,8 @@ export default function PathMatchPage() {
 
 function PathMatchPageInner() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
@@ -79,8 +82,9 @@ function PathMatchPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    speak(t('game.pathMatch.instruction'));
-  }, [phase, t]);
+    void narrate(t('game.pathMatch.instruction'), language, isOnline);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   const completeRound = useCallback(
     async (finalPairs: Array<{ from: number; to: number }>, finalWrongTaps: number) => {
@@ -157,7 +161,7 @@ function PathMatchPageInner() {
             : completedPairs;
         setCompletedPairs(nextPairs);
 
-        if (nextTarget % 3 === 0) speak('Good!');
+        if (nextTarget % 3 === 0) speak(t('game.pathMatch.good'), language);
 
         if (nextTarget > points.length) {
           void completeRound(nextPairs, wrongTaps);
@@ -171,7 +175,7 @@ function PathMatchPageInner() {
         setTimeout(() => setWrongTapShowing(false), 300);
       }
     },
-    [phase, currentTarget, completedPairs, wrongTaps, points.length, completeRound],
+    [phase, currentTarget, completedPairs, wrongTaps, points.length, completeRound, t, language],
   );
 
   const totalConnections = Math.max(1, points.length - 1);

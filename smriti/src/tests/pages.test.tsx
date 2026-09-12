@@ -1,9 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import type { LocalPatient } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { I18nProvider } from '@/lib/i18n/provider';
+
+// HomePage (My Progress button) and CaregiverSettingsPage (disclaimer) both
+// call useTranslation() unconditionally now — every render in this file
+// needs the provider in the tree, not just the ones exercising those strings.
+function render(ui: Parameters<typeof rtlRender>[0], options?: Parameters<typeof rtlRender>[1]) {
+  return rtlRender(ui, { wrapper: I18nProvider, ...options });
+}
 
 const push = vi.fn();
 const replace = vi.fn();

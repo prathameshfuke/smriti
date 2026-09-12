@@ -14,7 +14,9 @@ import GameSettings, { GameSettings as GameSettingsType } from "./GameSettings";
 import GameDemo from "./GameDemo";
 import { analytics } from "@/lib/analytics";
 import { submitScoreToLeaderboard } from "@/lib/leaderboard";
-import { speak } from "@/lib/audio/speech";
+import { narrate } from "@/lib/audio/narrate";
+import { useOfflineStatus } from "@/hooks/useOfflineStatus";
+import { isUILanguage } from "@/lib/i18n/languages";
 import { starsFromRate } from "@/lib/engine/scoring";
 import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import {
@@ -168,7 +170,10 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     const pageT = useTranslations('games.dualNBack');
     const shareT = useTranslations('common.progressShare');
     const commonT = useTranslations('common.leaderboard');
-    
+    const locale = useLocale();
+    const language = isUILanguage(locale) ? locale : 'en';
+    const { isOnline } = useOfflineStatus();
+
     const { settings, updateSettings } = useGameSettings();
     
     // 原useGameLogic中的状态
@@ -256,7 +261,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     // app's original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== "idle") return;
-        speak(`${t('challenge')}. ${t('improveMemorySubtitle')}`);
+        void narrate(`${t('challenge')}. ${t('improveMemorySubtitle')}`, language, isOnline);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 

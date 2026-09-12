@@ -1,36 +1,55 @@
 import type { UILanguage } from '@/lib/i18n/languages';
+import { fetchInferenceAuth } from './bhashini-auth';
 
 /**
  * Single entry point for Bhashini text-to-speech. Sibling to llm-client.ts
  * and transcribe-client.ts, not merged into either — different endpoint,
- * different auth (a single Authorization header, no Bearer prefix), and a
- * `pipelineResponse` array response shape unique to Bhashini.
+ * different auth (a dynamic per-call header minted by bhashini-auth.ts's
+ * config step, no Bearer prefix), and a `pipelineResponse` array response
+ * shape unique to Bhashini.
  *
- * Server-only: reads BHASHINI_INFERENCE_API_KEY from process.env. Never
- * import this from a Client Component.
+ * Server-only: bhashini-auth.ts reads BHASHINI_USER_ID/
+ * BHASHINI_ULCA_API_KEY from process.env for the primary flow below; the
+ * legacy fallback reads BHASHINI_INFERENCE_API_KEY. Never import this from
+ * a Client Component.
  *
- * Endpoint, required `gender` field, and the `pipelineRequestConfig.pipelineId`
- * requirement (needed even though this looks like the "direct" inference
- * endpoint) were confirmed empirically against the real API before writing
- * this — Bhashini's docs describe an older 3-call ULCA flow that doesn't
- * apply to Bhashini-Udyat-issued keys, and omitting either field returns a
- * bare 500 with no detail.
+ * Two-tier lookup, matching bhashini-asr-client.ts: live discovery under
+ * the new ULCA account resolves TTS fine for every language tried so far,
+ * but ASR discovery has a real gap (see that file's doc comment) — the
+ * same static key that covers the ASR gap is confirmed live-working for
+ * TTS too (a real 200 with real audio back, tested directly), so the same
+ * fallback shape is applied here for consistency and defense-in-depth
+ * rather than assuming discovery never regresses.
  */
 
 const BHASHINI_URL = 'https://dhruva-api.bhashini.gov.in/services/inference/pipeline';
-const TTS_SERVICE_ID = 'Bhashini/IITM/TTS';
 // "Initial Pipeline Models" — the one pipeline ID Bhashini's own docs list
 // as covering ASR, Translation, Transliteration and TTS together.
 const PIPELINE_ID = '64392f96daac500b55c543cd';
+// The one service confirmed live-working under the legacy static key —
+// used only as the fallback when live discovery under the new ULCA
+// account can't resolve a service for this language.
+const LEGACY_TTS_SERVICE_ID = 'Bhashini/IITM/TTS';
 
 const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
   en: 'en',
   hi: 'hi',
   as: 'as',
+  brx: 'brx',
+  mni: 'mni',
+  bn: 'bn',
+  // Live-probed (Part 2): Nepali has no discoverable TTS service at all.
+  // Still routed through the same call — it fails fast and narrate.ts
+  // falls back to browser speech, same as any other Bhashini miss.
+  ne: 'ne',
 };
 
-/** A hung connection must not block a reminder or companion answer forever. */
-const BHASHINI_TIMEOUT_MS = 20_000;
+/** Compute-call timeout — 5s shorter than the old 20s now that a config
+ * call (bhashini-auth.ts's own 5s budget) precedes it on the primary path,
+ * so the combined Bhashini-attempt budget stays 20s total, same as before
+ * this two-step flow existed. The legacy fallback below reuses this same
+ * budget for its own single call. */
+const BHASHINI_TIMEOUT_MS = 15_000;
 
 export interface SynthesizeSpeechResult {
   /** Base64-encoded audio, ready to embed as a `data:audio/<format>;base64,` URI. */
@@ -39,26 +58,17 @@ export interface SynthesizeSpeechResult {
   model: string;
 }
 
-/**
- * Synthesizes one line of text to speech via Bhashini. Throws — never
- * swallows — on a missing key, a non-ok response, or a missing audio
- * payload. The caller (the API route) decides what happens next; the
- * client falls back to browser `speechSynthesis`, same shape as
- * transcribe-client's contract with the companion page.
- */
-export async function synthesizeSpeech(
+async function computeTts(
   text: string,
-  language: UILanguage,
+  sourceLanguage: string,
+  headerName: string,
+  headerValue: string,
+  serviceId: string,
 ): Promise<SynthesizeSpeechResult> {
-  const apiKey = process.env.BHASHINI_INFERENCE_API_KEY;
-  if (!apiKey) {
-    throw new Error('BHASHINI_INFERENCE_API_KEY is not configured');
-  }
-
   const response = await fetch(BHASHINI_URL, {
     method: 'POST',
     headers: {
-      Authorization: apiKey,
+      [headerName]: headerValue,
       'Content-Type': 'application/json',
       Accept: '*/*',
     },
@@ -67,8 +77,8 @@ export async function synthesizeSpeech(
         {
           taskType: 'tts',
           config: {
-            language: { sourceLanguage: BHASHINI_LANGUAGE[language] },
-            serviceId: TTS_SERVICE_ID,
+            language: { sourceLanguage },
+            serviceId,
             gender: 'female',
           },
         },
@@ -91,5 +101,31 @@ export async function synthesizeSpeech(
     throw new Error('Bhashini returned no audio content');
   }
 
-  return { audioBase64, audioFormat: audioFormat ?? 'wav', model: `bhashini/${TTS_SERVICE_ID}` };
+  return { audioBase64, audioFormat: audioFormat ?? 'wav', model: `bhashini/${serviceId}` };
+}
+
+/**
+ * Synthesizes one line of text to speech via Bhashini. Throws — never
+ * swallows — on a missing key, a non-ok response, or a missing audio
+ * payload, once both the primary (new ULCA discovery) and legacy fallback
+ * paths are exhausted. The caller (the API route) decides what happens
+ * next; the client falls back to browser `speechSynthesis`, same shape as
+ * transcribe-client's contract with the companion page.
+ */
+export async function synthesizeSpeech(
+  text: string,
+  language: UILanguage,
+): Promise<SynthesizeSpeechResult> {
+  const sourceLanguage = BHASHINI_LANGUAGE[language];
+
+  try {
+    const auth = await fetchInferenceAuth('tts', sourceLanguage);
+    return await computeTts(text, sourceLanguage, auth.name, auth.value, auth.serviceId);
+  } catch {
+    const legacyKey = process.env.BHASHINI_INFERENCE_API_KEY;
+    if (!legacyKey) {
+      throw new Error('Bhashini TTS: no service discovered and no legacy BHASHINI_INFERENCE_API_KEY configured');
+    }
+    return computeTts(text, sourceLanguage, 'Authorization', legacyKey, LEGACY_TTS_SERVICE_ID);
+  }
 }

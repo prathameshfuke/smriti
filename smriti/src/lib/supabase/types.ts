@@ -9,7 +9,14 @@
  * Mirrors 03_DATABASE.md, migration 001.
  */
 
-export type Language = 'as' | 'hi' | 'en' | 'mni' | 'brx';
+// bn/ne added after the Part 2 live Bhashini capability probe confirmed
+// real coverage for them (see .claude/plans/multilingual-expansion.plan.md).
+// NOTE: the Supabase `preferred_language`/`primary_language` CHECK
+// constraints (docs/03_DATABASE.md) still need a real migration adding
+// 'bn'/'ne' to match — pushCaregiverProfile already swallows a DB write
+// failure and keeps the local Dexie record as source of truth, so this is
+// safe to ship ahead of that migration, not silently broken.
+export type Language = 'as' | 'hi' | 'en' | 'mni' | 'brx' | 'bn' | 'ne';
 export type PatientLanguage = Language | 'kha' | 'lus';
 export type CaregiverRole = 'family' | 'asha_worker' | 'nurse' | 'clinician';
 export type Gender = 'male' | 'female' | 'other';

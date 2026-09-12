@@ -1,5 +1,15 @@
 # SMRITI — Database Schema
 
+> **Live schema drift**: `bn`/`ne` were added to the `preferred_language`/
+> `primary_language` CHECK constraints below on 2026-09-12 (multilingual
+> expansion, Part 2) as a doc update only — this needs a real
+> `ALTER TABLE ... DROP CONSTRAINT ... ADD CONSTRAINT ...` run against the
+> live Supabase project before caregiver/patient records can actually use
+> those values server-side. Until then, `pushCaregiverProfile` (which
+> writes these columns) fails that write silently and keeps the local
+> Dexie record as source of truth — the app stays fully usable offline,
+> only the caregiver-dashboard sync of a bn/ne profile is affected.
+
 ---
 
 ## 1. Supabase (PostgreSQL) — Server-Side Schema
@@ -17,7 +27,7 @@ CREATE TABLE caregivers (
   phone TEXT,
   email TEXT,
   role TEXT NOT NULL DEFAULT 'family' CHECK (role IN ('family', 'asha_worker', 'nurse', 'clinician')),
-  preferred_language TEXT NOT NULL DEFAULT 'en' CHECK (preferred_language IN ('as', 'hi', 'en', 'mni', 'brx')),
+  preferred_language TEXT NOT NULL DEFAULT 'en' CHECK (preferred_language IN ('as', 'hi', 'en', 'mni', 'brx', 'bn', 'ne')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -30,7 +40,7 @@ CREATE TABLE patients (
   age_years INTEGER CHECK (age_years >= 40 AND age_years <= 120),
   gender TEXT CHECK (gender IN ('male', 'female', 'other')),
   education_years INTEGER DEFAULT 0 CHECK (education_years >= 0),
-  primary_language TEXT NOT NULL DEFAULT 'as' CHECK (primary_language IN ('as', 'hi', 'en', 'mni', 'brx', 'kha', 'lus')),
+  primary_language TEXT NOT NULL DEFAULT 'as' CHECK (primary_language IN ('as', 'hi', 'en', 'mni', 'brx', 'kha', 'lus', 'bn', 'ne')),
   session_duration_minutes INTEGER NOT NULL DEFAULT 15 CHECK (session_duration_minutes BETWEEN 5 AND 30),
   is_active BOOLEAN NOT NULL DEFAULT true,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

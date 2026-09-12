@@ -45,7 +45,14 @@
     "correct": "Correct!",
     "tryAgain": "Try again",
     "sessionComplete": "Well done! You finished today's session.",
-    "stars": "Stars earned"
+    "stars": "Stars earned",
+    "sessionEnd": {
+      "star5": "Perfect! Wonderful work today!",
+      "star4": "Excellent! You are doing great!",
+      "star3": "Great job today! Keep it up!",
+      "star2": "Good effort! Every session helps.",
+      "star1": "Well done for trying! Each day gets better."
+    }
   },
   "reminder": {
     "medication": "Time for your medicine",
@@ -53,7 +60,9 @@
     "activity": "Time for your walk",
     "appointment": "Time for your appointment",
     "done": "Done",
-    "snooze": "Later"
+    "snooze": "Later",
+    "timeFor": "It is time for:",
+    "remindLater": "Remind me in 15 minutes"
   },
   "caregiver": {
     "dashboard": "Dashboard",
@@ -66,12 +75,17 @@
     "synced": "Synced",
     "offline": "Offline",
     "syncing": "Syncing",
-    "pending": "Waiting to sync"
+    "pending": "Waiting to sync",
+    "notSyncedYet": "Not synced yet"
   },
   "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
   "lang": {
     "as": "অসমীয়া",
     "hi": "हिन्दी",
-    "en": "English"
+    "en": "English",
+    "brx": "बड़ो",
+    "mni": "মৈতৈলোন্",
+    "bn": "বাংলা",
+    "ne": "नेपाली"
   }
 }

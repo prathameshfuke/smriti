@@ -30,8 +30,15 @@ export async function findCachedAnswer(
   question: string,
 ): Promise<LocalAiConversationLog | null> {
   const target = normalizeQuestion(question);
-  const entries = await entriesFor(patientId);
-  return entries.find((e) => normalizeQuestion(e.question) === target) ?? null;
+  try {
+    const entries = await entriesFor(patientId);
+    return entries.find((e) => normalizeQuestion(e.question) === target) ?? null;
+  } catch {
+    // A blocked/broken local DB (private browsing, quota, corruption) is a
+    // cache miss, not a fatal error — the caller falls through to the
+    // network path exactly as if nothing were cached.
+    return null;
+  }
 }
 
 export async function cacheAnswer(entry: LocalAiConversationLog): Promise<void> {

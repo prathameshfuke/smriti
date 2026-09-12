@@ -6,12 +6,14 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
-import { OBJECTS, pickObjects, type SmritiObject } from '@/lib/engine/objects';
+import { OBJECTS, pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
 import { speak } from '@/lib/audio/speech';
+import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
+import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -39,6 +41,7 @@ export default function WordStreamPage() {
 function WordStreamPageInner() {
   const router = useRouter();
   const { t, language } = useTranslation();
+  const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const activeSession = useGameStore((s) => s.activeSession);
   const startSession = useGameStore((s) => s.startSession);
@@ -86,7 +89,7 @@ function WordStreamPageInner() {
       setPhase('delay');
       return;
     }
-    speak(startItems[showIndex].name[language], language);
+    speak(objectName(startItems[showIndex], language), language);
     const timer = setTimeout(() => setShowIndex((i) => i + 1), SHOW_SECONDS * 1000);
     return () => clearTimeout(timer);
   }, [phase, startItems, showIndex, language]);
@@ -97,7 +100,7 @@ function WordStreamPageInner() {
   useEffect(() => {
     if (phase !== 'delay') return;
     setDelayRemaining(DELAY_SECONDS);
-    speak(t('game.wordStream.rememberLater'), language);
+    void narrate(t('game.wordStream.rememberLater'), language, isOnline);
     const interval = setInterval(() => {
       setDelayRemaining((s) => {
         if (s <= 1) {
@@ -119,7 +122,7 @@ function WordStreamPageInner() {
 
   useEffect(() => {
     if (phase !== 'recall') return;
-    speak(t('game.wordStream.whichItems'), language);
+    void narrate(t('game.wordStream.whichItems'), language, isOnline);
     const total = GRID_TOTAL_BY_LEVEL[level] ?? 8;
     const distractors = pickObjects(total - itemsToRecall.length, itemsToRecall);
     const all = [...itemsToRecall.map(objectFor), ...distractors];
@@ -199,7 +202,7 @@ function WordStreamPageInner() {
                   {startItems[showIndex].emoji}
                 </span>
                 <span className="font-serif-display text-patient-heading font-semibold text-ink">
-                  {startItems[showIndex].name[language]}
+                  {objectName(startItems[showIndex], language)}
                 </span>
               </>
             ) : null}
@@ -241,7 +244,7 @@ function WordStreamPageInner() {
                     <span className="text-3xl" aria-hidden="true">
                       {obj.emoji}
                     </span>
-                    <span className="text-patient-sm text-ink">{obj.name[language]}</span>
+                    <span className="text-patient-sm text-ink">{objectName(obj, language)}</span>
                   </button>
                 );
               })}
