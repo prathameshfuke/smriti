@@ -1,4 +1,4 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is the **SMRITI** Next.js app. For the project overview, features, architecture, and full documentation, see the [root README](../README.md).
 
 ## Getting Started
 

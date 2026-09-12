@@ -863,15 +863,16 @@ describe('Caregiver layout auth guard', () => {
 describe('Caregiver onboarding wizard', () => {
   it('advances the step dots on Continue', () => {
     render(<CaregiverOnboardingPage />);
-    expect(screen.getByLabelText('Step 1 of 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Step 1 of 4')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByLabelText('Step 2 of 3')).toBeInTheDocument();
+    expect(screen.getByLabelText('Step 2 of 4')).toBeInTheDocument();
   });
 
   it('treats role, gender and duration as exclusive-select groups', () => {
@@ -891,6 +892,7 @@ describe('Caregiver onboarding wizard', () => {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
@@ -924,6 +926,7 @@ describe('Caregiver onboarding wizard', () => {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
