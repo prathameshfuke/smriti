@@ -33,7 +33,7 @@ export default function PinPad({ onDigit, onBackspace, disabled = false }: PinPa
             style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
             className={
               'flex items-center justify-center rounded-tile border border-black/5 bg-surface-card ' +
-              'text-patient-heading shadow-sm font-semibold text-ink transition-all duration-100 ' +
+              'text-patient-heading font-semibold text-ink transition-all duration-100 ' +
               'active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-surface-muted hover:shadow-md ' +
               'disabled:opacity-40 disabled:pointer-events-none focus-visible:outline focus-visible:outline-4 ' +
               'focus-visible:outline-offset-2 focus-visible:outline-primary-dark'

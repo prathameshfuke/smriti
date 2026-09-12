@@ -302,7 +302,7 @@ export default function HomePage() {
             <p className="text-4xl" aria-hidden="true">
               💌
             </p>
-            <p className="mt-3 font-serif-display text-patient-heading text-ink">A message for you</p>
+            <p className="mt-3 font-serif-display text-patient-heading leading-[1.05] tracking-[-0.02em] text-ink">A message for you</p>
             <p className="mt-3 text-patient-body text-ink">{familyNote.text}</p>
             <div className="mt-6">
               <BigButton label="Thank you!" variant="primary" onClick={() => setFamilyNote(null)} />
@@ -328,7 +328,7 @@ export default function HomePage() {
         <div className="flex flex-col items-center gap-4">
           <p className="text-patient-body text-ink">No patient selected</p>
           <BigButton
-            label="Caregiver Login"
+            label="Caregiver login"
             variant="primary"
             onClick={() => router.push('/caregiver/login?next=/app')}
           />

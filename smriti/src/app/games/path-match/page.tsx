@@ -229,7 +229,7 @@ function PathMatchPageInner() {
               {[1, 2, 3].map((n) => (
                 <span
                   key={n}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse shadow-sm animate-pulse motion-reduce:animate-none"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light text-ink-inverse animate-pulse motion-reduce:animate-none"
                 >
                   {n}
                 </span>
@@ -276,8 +276,8 @@ function PathMatchPageInner() {
             <p className="font-serif-display text-patient-heading text-ink">
               {completedPairs.length} out of {totalConnections} connected!
             </p>
-            <BigButton label="Another Round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
+            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
+            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

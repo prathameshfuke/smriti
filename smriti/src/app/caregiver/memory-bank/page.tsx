@@ -225,7 +225,7 @@ export default function MemoryBankPage() {
         detail,
         photoUrl,
       });
-      setBanner(`Saved — "${title}" updated.`);
+      setBanner(`Saved: "${title}" updated.`);
     } else {
       await addEntry({
         id: uuid(),
@@ -239,7 +239,7 @@ export default function MemoryBankPage() {
         createdBy: currentPatient.caregiverId,
         updatedAt: new Date().toISOString(),
       });
-      setBanner(`Saved — "${title}" added to ${CATEGORY_META[category].heading}.`);
+      setBanner(`Saved: "${title}" added to ${CATEGORY_META[category].heading}.`);
     }
   };
 
@@ -286,14 +286,14 @@ export default function MemoryBankPage() {
     }
     const count = reviewEntries.length;
     setReviewEntries(null);
-    if (count > 0) setBanner(`Saved — ${count} ${count === 1 ? 'entry' : 'entries'} added.`);
+    if (count > 0) setBanner(`Saved: ${count} ${count === 1 ? 'entry' : 'entries'} added.`);
   };
 
   const confirmDelete = async () => {
     if (!confirmingId) return;
     const target = entries.find((e) => e.id === confirmingId);
     await deleteEntry(confirmingId);
-    if (target) setBanner(`Removed — "${target.title}" deleted.`);
+    if (target) setBanner(`Removed: "${target.title}" deleted.`);
     setConfirmingId(null);
   };
 
@@ -309,7 +309,7 @@ export default function MemoryBankPage() {
           Memory Bank
         </h1>
         <p className="mt-2 text-caregiver-body text-ink-muted">
-          Facts your loved one can ask the AI companion about — it only answers from what you add here.
+          Facts your loved one can ask the AI companion about. It only answers from what you add here.
         </p>
         <button
           type="button"
@@ -347,7 +347,7 @@ export default function MemoryBankPage() {
       ) : null}
 
       {!hasAnyEntries ? (
-        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center">
           <p className="text-caregiver-body text-ink-muted">
             Add the people and facts your loved one might ask about.
           </p>
@@ -363,7 +363,7 @@ export default function MemoryBankPage() {
                   type="button"
                   onClick={() => startAdd(category)}
                   style={{ minHeight: 44 }}
-                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left shadow-sm hover:border-primary hover:bg-primary/5"
+                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left hover:border-primary hover:bg-primary/5"
                 >
                   <span
                     aria-hidden="true"
@@ -411,7 +411,7 @@ export default function MemoryBankPage() {
                     {sectionEntries.map((entry) => (
                       <li
                         key={entry.id}
-                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4 shadow-sm"
+                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3">
@@ -530,7 +530,7 @@ export default function MemoryBankPage() {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-patient-sm text-ink-muted">No photo selected yet — optional, but it helps your loved one recognise a face.</p>
+                  <p className="text-patient-sm text-ink-muted">No photo selected yet. Optional, but it helps your loved one recognise a face.</p>
                 )}
                 <input
                   key={photoInputKey}
@@ -592,7 +592,7 @@ export default function MemoryBankPage() {
           <div className="flex w-full max-w-md flex-col gap-4 rounded-card bg-white p-6 shadow-lg">
             <h3 className="font-serif-display text-lg font-semibold text-navy">Quick add</h3>
             <label htmlFor="quick-add-text" className="text-sm font-semibold text-navy">
-              Tell us about your family — just write naturally
+              Tell us about your family. Write naturally
             </label>
             <textarea
               id="quick-add-text"
@@ -654,7 +654,7 @@ export default function MemoryBankPage() {
             )}
             <div className="flex gap-3">
               <BigButton label="Cancel" variant="secondary" onClick={() => setReviewEntries(null)} />
-              <BigButton label="Confirm & Save" variant="primary" onClick={() => void confirmReview()} />
+              <BigButton label="Confirm and save" variant="primary" onClick={() => void confirmReview()} />
             </div>
           </div>
         </div>

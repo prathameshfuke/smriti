@@ -198,7 +198,7 @@ describe('CompanionPage', () => {
         ok: true,
         status: 200,
         json: async () => ({
-          text: "I can't check that right now — try again in a moment, or ask your caregiver.",
+          text: "I can't check that right now. Try again in a moment, or ask your caregiver.",
           grounded: false,
         }),
       });
@@ -303,7 +303,7 @@ describe('Caregiver patient detail — Companion tab', () => {
     pathname = '/caregiver/patients/p1';
     const questions = [
       { id: 'q1', question: 'who visits on Sundays', answer: 'Raju does.', grounded: true, flaggedForFollowup: false, createdAt: new Date(2026, 0, 3).toISOString() },
-      { id: 'q2', question: 'what is the capital of France', answer: "I'm not sure about that — you could ask your caregiver.", grounded: false, flaggedForFollowup: false, createdAt: new Date(2026, 0, 2).toISOString() },
+      { id: 'q2', question: 'what is the capital of France', answer: "I'm not sure about that. You could ask your caregiver.", grounded: false, flaggedForFollowup: false, createdAt: new Date(2026, 0, 2).toISOString() },
       { id: 'q3', question: 'I feel scared', answer: 'Please call 14416 (Tele-MANAS).', grounded: false, flaggedForFollowup: true, createdAt: new Date(2026, 0, 1).toISOString() },
     ];
     const fetchMock = vi.fn().mockImplementation((url: string) => {

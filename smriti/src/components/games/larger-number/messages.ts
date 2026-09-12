@@ -21,7 +21,7 @@ const gameUI = {
     playAgain: 'Play again',
     share: 'Share',
     congratulations: 'Well done!',
-    keepGoing: 'Good try — keep going.',
+    keepGoing: 'Good try, keep going.',
   },
   hi: {
     level: 'स्तर',
@@ -43,7 +43,7 @@ const gameUI = {
     playAgain: 'फिर से खेलें',
     share: 'साझा करें',
     congratulations: 'शाबाश!',
-    keepGoing: 'अच्छी कोशिश — जारी रखें।',
+    keepGoing: 'अच्छी कोशिश, जारी रखें।',
   },
   as: {
     level: 'স্তৰ',
@@ -65,7 +65,7 @@ const gameUI = {
     playAgain: 'পুনৰ খেলক',
     share: 'শ্বেয়াৰ কৰক',
     congratulations: 'বাহ!',
-    keepGoing: 'ভাল চেষ্টা — চলাই থাকক।',
+    keepGoing: 'ভাল চেষ্টা, চলাই থাকক।',
   },
 };
 

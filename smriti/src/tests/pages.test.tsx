@@ -911,7 +911,7 @@ describe('Caregiver onboarding wizard', () => {
     fireEvent.click(within(pinPads[1]).getByRole('button', { name: '9' }));
     fireEvent.click(within(pinPads[1]).getByRole('button', { name: '9' }));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Finish Setup' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
 
     expect(await screen.findByText(/do not match/i)).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
@@ -942,7 +942,7 @@ describe('Caregiver onboarding wizard', () => {
     }
 
     fireEvent.click(screen.getByRole('button', { name: 'Add morning medication reminder' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Finish Setup' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
 
     // Wait for device trust step 4 to appear
     await waitFor(() => expect(screen.getByText(/trust this device/i)).toBeInTheDocument());

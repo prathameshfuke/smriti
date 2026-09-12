@@ -213,7 +213,7 @@ function WordStreamPageInner() {
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.wordStream.rememberLater')}</p>
             <div
-              className="flex h-24 w-24 items-center justify-center rounded-card border-2 border-primary/30 bg-surface-card font-serif-display text-patient-heading text-primary shadow-sm"
+              className="flex h-24 w-24 items-center justify-center rounded-card border-2 border-primary/30 bg-surface-card font-serif-display text-patient-heading text-primary"
               role="status"
               aria-live="polite"
             >
@@ -235,7 +235,7 @@ function WordStreamPageInner() {
                     onClick={() => toggle(obj.id)}
                     aria-pressed={isSelected}
                     className={
-                      'flex flex-col items-center gap-1 rounded-card border-2 p-3 shadow-sm transition-all ' +
+                      'flex flex-col items-center gap-1 rounded-card border-2 p-3 transition-all ' +
                       (isSelected
                         ? 'border-success bg-success/10 shadow-md'
                         : 'border-surface-muted bg-surface-card hover:border-primary/30')

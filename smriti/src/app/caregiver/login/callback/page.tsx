@@ -223,7 +223,7 @@ function CaregiverLoginCallbackInner() {
 
       {status === 'error' ? (
         <BigButton
-          label="Back to Login"
+          label="Back to login"
           variant="primary"
           onClick={() => router.replace('/caregiver/login')}
         />

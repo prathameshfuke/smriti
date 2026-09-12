@@ -54,7 +54,7 @@ export default function SessionComplete({
         {correctCount} out of {totalCount} correct!
       </p>
       <p className="text-patient-body text-ink-muted">{message}</p>
-      <BigButton label="Back to Home" variant="success" onClick={onGoHome} />
+      <BigButton label="Back to home" variant="success" onClick={onGoHome} />
     </div>
   );
 }

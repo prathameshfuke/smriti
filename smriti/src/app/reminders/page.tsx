@@ -166,7 +166,7 @@ export default function RemindersPage() {
                 return (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl" aria-hidden="true">
@@ -174,7 +174,7 @@ export default function RemindersPage() {
                       </span>
                       <div>
                         <p className="text-caregiver-body text-ink">
-                          {s.timeOfDay} — {s.label}
+                          {s.timeOfDay} · {s.label}
                         </p>
                         {ack?.acknowledgedAt ? (
                           <p className="text-patient-sm text-success">
@@ -220,14 +220,14 @@ export default function RemindersPage() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Morning red pill"
-                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <input
                 type="time"
                 value={timeOfDay}
                 onChange={(e) => setTimeOfDay(e.target.value)}
-                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <div className="flex gap-2">
@@ -250,7 +250,7 @@ export default function RemindersPage() {
                 ))}
               </div>
 
-              <BigButton label="Save Reminder" variant="primary" onClick={() => void saveReminder()} />
+              <BigButton label="Save reminder" variant="primary" onClick={() => void saveReminder()} />
             </section>
 
             <section className="flex flex-col gap-3">
@@ -277,10 +277,10 @@ export default function RemindersPage() {
                 {activeSchedules.map((s) => (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3"
                   >
                     <p className="text-caregiver-body text-ink">
-                      {TYPE_ICON[s.reminderType]} {s.timeOfDay} — {s.label}
+                      {TYPE_ICON[s.reminderType]} {s.timeOfDay} · {s.label}
                     </p>
                     <div className="flex gap-2">
                       <button

@@ -411,7 +411,7 @@ describe('POST /api/ai/complete', () => {
     const res = await POST(makeRequest({ question: 'who is Raju', deviceTrustToken: makeDeviceToken('p1') }));
     const body = await res.json();
 
-    expect(body.text).toBe("I'm not sure about that — you could ask your caregiver.");
+    expect(body.text).toBe("I'm not sure about that. You could ask your caregiver.");
     expect(callLLM).not.toHaveBeenCalled();
     expect(logChain.insert).toHaveBeenCalledWith(
       expect.objectContaining({ grounded: false, flagged_for_followup: false, model_used: 'none' }),

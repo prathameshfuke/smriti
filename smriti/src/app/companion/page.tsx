@@ -232,7 +232,7 @@ export default function CompanionPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-patient flex-col items-center gap-6 bg-canvas px-4 py-10">
-      <h1 className="text-center font-serif-display text-patient-heading font-semibold text-navy">Ask Smriti</h1>
+      <h1 className="text-center font-serif-display text-patient-heading font-semibold leading-[1.05] tracking-[-0.02em] text-navy">Ask Smriti</h1>
 
       {mediaRecorderSupported ? (
         <button

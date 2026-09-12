@@ -48,7 +48,7 @@ export default function SessionCalendar({ year, month, points }: SessionCalendar
   );
 
   return (
-    <div className="rounded-card border border-line200 bg-white p-4 shadow-sm">
+    <div className="rounded-card border border-line200 bg-white p-4">
       <div className="grid grid-cols-7 gap-1 text-center">
         {WEEKDAY_LABELS.map((d, i) => (
           <span key={i} className="text-patient-sm text-ink-muted">

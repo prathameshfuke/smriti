@@ -28,7 +28,7 @@ const NOT_FOUND_PATTERNS = [
  * when a question can't be answered from the facts — also returned directly
  * on the zero-active-facts short-circuit below, so both paths produce the
  * identical, testable string. */
-const EXACT_FALLBACK_TEXT = "I'm not sure about that — you could ask your caregiver.";
+const EXACT_FALLBACK_TEXT = "I'm not sure about that. You could ask your caregiver.";
 
 /** How many of the patient's most recent logged questions to look back
  * through when counting repeated low-severity distress phrases. */

@@ -13,7 +13,7 @@ const PROOF = [
   },
   {
     title: 'Private by nature',
-    body: 'Personal care details stay on the device — no cloud by default.',
+    body: 'Personal care details stay on the device. No cloud by default.',
   },
   {
     title: 'Accessible for everyone',
@@ -25,7 +25,7 @@ const HOLD = [
   {
     n: '01',
     title: 'Games',
-    body: '14 short cognitive games, each built for a specific domain — memory, attention, recall.',
+    body: '14 short cognitive games, each built for a specific domain: memory, attention, recall.',
   },
   {
     n: '02',
@@ -193,9 +193,9 @@ export default function LandingPage() {
         </span>
         <Link
           href="/login"
-          className="flex h-12 items-center justify-center rounded-control bg-terra600 px-6 text-base font-semibold text-paper50 shadow-sm transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
+          className="flex h-12 items-center justify-center rounded-control bg-terra600 px-6 text-base font-semibold text-paper50 transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
         >
-          Get Started
+          Get started
         </Link>
       </nav>
 
@@ -215,7 +215,7 @@ export default function LandingPage() {
               href="/login"
               className="group flex h-16 w-full items-center justify-center gap-2 rounded-control bg-terra600 px-8 text-lg font-semibold text-paper50 shadow-md transition-all duration-200 hover:bg-terra700 hover:shadow-lg active:scale-[0.97] lg:w-auto"
             >
-              Get Started
+              Get started
               <ChevronRight
                 size={24}
                 aria-hidden="true"
@@ -332,8 +332,8 @@ export default function LandingPage() {
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-ink700">
                 See how your loved one is doing at a glance. Track progress over weeks and
-                months. Get alerts if something seems off. All data stays on your device — no
-                cloud required.
+                months. Get alerts if something seems off. All data stays on your device.
+                No cloud required.
               </p>
               <Link
                 href="/login?role=caregiver"

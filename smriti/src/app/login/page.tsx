@@ -23,7 +23,7 @@ function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
         <button
           type="button"
           onClick={() => onSelect('patient')}
-          className="mt-12 flex h-20 w-full flex-col items-center justify-center rounded-control bg-terra600 text-lg font-bold text-paper50 shadow-sm transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
+          className="mt-12 flex h-20 w-full flex-col items-center justify-center rounded-control bg-terra600 text-lg font-bold text-paper50 transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
         >
           I am the Patient
           <span className="mt-1 block text-sm font-normal text-paper50/80">Play games</span>

@@ -205,7 +205,7 @@ export default function CaregiverSettingsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white">
           <div className="h-1.5 bg-muga" />
           <div className="flex flex-col gap-3 p-6">
             <h2 className="font-serif-display text-lg font-semibold text-navy">Language</h2>
@@ -214,7 +214,7 @@ export default function CaregiverSettingsPage() {
         </section>
 
         {dangerStage === 'closed' ? (
-          <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-card border border-line200 bg-white">
             <div className="h-1.5 bg-primary" />
             <div className="flex flex-col gap-3 p-6">
               <h2 className="font-serif-display text-lg font-semibold text-navy">Change PIN</h2>
@@ -227,18 +227,18 @@ export default function CaregiverSettingsPage() {
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm md:col-span-2">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white md:col-span-2">
           <div className="h-1.5 bg-gamosa" />
           <div className="flex flex-col gap-2 p-6 text-caregiver-body text-ink-muted">
             <h2 className="font-serif-display text-lg font-semibold text-navy">About SMRITI</h2>
             <p>Version 1.0.0-hackathon</p>
-            <p>Built for Smart India Hackathon 2026 — SIH26003</p>
+            <p>Built for Smart India Hackathon 2026 (SIH26003)</p>
             <p>Supported by the Ministry of Development of North Eastern Region (MDoNER)</p>
             <p>{t('disclaimer')}</p>
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white shadow-sm md:col-span-2">
+        <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white md:col-span-2">
           <div className="h-1.5 bg-danger" />
           <div className="flex flex-col gap-3 p-6">
             <h2 className="font-serif-display text-lg font-semibold text-danger">Danger Zone</h2>
@@ -246,12 +246,12 @@ export default function CaregiverSettingsPage() {
             {dangerStage === 'closed' ? (
               <>
                 <p className="text-caregiver-body text-ink-muted">
-                  Permanently erases everything on this device — your profile and every patient&apos;s
+                  Permanently erases everything on this device: your profile and every patient&apos;s
                   data. This cannot be undone, and you will need to set up SMRITI again from scratch
                   afterward.
                 </p>
                 <BigButton
-                  label="Delete All Data"
+                  label="Delete all data"
                   variant="secondary"
                   onClick={startDeleteAllData}
                 />
@@ -266,7 +266,7 @@ export default function CaregiverSettingsPage() {
                 </p>
                 <BigButton label="Cancel" variant="secondary" onClick={cancelDeleteAllData} />
                 <BigButton
-                  label="Yes, Delete Everything"
+                  label="Yes, delete everything"
                   variant="secondary"
                   onClick={proceedToDeletePin}
                 />
@@ -290,7 +290,7 @@ export default function CaregiverSettingsPage() {
       </div>
 
       <div className="mt-6">
-        <BigButton label="Log Out" variant="secondary" onClick={logOut} />
+        <BigButton label="Log out" variant="secondary" onClick={logOut} />
       </div>
     </main>
   );

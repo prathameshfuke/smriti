@@ -65,7 +65,7 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
   return (
     <section
       aria-label="Messages from family"
-      className="flex flex-col gap-3 rounded-tile bg-surface-card p-4 shadow-sm"
+      className="flex flex-col gap-3 rounded-tile border border-line200 bg-surface-card p-4"
     >
       <h2 className="flex items-center gap-2 font-serif-display text-patient-heading text-ink">
         <span aria-hidden="true">💌</span> Messages from Family

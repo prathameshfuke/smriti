@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 
 /** Minimal shadcn-compatible Card family — vendored so pasted reference-game components compile unchanged. */
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-card border border-line200 bg-white shadow-sm', className)} {...props} />;
+  return <div className={cn('rounded-card border border-line200 bg-white', className)} {...props} />;
 }
 
 export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

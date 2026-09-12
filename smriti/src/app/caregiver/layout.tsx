@@ -119,7 +119,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
         </p>
         <p className="max-w-sm text-caregiver-body text-ink-muted">
           This device is not connected right now, so your saved details could not be checked. Your
-          information is safe — try again once you have a connection.
+          information is safe. Try again once you have a connection.
         </p>
         <BigButton label="Try again" variant="primary" onClick={() => setRetryToken((t) => t + 1)} />
       </section>
