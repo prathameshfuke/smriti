@@ -195,7 +195,7 @@ export default function LandingPage() {
           href="/login"
           className="flex h-12 items-center justify-center rounded-control bg-terra600 px-6 text-base font-semibold text-paper50 transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
         >
-          Get Started
+          Get started
         </Link>
       </nav>
 
@@ -215,7 +215,7 @@ export default function LandingPage() {
               href="/login"
               className="group flex h-16 w-full items-center justify-center gap-2 rounded-control bg-terra600 px-8 text-lg font-semibold text-paper50 shadow-md transition-all duration-200 hover:bg-terra700 hover:shadow-lg active:scale-[0.97] lg:w-auto"
             >
-              Get Started
+              Get started
               <ChevronRight
                 size={24}
                 aria-hidden="true"

@@ -17,7 +17,7 @@ const gameUI = {
     encouragement: {
       perfect: 'Perfect! Wonderful counting today.',
       great: 'Great work today!',
-      good: 'Good effort — keep going.',
+      good: 'Good effort, keep going.',
       keepTrying: 'Well done for trying today.',
     },
     playAgain: 'Play again',
@@ -38,7 +38,7 @@ const gameUI = {
     encouragement: {
       perfect: 'शानदार! आज गिनती बहुत अच्छी रही।',
       great: 'आज बहुत बढ़िया काम!',
-      good: 'अच्छा प्रयास — जारी रखें।',
+      good: 'अच्छा प्रयास, जारी रखें।',
       keepTrying: 'आज कोशिश करने के लिए शाबाश।',
     },
     playAgain: 'फिर से खेलें',
@@ -59,7 +59,7 @@ const gameUI = {
     encouragement: {
       perfect: 'উত্তম! আজি গণনা বহুত ভাল আছিল।',
       great: 'আজি বহুত ভাল কাম!',
-      good: 'ভাল প্ৰচেষ্টা — চলাই থাকক।',
+      good: 'ভাল প্ৰচেষ্টা, চলাই থাকক।',
       keepTrying: 'আজি চেষ্টা কৰাৰ বাবে বাহ।',
     },
     playAgain: 'পুনৰ খেলক',

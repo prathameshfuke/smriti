@@ -35,16 +35,16 @@ typography:
   display: { family: "Fraunces (var(--font-smriti-serif))", role: "all headings" }
   body:    { family: "Atkinson Hyperlegible (var(--font-smriti-sans))", role: "body text, UI chrome — chosen for low-vision legibility" }
   scale:
-    patient-heading:    { size: "2.25rem (36px)", lineHeight: "1.3" }
-    caregiver-heading:  { size: "1.75rem (28px)", lineHeight: "1.3" }
+    patient-heading:    { size: "2.25rem (36px)", lineHeight: "1.05", letterSpacing: "-0.02em" }
+    caregiver-heading:  { size: "1.75rem (28px)", lineHeight: "1.05", letterSpacing: "-0.015em" }
     patient-body:       { size: "1.375rem (22px)", lineHeight: "1.6" }
     caregiver-body:     { size: "1.125rem (18px)", lineHeight: "1.6" }
     patient-sm:         { size: "1rem (16px)", lineHeight: "1.6" }
 radius:
-  card:    "1.25rem (20px)"
-  panel:   "2rem (32px)"
-  tile:    "16px"
-  control: "0.65rem (10.4px)"
+  card:    "1rem (16px)"
+  panel:   "1.5rem (24px)"
+  tile:    "0.75rem (12px)"
+  control: "0.5rem (8px)"
 spacing:
   touch:      "64px — primary patient-facing tap targets (BigButton)"
   touch-min:  "48px — accessibility floor for any interactive element"
@@ -72,6 +72,8 @@ See the frontmatter table for every token and its real usage. In practice:
 
 Every heading uses `font-serif-display` (Fraunces) at one of the sizes in the frontmatter scale. Body copy and controls use the default sans (Atkinson Hyperlegible) — never pair a heading-scale size without `font-serif-display`, and never use `font-serif-display` on body copy. The smallest body size anywhere in the app is 16px (`patient-sm`); nothing goes smaller except numeric micro-labels inside game canvases, which aren't reading text.
 
+`patient-heading`/`caregiver-heading` run tight: line-height ~1.05 with slight negative letter-spacing, a display-block treatment rather than a body-scale line-height. This only ever applies to short, single-purpose titles ("Overview", "Ask Smriti") that never wrap into multiple lines — body sizes keep the full 1.6 line-height the elderly/low-vision legibility requirement calls for, and that distinction must never blur: don't tighten anything below `caregiver-heading`.
+
 ## Layout
 
 - Patient screens: `mx-auto max-w-patient` (480px), page padding `px-4 py-6`–`py-10`.
@@ -80,21 +82,25 @@ Every heading uses `font-serif-display` (Fraunces) at one of the sizes in the fr
 
 ## Elevation & Depth
 
-The app does **not** use a hairline-border-only, no-shadow system. Every card in production pairs a `border` (now `border-line200`) **with** `shadow-sm` — that pairing, not either alone, is what "card" means in this codebase. Modals/dialogs step up to `shadow-lg`/`shadow-xl`/`shadow-2xl`. Buttons use `shadow-sm` at rest and `shadow-md` on hover (see `BigButton.tsx`). Treat `border + shadow-sm` as the default card treatment; reserve heavier shadows for anything that floats above the page (modals, the family-message dialog).
+The app now uses a **hairline-border, no-shadow** system for resting elevation: every card, tile, input, and button dropped its resting `shadow-sm`, and `border border-line200` alone carries the depth signal. `hover:shadow-md` is kept everywhere it existed, but it's interaction feedback (a press/hover lift), not static elevation — a different concern the "no shadow" rule doesn't touch. Modals/dialogs keep their heavier `shadow-lg`/`shadow-xl`/`shadow-2xl` (they float above the page, not on it) — that's the one place this codebase still uses shadow as elevation, deliberately out of scope for the hairline rule.
+
+This reverses this document's earlier position (previously: "border + shadow-sm together, that pairing is what card means here") — the earlier statement was accurate for the code at the time; it no longer is. If a component still has a resting `shadow-sm`, that's drift to fix, not a variant to preserve.
 
 ## Shapes
 
 | Use | Token | Value |
 |---|---|---|
-| Cards, panels | `rounded-card` | 1.25rem |
-| Large dialogs/sheets | `rounded-panel` | 2rem |
-| Tiles, list items, chips | `rounded-tile` | 16px |
-| Inputs, small buttons | `rounded-control` | 0.65rem |
+| Cards, panels | `rounded-card` | 1rem (16px) |
+| Large dialogs/sheets | `rounded-panel` | 1.5rem (24px) |
+| Tiles, list items, chips | `rounded-tile` | 0.75rem (12px) |
+| Inputs, small buttons | `rounded-control` | 0.5rem (8px) |
+
+Tightened from the original 20/32/16/10.4px scale to a stricter, more architectural set — same card > tile > control size hierarchy, less generously rounded throughout.
 
 ## Components
 
-- **BigButton** — the one primary-action control on patient screens. `primary`/`secondary`/`success` variants, `shadow-sm` at rest, `shadow-md` on hover, minimum 64px tall (`touch` token), same string drives the visible label and the spoken audio prompt.
-- **Cards** — `rounded-card border border-line200 bg-white shadow-sm`, frequently with a 1.5px colored top strip (`h-1.5 bg-{status}`) to carry status without relying on color alone in text.
+- **BigButton** — the one primary-action control on patient screens. `primary`/`secondary`/`success` variants, flat at rest (no shadow), `hover:shadow-md` as a lift/press cue, minimum 64px tall (`touch` token), same string drives the visible label and the spoken audio prompt.
+- **Cards** — `rounded-card border border-line200 bg-white`, no resting shadow, frequently with a 1.5px colored top strip (`h-1.5 bg-{status}`) to carry status without relying on color alone in text.
 - **Inputs** — `h-11`–`h-14`, `rounded-control`, `border border-line200`, `focus:ring-2 focus:ring-primary/20`.
 - **Tab bars / button rows** — two distinct, deliberate patterns (see Responsive Behavior): navigational tabs scroll horizontally and never wrap; choice/selection chip groups (language picker, gender/duration pickers) wrap onto a new line.
 
@@ -115,7 +121,8 @@ Breakpoints are unmodified Tailwind defaults: `sm` 640px, `md` 768px, `lg` 1024p
 - **Don't** let a tab/pill row overflow the viewport with no wrap and no scroll — every button-row component must declare one of the two Responsive Behavior patterns above.
 - **Don't** use a fixed side-by-side multi-column form row without a `sm:flex-row` (or equivalent) stacking rule for below-640px.
 - **Don't** drop below 48px on any tappable control, at any breakpoint.
-- **Do** pair `border` with `shadow-sm` on cards — one without the other is inconsistent with every existing card in the app.
+- **Do** give every card a `border border-line200` — that border is now the only depth signal, since resting shadows were removed app-wide; a card with neither is invisible against the page.
+- **Don't** add a resting `shadow-sm`/`shadow-md` to a new card or button — `hover:shadow-md` for interaction feedback is fine, a static shadow is not.
 - **Do** pair every heading-scale font size with `font-serif-display`.
 - **Don't** reach for a bare Tailwind gray (`text-gray-500`, `bg-gray-100`, etc.) for anything with a semantic equivalent (`ink-muted`, `surface-muted`, `line200`) — as of this pass, app/caregiver UI no longer does.
 - **Don't** introduce a color outside the palette listed in the frontmatter above.
@@ -131,12 +138,22 @@ When a new screen needs a pattern not covered here: match the nearest existing c
 - `border-gray-100/200/300` → `border-line200` and `text-gray-500/600/700` → `text-ink-muted`, `text-gray-800` → `text-ink`, `bg-gray-100/200` → `bg-surface-muted`, across every app/caregiver page and shared UI primitive (`card`, `dialog`, `checkbox`, `form`, `progress`, `GameTile`, `CaregiverTopNav`, plus `login`, `login/callback`, `onboarding`, `reminders`, `memory-bank`, `dashboard`, `patients/[id]`, `patients`, `settings`, `companion`, `app`, `reminiscence-quiz`).
 - Left untouched, deliberately: `double-decision/PeripheralSpeedGame.tsx`'s `slate-*` palette (its own established dark-canvas game aesthetic, distinct from app chrome) and the n-back share-card generator's dark theme (a separate exported-graphic surface, not in-app UI).
 
+## Implementation Log (Resend-structure pass)
+
+- Palette untouched throughout — this pass changed structure only.
+- Every resting `shadow-sm` removed app-wide (cards, tiles, inputs, buttons); `border-line200` alone now carries elevation. `hover:shadow-md` kept as interaction feedback where it existed.
+- `patient-heading`/`caregiver-heading` tightened to line-height ~1.05 with negative letter-spacing; body sizes left untouched (elderly-legibility requirement).
+- Radius scale tightened: card 20px→16px, panel 32px→24px, tile 16px→12px, control 10.4px→8px.
+- Em dashes removed from all user-facing copy app-wide, across `.tsx` UI strings *and* `.ts` message catalogs (game instruction/narration text in `messages.ts` files, in all three locales — a first pass covered `.tsx` only and missed these). Rewritten to plain punctuation (periods, colons, commas) per clause, matching the app's existing register in each language rather than a literal dash-to-period find/replace.
+- Button labels standardized to sentence case app-wide, including plain `<button>`/`<Link>` text (not just the `BigButton` `label` prop, which a first pass covered but a plain-text scan didn't) — `Get Started`→`Get started`, `Verify Code`→`Verify code`, `Send Login Code`→`Send login code`, `Caregiver Login`→`Caregiver login` (button use) alongside the earlier `Try Again`→`Try again` and friends.
+- `FamilyMessageBoard.tsx` had lost its shadow with no border to replace it (a card with neither, invisible against the page) — added `border border-line200` to match every other card.
+
 ## Discrepancies (doc vs. code, found while formalizing this document)
 
 1. **The original prose doc is a landing-page spec, not a product spec.** `docs/Design System_ Amigo-Inspired Clinical AI Platform.md` was written for a marketing homepage (hero, carousel, cookie banner, footer sitemap) that doesn't exist in this app. `tailwind.config.ts` took its §3.1 color values but the two were never reconciled beyond that: the config adds `success`/`warning`/`danger`, `ink-inverse`, `game.*`, and the entire `gamosa`/`muga` cultural-accent pair, none of which appear in the prose doc at all. This DESIGN.md is the reconciled version — `tailwind.config.ts` was treated as ground truth wherever the two disagreed.
 2. **`teal` was a misleading legacy name**, now cleaned up in app/caregiver UI (see Implementation Log). The `tailwind.config.ts` token itself is left defined for back-compat, still pointing at `#B3452D`.
 3. **`accent` (`#B3452D`) is defined but effectively dead.** No component uses `bg-accent`/`text-accent`/`border-accent`. The only `accent-*` classes in the codebase are Tailwind's unrelated native-input `accent-primary` utility (checkbox/radio/slider tint) in three UI primitives.
-4. **The prose doc specifies no shadows on cards**; shipped code universally pairs `border` + `shadow-sm`. This DESIGN.md documents the shipped behavior.
+4. **The prose doc specifies no shadows on cards.** Shipped code briefly diverged from that (pairing `border` + `shadow-sm`, which this document once documented as correct), then was brought back in line with the prose doc's original no-shadow direction in the Resend-structure pass — see Implementation Log above. `shadow-sm` at rest is now the drift to watch for, not the standard.
 5. **Bare Tailwind grays have been replaced with semantic tokens across app/caregiver UI** in this pass (see Implementation Log). Remaining exceptions: game-internal canvases with their own established palettes (`double-decision`, `n-back` share-card) were deliberately left alone.
 6. **One legitimate off-palette exception**: `components/games/n-back/GameComponent.tsx`'s share-card generator uses a self-contained dark theme (`#0c3a4b`, `#5de3c1`, etc.) for a social-share image, not in-app UI.
 

@@ -328,7 +328,7 @@ export default function HomePage() {
         <div className="flex flex-col items-center gap-4">
           <p className="text-patient-body text-ink">No patient selected</p>
           <BigButton
-            label="Caregiver Login"
+            label="Caregiver login"
             variant="primary"
             onClick={() => router.push('/caregiver/login?next=/app')}
           />

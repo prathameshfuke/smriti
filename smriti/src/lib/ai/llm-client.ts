@@ -18,7 +18,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'meta-llama/llama-3.1-8b-instruct';
 
 export const FALLBACK_TEXT =
-  "I can't check that right now — try again in a moment, or ask your caregiver.";
+  "I can't check that right now. Try again in a moment, or ask your caregiver.";
 
 export interface CallLLMParams {
   systemPrompt: string;

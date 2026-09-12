@@ -226,7 +226,7 @@ function CaregiverLoginPageInner() {
           />
 
           <BigButton
-            label={status === 'verifying' ? 'Verifying…' : 'Verify Code'}
+            label={status === 'verifying' ? 'Verifying…' : 'Verify code'}
             variant="primary"
             disabled={status === 'verifying' || code.length !== OTP_LENGTH}
             onClick={verifyCode}
@@ -260,7 +260,7 @@ function CaregiverLoginPageInner() {
           />
 
           <BigButton
-            label={status === 'sending' ? 'Sending…' : 'Send Login Code'}
+            label={status === 'sending' ? 'Sending…' : 'Send login code'}
             variant="primary"
             disabled={status === 'sending' || !email}
             onClick={sendCode}
