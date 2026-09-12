@@ -174,7 +174,7 @@ export default function RemindersPage() {
                       </span>
                       <div>
                         <p className="text-caregiver-body text-ink">
-                          {s.timeOfDay} — {s.label}
+                          {s.timeOfDay} · {s.label}
                         </p>
                         {ack?.acknowledgedAt ? (
                           <p className="text-patient-sm text-success">
@@ -280,7 +280,7 @@ export default function RemindersPage() {
                     className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3"
                   >
                     <p className="text-caregiver-body text-ink">
-                      {TYPE_ICON[s.reminderType]} {s.timeOfDay} — {s.label}
+                      {TYPE_ICON[s.reminderType]} {s.timeOfDay} · {s.label}
                     </p>
                     <div className="flex gap-2">
                       <button

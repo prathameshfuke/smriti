@@ -13,7 +13,7 @@ const PROOF = [
   },
   {
     title: 'Private by nature',
-    body: 'Personal care details stay on the device — no cloud by default.',
+    body: 'Personal care details stay on the device. No cloud by default.',
   },
   {
     title: 'Accessible for everyone',
@@ -25,7 +25,7 @@ const HOLD = [
   {
     n: '01',
     title: 'Games',
-    body: '14 short cognitive games, each built for a specific domain — memory, attention, recall.',
+    body: '14 short cognitive games, each built for a specific domain: memory, attention, recall.',
   },
   {
     n: '02',
@@ -332,8 +332,8 @@ export default function LandingPage() {
               </h2>
               <p className="mt-6 max-w-md text-base leading-relaxed text-ink700">
                 See how your loved one is doing at a glance. Track progress over weeks and
-                months. Get alerts if something seems off. All data stays on your device — no
-                cloud required.
+                months. Get alerts if something seems off. All data stays on your device.
+                No cloud required.
               </p>
               <Link
                 href="/login?role=caregiver"

@@ -39,10 +39,10 @@ describe('CognitiveTrendChart', () => {
     render(<CognitiveTrendChart points={points} sessionDays={2} range="30d" onRangeChange={noop} minSessionsForTrend={5} />);
 
     expect(
-      screen.getByText('2 sessions so far — a trend needs about 5. Showing each session instead.'),
+      screen.getByText('2 sessions so far. A trend needs about 5. Showing each session instead.'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/2026-09-01 — 90% accuracy/)).toBeInTheDocument();
-    expect(screen.getByText(/2026-09-02 — 60% accuracy/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-01 · 90% accuracy/)).toBeInTheDocument();
+    expect(screen.getByText(/2026-09-02 · 60% accuracy/)).toBeInTheDocument();
     expect(screen.queryByText(/drop/i)).not.toBeInTheDocument();
     // No chart region drawn in this state.
     expect(screen.queryByRole('img')).not.toBeInTheDocument();

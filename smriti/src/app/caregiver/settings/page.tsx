@@ -232,7 +232,7 @@ export default function CaregiverSettingsPage() {
           <div className="flex flex-col gap-2 p-6 text-caregiver-body text-ink-muted">
             <h2 className="font-serif-display text-lg font-semibold text-navy">About SMRITI</h2>
             <p>Version 1.0.0-hackathon</p>
-            <p>Built for Smart India Hackathon 2026 — SIH26003</p>
+            <p>Built for Smart India Hackathon 2026 (SIH26003)</p>
             <p>Supported by the Ministry of Development of North Eastern Region (MDoNER)</p>
             <p>{t('disclaimer')}</p>
           </div>
@@ -246,7 +246,7 @@ export default function CaregiverSettingsPage() {
             {dangerStage === 'closed' ? (
               <>
                 <p className="text-caregiver-body text-ink-muted">
-                  Permanently erases everything on this device — your profile and every patient&apos;s
+                  Permanently erases everything on this device: your profile and every patient&apos;s
                   data. This cannot be undone, and you will need to set up SMRITI again from scratch
                   afterward.
                 </p>

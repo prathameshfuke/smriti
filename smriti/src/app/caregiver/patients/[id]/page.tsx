@@ -420,7 +420,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <>
                     <p className="text-caregiver-body text-ink-muted">{digests[0].summaryText}</p>
                     <p className="text-patient-sm text-ink-muted">
-                      Generated {new Date(digests[0].generatedAt).toLocaleDateString()} — not medical advice.
+                      Generated {new Date(digests[0].generatedAt).toLocaleDateString()}. Not medical advice.
                     </p>
                   </>
                 )}
@@ -536,7 +536,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     <ul className="flex flex-col gap-1">
                       {adherence.missed.map((m, i) => (
                         <li key={i} className="text-patient-sm text-ink-muted">
-                          {m.date} {m.time} — {m.label}
+                          {m.date} {m.time} · {m.label}
                         </li>
                       ))}
                     </ul>
@@ -573,7 +573,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-caregiver-body text-ink-muted">{q.answer}</p>
                   {q.flaggedForFollowup ? (
                     <p className="mt-1 text-patient-sm font-semibold text-warning">
-                      Follow-up suggested — this question may need your attention.
+                      Follow-up suggested. This question may need your attention.
                     </p>
                   ) : isSuggestion ? (
                     <button
@@ -624,7 +624,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             <div className="rounded-card border border-line200 bg-white p-4">
               <p className="font-serif-display text-lg font-semibold text-navy">Post a message</p>
               <p className="mt-1 text-patient-sm text-ink-muted">
-                Goes straight to the patient&apos;s home screen — no review link needed. Shown as a short
+                Goes straight to the patient&apos;s home screen. No review link needed. Shown as a short
                 card the patient can tap &ldquo;Seen&rdquo; on.
               </p>
               <div className="mt-3 flex flex-col gap-2">

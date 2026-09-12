@@ -118,7 +118,7 @@ export default function CognitiveTrendChart({
       <div className="flex flex-col gap-3">
         {tabs}
         <p className="text-patient-sm text-ink-muted">
-          {sessionDays} session{sessionDays === 1 ? '' : 's'} so far — a trend needs about{' '}
+          {sessionDays} session{sessionDays === 1 ? '' : 's'} so far. A trend needs about{' '}
           {minSessionsForTrend}. Showing each session instead.
         </p>
         <ul className="flex flex-col gap-2">
@@ -126,7 +126,7 @@ export default function CognitiveTrendChart({
             <li key={d.date} className="flex items-center gap-3">
               <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${dotColorClass(d.accuracy)}`} />
               <span className="text-patient-sm text-ink">
-                {d.date} — {Math.round(d.accuracy)}% accuracy
+                {d.date} · {Math.round(d.accuracy)}% accuracy
               </span>
             </li>
           ))}

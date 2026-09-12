@@ -225,7 +225,7 @@ export default function MemoryBankPage() {
         detail,
         photoUrl,
       });
-      setBanner(`Saved — "${title}" updated.`);
+      setBanner(`Saved: "${title}" updated.`);
     } else {
       await addEntry({
         id: uuid(),
@@ -239,7 +239,7 @@ export default function MemoryBankPage() {
         createdBy: currentPatient.caregiverId,
         updatedAt: new Date().toISOString(),
       });
-      setBanner(`Saved — "${title}" added to ${CATEGORY_META[category].heading}.`);
+      setBanner(`Saved: "${title}" added to ${CATEGORY_META[category].heading}.`);
     }
   };
 
@@ -286,14 +286,14 @@ export default function MemoryBankPage() {
     }
     const count = reviewEntries.length;
     setReviewEntries(null);
-    if (count > 0) setBanner(`Saved — ${count} ${count === 1 ? 'entry' : 'entries'} added.`);
+    if (count > 0) setBanner(`Saved: ${count} ${count === 1 ? 'entry' : 'entries'} added.`);
   };
 
   const confirmDelete = async () => {
     if (!confirmingId) return;
     const target = entries.find((e) => e.id === confirmingId);
     await deleteEntry(confirmingId);
-    if (target) setBanner(`Removed — "${target.title}" deleted.`);
+    if (target) setBanner(`Removed: "${target.title}" deleted.`);
     setConfirmingId(null);
   };
 
@@ -309,7 +309,7 @@ export default function MemoryBankPage() {
           Memory Bank
         </h1>
         <p className="mt-2 text-caregiver-body text-ink-muted">
-          Facts your loved one can ask the AI companion about — it only answers from what you add here.
+          Facts your loved one can ask the AI companion about. It only answers from what you add here.
         </p>
         <button
           type="button"
@@ -530,7 +530,7 @@ export default function MemoryBankPage() {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-patient-sm text-ink-muted">No photo selected yet — optional, but it helps your loved one recognise a face.</p>
+                  <p className="text-patient-sm text-ink-muted">No photo selected yet. Optional, but it helps your loved one recognise a face.</p>
                 )}
                 <input
                   key={photoInputKey}
@@ -592,7 +592,7 @@ export default function MemoryBankPage() {
           <div className="flex w-full max-w-md flex-col gap-4 rounded-card bg-white p-6 shadow-lg">
             <h3 className="font-serif-display text-lg font-semibold text-navy">Quick add</h3>
             <label htmlFor="quick-add-text" className="text-sm font-semibold text-navy">
-              Tell us about your family — just write naturally
+              Tell us about your family. Write naturally
             </label>
             <textarea
               id="quick-add-text"
