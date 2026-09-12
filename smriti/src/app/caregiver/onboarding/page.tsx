@@ -282,7 +282,6 @@ export default function CaregiverOnboardingPage() {
               className="mt-1 shrink-0"
               checked={data.consentGiven}
               onCheckedChange={(checked) => setData((d) => ({ ...d, consentGiven: checked }))}
-              aria-label="Consent to create a patient profile"
             />
             <span>
               I consent to creating a cognitive care profile for my patient. SMRITI supports

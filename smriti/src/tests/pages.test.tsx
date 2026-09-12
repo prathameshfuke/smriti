@@ -869,7 +869,7 @@ describe('Caregiver onboarding wizard', () => {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
+    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     expect(screen.getByLabelText('Step 2 of 4')).toBeInTheDocument();
@@ -892,7 +892,7 @@ describe('Caregiver onboarding wizard', () => {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
+    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
@@ -926,7 +926,7 @@ describe('Caregiver onboarding wizard', () => {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Consent to create a patient profile' }));
+    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
