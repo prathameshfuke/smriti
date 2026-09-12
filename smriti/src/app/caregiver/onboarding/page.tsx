@@ -413,7 +413,7 @@ export default function CaregiverOnboardingPage() {
           />
 
           <BigButton
-            label={finishing ? 'Setting up…' : 'Finish Setup'}
+            label={finishing ? 'Setting up…' : 'Finish setup'}
             variant="success"
             onClick={finish}
             disabled={finishing}

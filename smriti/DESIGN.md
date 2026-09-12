@@ -35,7 +35,7 @@ typography:
   display: { family: "Fraunces (var(--font-smriti-serif))", role: "all headings" }
   body:    { family: "Atkinson Hyperlegible (var(--font-smriti-sans))", role: "body text, UI chrome — chosen for low-vision legibility" }
   scale:
-    patient-heading:    { size: "2.25rem (36px)", lineHeight: "1.05", letterSpacing: "-0.02em" }
+    patient-heading:    { size: "2.25rem (36px)", lineHeight: "1.3", note: "not tightened — see Typography section, this token is shared with dynamic/wrapping content" }
     caregiver-heading:  { size: "1.75rem (28px)", lineHeight: "1.05", letterSpacing: "-0.015em" }
     patient-body:       { size: "1.375rem (22px)", lineHeight: "1.6" }
     caregiver-body:     { size: "1.125rem (18px)", lineHeight: "1.6" }
@@ -72,7 +72,11 @@ See the frontmatter table for every token and its real usage. In practice:
 
 Every heading uses `font-serif-display` (Fraunces) at one of the sizes in the frontmatter scale. Body copy and controls use the default sans (Atkinson Hyperlegible) — never pair a heading-scale size without `font-serif-display`, and never use `font-serif-display` on body copy. The smallest body size anywhere in the app is 16px (`patient-sm`); nothing goes smaller except numeric micro-labels inside game canvases, which aren't reading text.
 
-`patient-heading`/`caregiver-heading` run tight: line-height ~1.05 with slight negative letter-spacing, a display-block treatment rather than a body-scale line-height. This only ever applies to short, single-purpose titles ("Overview", "Ask Smriti") that never wrap into multiple lines — body sizes keep the full 1.6 line-height the elderly/low-vision legibility requirement calls for, and that distinction must never blur: don't tighten anything below `caregiver-heading`.
+`caregiver-heading` runs tight: line-height ~1.05 with slight negative letter-spacing, a display-block treatment. Every usage of this token is a short, static, single-line page/section title ("Overview", "Settings", "Today") that never wraps — confirmed by auditing every call site before tightening it.
+
+`patient-heading` is **not** tightened at the token level, deliberately, despite being the same visual role — it's shared with a large amount of dynamic, possibly-wrapping content across game components (quiz questions, object names, reminder labels, result text), and a tight line-height there cramps multi-line text instead of reading as a considered display face. An earlier version of this pass tightened it globally and shipped a real readability bug (`reminiscence-quiz` questions rendered cramped). Where a `patient-heading` element genuinely is a short static title (`companion/page.tsx`'s "Ask Smriti", `app/page.tsx`'s "A message for you"), the tight treatment is applied as an inline `leading-[1.05] tracking-[-0.02em]` override on that element only — never by changing the shared token. Before adding another such override, confirm the specific element's content is fixed-length and can't wrap; if it can, leave it at the token's relaxed 1.3 line-height.
+
+Body sizes keep the full 1.6 line-height the elderly/low-vision legibility requirement calls for; that distinction must never blur.
 
 ## Layout
 

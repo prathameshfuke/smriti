@@ -73,13 +73,19 @@ const config: Config = {
       fontSize: {
         'patient-sm': ['1rem', { lineHeight: '1.6' }],
         'patient-body': ['1.375rem', { lineHeight: '1.6' }],
-        /* Tightened to a display-headline treatment (near-1.0 line-height,
-         * slight negative tracking) rather than a body-scale line-height —
-         * these are always short, single-purpose titles ("Overview", "Ask
-         * Smriti"), never wrapping body copy, so the tighter block reads as
-         * a considered display face instead of oversized paragraph text. */
-        'patient-heading': ['2.25rem', { lineHeight: '1.05', letterSpacing: '-0.02em' }],
+        /* NOT tightened like caregiver-heading below: patient-heading is
+         * also used for dynamic, possibly-wrapping content (quiz questions,
+         * game object names, reminder labels, result text) across a dozen
+         * game components — a tight line-height there cramps multi-line
+         * text instead of reading as a considered display face. Apply a
+         * tight treatment inline on the handful of genuinely short, static
+         * titles that use this size (e.g. "Ask Smriti") rather than baking
+         * it into the shared token. */
+        'patient-heading': ['2.25rem', { lineHeight: '1.3' }],
         'caregiver-body': ['1.125rem', { lineHeight: '1.6' }],
+        /* Every caregiver-heading usage is a short, static, single-line
+         * page/section title ("Overview", "Settings", "Today") — never
+         * dynamic or wrapping — so the tight display treatment is safe here. */
         'caregiver-heading': ['1.75rem', { lineHeight: '1.05', letterSpacing: '-0.015em' }],
         hero: ['3.5rem', { lineHeight: '1.1', fontWeight: '600' }],
         headline: ['2.25rem', { lineHeight: '1.2', fontWeight: '600' }],
