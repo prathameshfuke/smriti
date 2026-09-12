@@ -37,6 +37,10 @@
 
 ---
 
+<p align="center">
+  <img src="smriti/src/smritiweb.png" width="480" alt="SMRITI web banner" />
+</p>
+
 ### Contents
 
 [Overview](#overview) · [Why SMRITI](#why-smriti) · [Features](#features) · [Architecture](#architecture) · [Cognitive Game Suite](#cognitive-game-suite) · [Offline-First Sync](#offline-first-sync) · [Data Model](#data-model) · [Tech Stack](#tech-stack) · [Project Structure](#project-structure) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Testing](#testing) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license) · [Acknowledgments](#acknowledgments)
