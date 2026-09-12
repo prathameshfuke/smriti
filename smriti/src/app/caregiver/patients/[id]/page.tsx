@@ -314,7 +314,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     return (
       <div className="mx-auto flex min-h-dvh max-w-dashboard flex-col items-center justify-center gap-3 px-4 text-center">
         <p className="text-caregiver-body text-ink-muted">Could not load data. Pull to refresh.</p>
-        <BigButton label="Try Again" variant="primary" onClick={() => setError(false)} />
+        <BigButton label="Try again" variant="primary" onClick={() => setError(false)} />
       </div>
     );
   }
@@ -454,7 +454,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 </div>
                 <p className="line-clamp-2 text-caregiver-body text-ink-muted">{alert.description}</p>
                 <BigButton
-                  label="Mark Resolved"
+                  label="Mark resolved"
                   variant="secondary"
                   onClick={() => void resolveAlert(alert.id)}
                 />

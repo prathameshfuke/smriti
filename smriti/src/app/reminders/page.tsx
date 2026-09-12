@@ -250,7 +250,7 @@ export default function RemindersPage() {
                 ))}
               </div>
 
-              <BigButton label="Save Reminder" variant="primary" onClick={() => void saveReminder()} />
+              <BigButton label="Save reminder" variant="primary" onClick={() => void saveReminder()} />
             </section>
 
             <section className="flex flex-col gap-3">

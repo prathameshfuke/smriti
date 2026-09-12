@@ -308,8 +308,8 @@ function QuickTapPageInner() {
               {summary.hits} targets tapped correctly!
             </p>
             <p className="text-patient-sm text-ink-muted">d&apos; {dPrime.toFixed(2)}</p>
-            <BigButton label="Another Round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
+            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
+            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

@@ -654,7 +654,7 @@ export default function MemoryBankPage() {
             )}
             <div className="flex gap-3">
               <BigButton label="Cancel" variant="secondary" onClick={() => setReviewEntries(null)} />
-              <BigButton label="Confirm & Save" variant="primary" onClick={() => void confirmReview()} />
+              <BigButton label="Confirm and save" variant="primary" onClick={() => void confirmReview()} />
             </div>
           </div>
         </div>

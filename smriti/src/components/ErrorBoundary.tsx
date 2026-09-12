@@ -49,7 +49,7 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
         <p className="font-serif-display text-patient-heading text-ink">
           Something went wrong. Let us go back home.
         </p>
-        <BigButton label="Go Home" variant="primary" onClick={this.goHome} />
+        <BigButton label="Go home" variant="primary" onClick={this.goHome} />
       </div>
     );
   }

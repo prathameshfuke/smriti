@@ -276,8 +276,8 @@ function PathMatchPageInner() {
             <p className="font-serif-display text-patient-heading text-ink">
               {completedPairs.length} out of {totalConnections} connected!
             </p>
-            <BigButton label="Another Round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
+            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
+            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

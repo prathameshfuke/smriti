@@ -79,7 +79,7 @@ function CaregiverDashboardPageInner() {
           </h1>
         </div>
         <BigButton
-          label="Add Patient"
+          label="Add patient"
           variant="primary"
           icon={<Plus size={20} aria-hidden="true" />}
           onClick={() => router.push('/caregiver/onboarding')}
@@ -145,7 +145,7 @@ function CaregiverDashboardPageInner() {
       {error ? (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <p className="text-caregiver-body text-ink-muted">Could not load data. Pull to refresh.</p>
-          <BigButton label="Try Again" variant="primary" onClick={load} />
+          <BigButton label="Try again" variant="primary" onClick={load} />
         </div>
       ) : null}
 
@@ -153,7 +153,7 @@ function CaregiverDashboardPageInner() {
         <div className="flex flex-col items-center gap-3 rounded-card border border-line200 bg-white py-12 text-center">
           <p className="text-caregiver-body text-ink-muted">Add a patient to begin a supervised activity.</p>
           <BigButton
-            label="Add First Patient"
+            label="Add first patient"
             variant="primary"
             onClick={() => router.push('/caregiver/onboarding')}
           />

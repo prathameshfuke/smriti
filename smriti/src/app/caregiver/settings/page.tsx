@@ -251,7 +251,7 @@ export default function CaregiverSettingsPage() {
                   afterward.
                 </p>
                 <BigButton
-                  label="Delete All Data"
+                  label="Delete all data"
                   variant="secondary"
                   onClick={startDeleteAllData}
                 />
@@ -266,7 +266,7 @@ export default function CaregiverSettingsPage() {
                 </p>
                 <BigButton label="Cancel" variant="secondary" onClick={cancelDeleteAllData} />
                 <BigButton
-                  label="Yes, Delete Everything"
+                  label="Yes, delete everything"
                   variant="secondary"
                   onClick={proceedToDeletePin}
                 />
@@ -290,7 +290,7 @@ export default function CaregiverSettingsPage() {
       </div>
 
       <div className="mt-6">
-        <BigButton label="Log Out" variant="secondary" onClick={logOut} />
+        <BigButton label="Log out" variant="secondary" onClick={logOut} />
       </div>
     </main>
   );

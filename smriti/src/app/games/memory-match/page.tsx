@@ -254,8 +254,8 @@ function MemoryMatchPageInner() {
             <p className="font-serif-display text-patient-heading text-ink">
               {level.pairs} out of {level.pairs} matched!
             </p>
-            <BigButton label="Another Round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
+            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
+            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

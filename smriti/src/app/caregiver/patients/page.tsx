@@ -54,7 +54,7 @@ export default function CaregiverPatientsPage() {
           </h1>
         </div>
         <BigButton
-          label="Add Patient"
+          label="Add patient"
           variant="primary"
           onClick={() => router.push('/caregiver/onboarding')}
         />
@@ -70,7 +70,7 @@ export default function CaregiverPatientsPage() {
       {error ? (
         <div className="flex flex-col items-center gap-3 py-8 text-center">
           <p className="text-caregiver-body text-ink-muted">Could not load data. Pull to refresh.</p>
-          <BigButton label="Try Again" variant="primary" onClick={load} />
+          <BigButton label="Try again" variant="primary" onClick={load} />
         </div>
       ) : null}
 

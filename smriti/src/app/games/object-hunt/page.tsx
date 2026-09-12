@@ -289,8 +289,8 @@ function ObjectHuntPageInner() {
               {correctCount} out of {targetOrder.length} correct!
             </p>
             <p className="text-patient-body text-ink-muted">{encouragement}</p>
-            <BigButton label="Keep Going" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish Session" variant="secondary" onClick={finishSession} />
+            <BigButton label="Keep going" variant="primary" onClick={keepGoing} />
+            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 
