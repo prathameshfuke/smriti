@@ -424,7 +424,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
             {/* Play Area */}
             <div
                 ref={containerRef}
-                className="relative flex-1 w-full min-h-[360px] overflow-hidden bg-teal/10"
+                className="relative flex-1 w-full min-h-[360px] overflow-hidden bg-[#219EBC]/10"
                 style={{
                     backgroundImage: "url('/games/assets/frog/bg_pond.png')",
                     backgroundSize: 'cover',

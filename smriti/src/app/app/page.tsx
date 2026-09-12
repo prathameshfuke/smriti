@@ -268,7 +268,7 @@ export default function HomePage() {
         data-testid="caregiver-access-icon"
         aria-label="Caregiver access"
         onClick={() => setShowPin(true)}
-        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-teal/10 hover:bg-teal/20 transition-colors flex items-center justify-center"
+        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center"
         title="Caregiver dashboard"
       >
         <svg
@@ -278,7 +278,7 @@ export default function HomePage() {
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
-          className="text-teal"
+          className="text-primary"
           aria-hidden="true"
         >
           <circle cx="12" cy="8" r="4" />
@@ -315,7 +315,7 @@ export default function HomePage() {
       </h1>
 
       {currentPatient ? (
-        <p className="text-center text-patient-heading text-ink">
+        <p className="text-center font-serif-display text-patient-heading text-ink">
           Hello, {currentPatient.displayName}!
         </p>
       ) : restoring ? (

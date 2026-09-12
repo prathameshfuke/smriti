@@ -86,28 +86,28 @@ function CaregiverDashboardPageInner() {
 
       {patients && patients.length > 0 ? (
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
-          <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
             <div className="h-1.5 bg-muga" />
             <div className="p-4">
               <p className="font-serif-display text-3xl font-bold text-navy">{patients.length}</p>
-              <p className="text-patient-sm text-gray-600">Total patients</p>
+              <p className="text-patient-sm text-ink-muted">Total patients</p>
             </div>
           </div>
-          <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+          <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
             <div className={`h-1.5 ${attentionCount > 0 ? 'bg-gamosa' : 'bg-success'}`} />
             <div className="p-4">
               <p className="font-serif-display text-3xl font-bold text-navy">{attentionCount}</p>
-              <p className="text-patient-sm text-gray-600">Needs review</p>
+              <p className="text-patient-sm text-ink-muted">Needs review</p>
             </div>
           </div>
-          <div className="col-span-2 overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm sm:col-span-1">
-            <div className="h-1.5 bg-teal" />
+          <div className="col-span-2 overflow-hidden rounded-card border border-line200 bg-white shadow-sm sm:col-span-1">
+            <div className="h-1.5 bg-primary" />
             <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-caregiver-body font-semibold text-navy">
                   {syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'offline' ? 'Offline' : 'Synced'}
                 </p>
-                <p className="text-patient-sm text-gray-600">
+                <p className="text-patient-sm text-ink-muted">
                   {lastSynced ? new Date(lastSynced).toLocaleTimeString() : 'Not synced yet'}
                 </p>
               </div>
@@ -115,7 +115,7 @@ function CaregiverDashboardPageInner() {
                 type="button"
                 onClick={() => void syncNow()}
                 aria-label="Sync now"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-teal hover:bg-teal/10"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-primary hover:bg-primary/10"
               >
                 <RefreshCw size={18} aria-hidden="true" />
               </button>
@@ -148,7 +148,7 @@ function CaregiverDashboardPageInner() {
       ) : null}
 
       {patients && patients.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-gray-300 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
           <p className="text-caregiver-body text-ink-muted">Add a patient to begin a supervised activity.</p>
           <BigButton
             label="Add First Patient"
@@ -172,7 +172,7 @@ function CaregiverDashboardPageInner() {
                 <button
                   type="button"
                   onClick={() => router.push(`/caregiver/patients/${patient.id}`)}
-                  className="flex w-full overflow-hidden rounded-card border border-gray-300 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
+                  className="flex w-full overflow-hidden rounded-card border border-line200 bg-white text-left shadow-sm transition-shadow hover:shadow-md"
                 >
                   <div className={`w-1.5 shrink-0 ${stripColor}`} aria-hidden="true" />
                   <div className="flex flex-1 flex-col gap-3 p-4">
@@ -181,21 +181,21 @@ function CaregiverDashboardPageInner() {
                       <span data-testid="patient-card-name" className="font-bold text-navy">
                         {patient.displayName}
                       </span>
-                      <span className="text-patient-sm text-gray-600">
+                      <span className="text-patient-sm text-ink-muted">
                         {patient.ageYears} · {patient.primaryLanguage}
                       </span>
                     </div>
                     <p className={`text-patient-sm font-semibold ${STATUS_TEXT_CLASS[patient.alertStatus]}`}>
                       {STATUS_LABEL[patient.alertStatus]}
                     </p>
-                    <div className="flex items-baseline justify-between border-t border-gray-100 pt-3">
+                    <div className="flex items-baseline justify-between border-t border-line200 pt-3">
                       <div>
                         <span className="font-serif-display text-2xl font-bold text-muga">
                           {patient.accuracyToday}%
                         </span>
-                        <span className="ml-1 text-patient-sm text-gray-600">accuracy today</span>
+                        <span className="ml-1 text-patient-sm text-ink-muted">accuracy today</span>
                       </div>
-                      <span className="text-patient-sm text-gray-600">
+                      <span className="text-patient-sm text-ink-muted">
                         {patient.sessionsThisWeek}/7 sessions
                       </span>
                     </div>

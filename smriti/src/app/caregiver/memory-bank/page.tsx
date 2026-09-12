@@ -308,14 +308,14 @@ export default function MemoryBankPage() {
         <h1 className="font-serif-display text-caregiver-heading font-semibold text-navy">
           Memory Bank
         </h1>
-        <p className="mt-2 text-caregiver-body text-gray-600">
+        <p className="mt-2 text-caregiver-body text-ink-muted">
           Facts your loved one can ask the AI companion about — it only answers from what you add here.
         </p>
         <button
           type="button"
           aria-label="Quick add"
           onClick={() => setQuickAddOpen(true)}
-          className="mt-3 text-sm font-semibold text-teal hover:text-primary-dark"
+          className="mt-3 text-sm font-semibold text-primary hover:text-primary-dark"
         >
           Quick add
         </button>
@@ -339,7 +339,7 @@ export default function MemoryBankPage() {
             aria-label="Dismiss confirmation"
             onClick={() => setBanner(null)}
             style={{ minHeight: 44, minWidth: 44 }}
-            className="flex shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100"
+            className="flex shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -347,7 +347,7 @@ export default function MemoryBankPage() {
       ) : null}
 
       {!hasAnyEntries ? (
-        <div className="flex flex-col items-center gap-6 rounded-card border border-gray-300 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
           <p className="text-caregiver-body text-ink-muted">
             Add the people and facts your loved one might ask about.
           </p>
@@ -363,7 +363,7 @@ export default function MemoryBankPage() {
                   type="button"
                   onClick={() => startAdd(category)}
                   style={{ minHeight: 44 }}
-                  className="flex items-center gap-3 rounded-card border border-gray-300 bg-white p-4 text-left shadow-sm hover:border-primary hover:bg-primary/5"
+                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left shadow-sm hover:border-primary hover:bg-primary/5"
                 >
                   <span
                     aria-hidden="true"
@@ -397,7 +397,7 @@ export default function MemoryBankPage() {
                   <button
                     type="button"
                     onClick={() => startAdd(category)}
-                    className="flex items-center gap-1 text-sm font-semibold text-teal hover:text-primary-dark"
+                    className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-dark"
                   >
                     <Plus size={16} aria-hidden="true" />
                     Add
@@ -405,13 +405,13 @@ export default function MemoryBankPage() {
                 </div>
 
                 {sectionEntries.length === 0 ? (
-                  <p className="text-patient-sm text-gray-600">No entries yet.</p>
+                  <p className="text-patient-sm text-ink-muted">No entries yet.</p>
                 ) : (
                   <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {sectionEntries.map((entry) => (
                       <li
                         key={entry.id}
-                        className="flex flex-col gap-2 rounded-card border border-gray-300 bg-white p-4 shadow-sm"
+                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-start gap-3">
@@ -420,7 +420,7 @@ export default function MemoryBankPage() {
                                 <img
                                   src={entry.photoUrl}
                                   alt=""
-                                  className="h-12 w-12 shrink-0 rounded-full border border-gray-300 object-cover"
+                                  className="h-12 w-12 shrink-0 rounded-full border border-line200 object-cover"
                                 />
                               ) : (
                                 <span
@@ -434,7 +434,7 @@ export default function MemoryBankPage() {
                             <div>
                               <p className="font-bold text-navy">{entry.title}</p>
                               {entry.relationship ? (
-                                <p className="text-patient-sm text-gray-600">{entry.relationship}</p>
+                                <p className="text-patient-sm text-ink-muted">{entry.relationship}</p>
                               ) : null}
                             </div>
                           </div>
@@ -444,7 +444,7 @@ export default function MemoryBankPage() {
                               aria-label={`Edit ${entry.title}`}
                               onClick={() => startEdit(entry)}
                               style={{ minHeight: 44, minWidth: 44 }}
-                              className="flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-teal"
+                              className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-primary"
                             >
                               <Pencil size={18} aria-hidden="true" />
                             </button>
@@ -453,13 +453,13 @@ export default function MemoryBankPage() {
                               aria-label={`Delete ${entry.title}`}
                               onClick={() => setConfirmingId(entry.id)}
                               style={{ minHeight: 44, minWidth: 44 }}
-                              className="flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-danger"
+                              className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-danger"
                             >
                               <Trash2 size={18} aria-hidden="true" />
                             </button>
                           </div>
                         </div>
-                        <p className="text-caregiver-body text-gray-700">{entry.detail}</p>
+                        <p className="text-caregiver-body text-ink-muted">{entry.detail}</p>
                       </li>
                     ))}
                   </ul>
@@ -496,7 +496,7 @@ export default function MemoryBankPage() {
               id="mb-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="h-14 rounded-card border border-gray-300 px-4 text-caregiver-body text-ink"
+              className="h-14 rounded-card border border-line200 px-4 text-caregiver-body text-ink"
             />
 
             {form.category === 'person' ? (
@@ -508,7 +508,7 @@ export default function MemoryBankPage() {
                   id="mb-relationship"
                   value={form.relationship}
                   onChange={(e) => setForm({ ...form, relationship: e.target.value })}
-                  className="h-14 rounded-card border border-gray-300 px-4 text-caregiver-body text-ink"
+                  className="h-14 rounded-card border border-line200 px-4 text-caregiver-body text-ink"
                 />
 
                 <label htmlFor="mb-photo" className="text-sm font-semibold text-navy">
@@ -519,7 +519,7 @@ export default function MemoryBankPage() {
                     <img
                       src={form.photoUrl}
                       alt={form.title ? `Photo of ${form.title}` : 'Selected photo preview'}
-                      className="h-20 w-20 rounded-full border border-gray-300 object-cover"
+                      className="h-20 w-20 rounded-full border border-line200 object-cover"
                     />
                     <button
                       type="button"
@@ -530,7 +530,7 @@ export default function MemoryBankPage() {
                     </button>
                   </div>
                 ) : (
-                  <p className="text-patient-sm text-gray-600">No photo selected yet — optional, but it helps your loved one recognise a face.</p>
+                  <p className="text-patient-sm text-ink-muted">No photo selected yet — optional, but it helps your loved one recognise a face.</p>
                 )}
                 <input
                   key={photoInputKey}
@@ -556,7 +556,7 @@ export default function MemoryBankPage() {
               value={form.detail}
               onChange={(e) => setForm({ ...form, detail: e.target.value })}
               rows={3}
-              className="rounded-card border border-gray-300 px-4 py-3 text-caregiver-body text-ink"
+              className="rounded-card border border-line200 px-4 py-3 text-caregiver-body text-ink"
             />
 
             {duplicateWarning ? (
@@ -599,7 +599,7 @@ export default function MemoryBankPage() {
               value={quickText}
               onChange={(e) => setQuickText(e.target.value)}
               rows={5}
-              className="rounded-card border border-gray-300 px-4 py-3 text-caregiver-body text-ink"
+              className="rounded-card border border-line200 px-4 py-3 text-caregiver-body text-ink"
             />
             <div className="flex gap-3">
               <BigButton label="Cancel" variant="secondary" onClick={() => setQuickAddOpen(false)} />
@@ -626,19 +626,19 @@ export default function MemoryBankPage() {
               <p className="text-caregiver-body text-ink-muted">Nothing was extracted from that text.</p>
             ) : (
               reviewEntries.map((entry, i) => (
-                <div key={`${entry.title}-${i}`} className="flex flex-col gap-2 rounded-card border border-gray-300 p-3">
+                <div key={`${entry.title}-${i}`} className="flex flex-col gap-2 rounded-card border border-line200 p-3">
                   <div className="flex items-center justify-between gap-2">
                     <input
                       value={entry.title}
                       onChange={(e) => updateReviewEntry(i, { title: e.target.value })}
-                      className="h-10 flex-1 rounded-card border border-gray-300 px-3 font-bold text-navy"
+                      className="h-10 flex-1 rounded-card border border-line200 px-3 font-bold text-navy"
                     />
                     <button
                       type="button"
                       aria-label={`Remove ${entry.title}`}
                       onClick={() => removeReviewEntry(entry.title)}
                       style={{ minHeight: 44, minWidth: 44 }}
-                      className="flex items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-danger"
+                      className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-danger"
                     >
                       <Trash2 size={18} aria-hidden="true" />
                     </button>
@@ -647,7 +647,7 @@ export default function MemoryBankPage() {
                     value={entry.detail}
                     onChange={(e) => updateReviewEntry(i, { detail: e.target.value })}
                     rows={2}
-                    className="rounded-card border border-gray-300 px-3 py-2 text-caregiver-body text-ink"
+                    className="rounded-card border border-line200 px-3 py-2 text-caregiver-body text-ink"
                   />
                 </div>
               ))

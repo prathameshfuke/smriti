@@ -203,7 +203,7 @@ export default function CaregiverSettingsPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
           <div className="h-1.5 bg-muga" />
           <div className="flex flex-col gap-3 p-6">
             <h2 className="font-serif-display text-lg font-semibold text-navy">Language</h2>
@@ -212,11 +212,11 @@ export default function CaregiverSettingsPage() {
         </section>
 
         {dangerStage === 'closed' ? (
-          <section className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
-            <div className="h-1.5 bg-teal" />
+          <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+            <div className="h-1.5 bg-primary" />
             <div className="flex flex-col gap-3 p-6">
               <h2 className="font-serif-display text-lg font-semibold text-navy">Change PIN</h2>
-              <p className="text-caregiver-body text-gray-600">{stageLabel}</p>
+              <p className="text-caregiver-body text-ink-muted">{stageLabel}</p>
               <PinPad onDigit={onDigit} onBackspace={onBackspace} />
               {error ? <p className="text-caregiver-body text-warning">{error}</p> : null}
               {saved ? <p className="text-caregiver-body font-bold text-success">PIN updated</p> : null}
@@ -225,9 +225,9 @@ export default function CaregiverSettingsPage() {
           </section>
         ) : null}
 
-        <section className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm md:col-span-2">
+        <section className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm md:col-span-2">
           <div className="h-1.5 bg-gamosa" />
-          <div className="flex flex-col gap-2 p-6 text-caregiver-body text-gray-600">
+          <div className="flex flex-col gap-2 p-6 text-caregiver-body text-ink-muted">
             <h2 className="font-serif-display text-lg font-semibold text-navy">About SMRITI</h2>
             <p>Version 1.0.0-hackathon</p>
             <p>Built for Smart India Hackathon 2026 — SIH26003</p>
@@ -246,7 +246,7 @@ export default function CaregiverSettingsPage() {
 
             {dangerStage === 'closed' ? (
               <>
-                <p className="text-caregiver-body text-gray-600">
+                <p className="text-caregiver-body text-ink-muted">
                   Permanently erases everything on this device — your profile and every patient&apos;s
                   data. This cannot be undone, and you will need to set up SMRITI again from scratch
                   afterward.
@@ -276,7 +276,7 @@ export default function CaregiverSettingsPage() {
 
             {dangerStage === 'confirmDeletePin' ? (
               <>
-                <p className="text-caregiver-body text-gray-600">
+                <p className="text-caregiver-body text-ink-muted">
                   Enter your PIN to confirm deletion
                 </p>
                 <PinPad onDigit={onDeletePinDigit} onBackspace={onDeletePinBackspace} disabled={deleting} />

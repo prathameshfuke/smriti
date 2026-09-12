@@ -166,7 +166,7 @@ export default function RemindersPage() {
                 return (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card border border-gray-100 bg-surface-card p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3 shadow-sm"
                   >
                     <div className="flex items-center gap-3">
                       <span className="text-2xl" aria-hidden="true">
@@ -220,14 +220,14 @@ export default function RemindersPage() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Morning red pill"
-                className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <input
                 type="time"
                 value={timeOfDay}
                 onChange={(e) => setTimeOfDay(e.target.value)}
-                className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
 
               <div className="flex gap-2">
@@ -242,7 +242,7 @@ export default function RemindersPage() {
                       'rounded-full text-caregiver-body font-semibold transition-colors duration-150 ' +
                       (days[i]
                         ? 'bg-primary text-ink-inverse'
-                        : 'bg-surface-muted text-ink-muted hover:bg-gray-200')
+                        : 'bg-surface-muted text-ink-muted hover:bg-surface-muted')
                     }
                   >
                     {letter}
@@ -277,7 +277,7 @@ export default function RemindersPage() {
                 {activeSchedules.map((s) => (
                   <li
                     key={s.id}
-                    className="flex items-center justify-between rounded-card border border-gray-100 bg-surface-card p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3 shadow-sm"
                   >
                     <p className="text-caregiver-body text-ink">
                       {TYPE_ICON[s.reminderType]} {s.timeOfDay} — {s.label}

@@ -57,7 +57,7 @@ export function DialogContent({ className, children }: { className?: string; chi
       onClick={() => ctx.setOpen(false)}
     >
       <div
-        className={cn('w-full max-w-md rounded-card border border-gray-300 bg-white p-6 shadow-md', className)}
+        className={cn('w-full max-w-md rounded-card border border-line200 bg-white p-6 shadow-md', className)}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -75,7 +75,7 @@ export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHe
 }
 
 export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-gray-600', className)} {...props} />;
+  return <p className={cn('text-sm text-ink-muted', className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

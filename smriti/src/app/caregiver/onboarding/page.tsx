@@ -70,7 +70,7 @@ function StepDots({ step }: { step: number }) {
         <span
           key={s}
           className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-            s <= step ? 'bg-muga' : 'bg-gray-200'
+            s <= step ? 'bg-muga' : 'bg-surface-muted'
           }`}
         />
       ))}
@@ -260,7 +260,7 @@ export default function CaregiverOnboardingPage() {
             value={data.caregiverName}
             onChange={(e) => setData((d) => ({ ...d, caregiverName: e.target.value }))}
             placeholder="Your name"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-caregiver-body text-ink">Your role</p>
           <div className="flex flex-col gap-3">
@@ -295,7 +295,7 @@ export default function CaregiverOnboardingPage() {
             value={data.patientName}
             onChange={(e) => setData((d) => ({ ...d, patientName: e.target.value }))}
             placeholder="Patient name"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <label htmlFor="patient-age" className="sr-only">
             Age
@@ -308,7 +308,7 @@ export default function CaregiverOnboardingPage() {
             value={data.ageYears}
             onChange={(e) => setData((d) => ({ ...d, ageYears: e.target.value }))}
             placeholder="Age"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <div className="flex gap-3">
             {GENDERS.map((g) => (
@@ -332,7 +332,7 @@ export default function CaregiverOnboardingPage() {
             value={data.educationYears}
             onChange={(e) => setData((d) => ({ ...d, educationYears: e.target.value }))}
             placeholder="Years of education"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
           <p className="text-caregiver-body text-ink">Patient&apos;s language</p>
           <LanguagePicker />
@@ -371,7 +371,7 @@ export default function CaregiverOnboardingPage() {
               <span
                 key={i}
                 className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
-                  i < data.pin.length ? 'border-primary bg-primary' : 'border-gray-200'
+                  i < data.pin.length ? 'border-primary bg-primary' : 'border-line200'
                 }`}
               />
             ))}
@@ -387,7 +387,7 @@ export default function CaregiverOnboardingPage() {
               <span
                 key={i}
                 className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
-                  i < data.confirmPin.length ? 'border-primary bg-primary' : 'border-gray-200'
+                  i < data.confirmPin.length ? 'border-primary bg-primary' : 'border-line200'
                 }`}
               />
             ))}

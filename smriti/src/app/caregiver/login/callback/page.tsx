@@ -189,7 +189,7 @@ function CaregiverLoginCallbackInner() {
               className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
                 i < (pinStage === 'new' ? newPin.length : confirmPin.length)
                   ? 'border-primary bg-primary'
-                  : 'border-gray-200'
+                  : 'border-line200'
               }`}
             />
           ))}

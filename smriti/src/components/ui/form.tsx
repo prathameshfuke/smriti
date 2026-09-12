@@ -77,7 +77,7 @@ export function FormControl({ children }: { children: React.ReactElement }) {
 }
 
 export function FormDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-gray-600', className)} {...props} />;
+  return <p className={cn('text-sm text-ink-muted', className)} {...props} />;
 }
 
 export function FormMessage({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {

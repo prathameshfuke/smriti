@@ -75,7 +75,7 @@ export default function CaregiverPatientsPage() {
       ) : null}
 
       {patients && patients.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-card border border-gray-300 bg-white py-12 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-card border border-line200 bg-white py-12 text-center shadow-sm">
           <p className="text-caregiver-body text-ink-muted">Add a patient to begin a supervised activity.</p>
         </div>
       ) : null}
@@ -92,7 +92,7 @@ export default function CaregiverPatientsPage() {
             return (
               <li
                 key={patient.id}
-                className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm"
+                className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-line200 bg-white shadow-sm"
               >
                 <div className={`h-full w-1.5 self-stretch shrink-0 ${stripColor}`} aria-hidden="true" />
                 <button
@@ -102,7 +102,7 @@ export default function CaregiverPatientsPage() {
                 >
                   <TrafficLight status={patient.alertStatus} size="sm" />
                   <span className="font-bold text-navy">{patient.displayName}</span>
-                  <span className="text-patient-sm text-gray-600">
+                  <span className="text-patient-sm text-ink-muted">
                     {patient.ageYears} · {patient.primaryLanguage}
                   </span>
                 </button>
@@ -111,7 +111,7 @@ export default function CaregiverPatientsPage() {
                   aria-label={`Delete ${patient.displayName}`}
                   onClick={() => setConfirmingId(patient.id)}
                   style={{ minHeight: 48, minWidth: 48 }}
-                  className="mr-2 flex shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 hover:text-danger"
+                  className="mr-2 flex shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-danger"
                 >
                   <Trash2 size={20} aria-hidden="true" />
                 </button>

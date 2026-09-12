@@ -173,7 +173,7 @@ function CaregiverLoginPageInner() {
               className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
                 i < (pinStage === 'new' ? newPin.length : confirmPin.length)
                   ? 'border-primary bg-primary'
-                  : 'border-gray-200'
+                  : 'border-line200'
               }`}
             />
           ))}
@@ -222,7 +222,7 @@ function CaregiverLoginPageInner() {
             value={code}
             onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
             placeholder="123456"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-center text-caregiver-heading tracking-[0.3em] text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-center text-caregiver-heading tracking-[0.3em] text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
 
           <BigButton
@@ -256,7 +256,7 @@ function CaregiverLoginPageInner() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="h-14 w-full rounded-card border border-gray-200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           />
 
           <BigButton
@@ -267,9 +267,9 @@ function CaregiverLoginPageInner() {
           />
 
           <div className="flex items-center gap-3" aria-hidden="true">
-            <span className="h-px flex-1 bg-gray-200" />
+            <span className="h-px flex-1 bg-surface-muted" />
             <span className="text-caregiver-body text-ink-muted">or</span>
-            <span className="h-px flex-1 bg-gray-200" />
+            <span className="h-px flex-1 bg-surface-muted" />
           </div>
 
           <BigButton

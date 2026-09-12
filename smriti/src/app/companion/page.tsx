@@ -222,7 +222,7 @@ export default function CompanionPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-patient flex-col items-center gap-6 bg-canvas px-4 py-10">
-      <h1 className="text-center text-2xl font-bold text-navy">Ask Smriti</h1>
+      <h1 className="text-center font-serif-display text-patient-heading font-semibold text-navy">Ask Smriti</h1>
 
       {mediaRecorderSupported ? (
         <button
@@ -232,7 +232,7 @@ export default function CompanionPage() {
           disabled={phase === 'thinking'}
           style={{ height: MIC_SIZE_PX, width: MIC_SIZE_PX }}
           className={
-            'flex items-center justify-center rounded-full bg-teal text-white shadow-md ' +
+            'flex items-center justify-center rounded-full bg-primary text-ink-inverse shadow-md ' +
             'transition-transform active:scale-95 disabled:opacity-60 ' +
             (phase === 'recording' ? 'motion-safe:animate-pulse' : '')
           }
@@ -256,7 +256,7 @@ export default function CompanionPage() {
               if (e.key === 'Enter') onTextSubmit();
             }}
             style={{ minHeight: 56 }}
-            className="rounded-card border border-gray-300 px-4 text-patient-body text-ink"
+            className="rounded-card border border-line200 px-4 text-patient-body text-ink"
           />
           <BigButton label="Ask" variant="primary" onClick={onTextSubmit} />
         </div>
@@ -266,13 +266,13 @@ export default function CompanionPage() {
       {phase === 'recording' ? <p className="text-patient-body text-ink-muted">Listening…</p> : null}
       {phase === 'thinking' ? <p className="text-patient-body text-ink-muted">Thinking…</p> : null}
       {(phase === 'answered' || phase === 'fallback') && transcript ? (
-        <p className="text-patient-sm text-gray-500">{transcript}</p>
+        <p className="text-patient-sm text-ink-muted">{transcript}</p>
       ) : null}
 
       {answer ? (
         <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-[24px] leading-snug text-ink">{answer.text}</p>
-          <p className="text-sm text-gray-500">{answer.fromCache ? 'from earlier' : 'AI-generated answer'}</p>
+          <p className="text-patient-body text-ink">{answer.text}</p>
+          <p className="text-patient-sm text-ink-muted">{answer.fromCache ? 'from earlier' : 'AI-generated answer'}</p>
         </div>
       ) : null}
 

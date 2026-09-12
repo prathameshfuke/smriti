@@ -329,7 +329,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex items-center justify-between gap-2 bg-white px-4 py-3">
           <div className="flex items-center gap-2">
             <TrafficLight status={patient.alertStatus} size="sm" />
-            <span className="text-caregiver-body text-gray-600">
+            <span className="text-caregiver-body text-ink-muted">
               {patient.ageYears} · {patient.primaryLanguage}
             </span>
           </div>
@@ -338,14 +338,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               type="button"
               onClick={() => void refreshQuiz()}
               disabled={quizStatus.kind === 'loading'}
-              className="text-sm font-semibold text-teal hover:text-primary-dark disabled:opacity-50"
+              className="text-sm font-semibold text-primary hover:text-primary-dark disabled:opacity-50"
             >
               {quizStatus.kind === 'loading' ? 'Refreshing…' : 'Refresh Quiz'}
             </button>
             <button
               type="button"
               onClick={() => router.push('/caregiver/memory-bank')}
-              className="text-sm font-semibold text-teal hover:text-primary-dark"
+              className="text-sm font-semibold text-primary hover:text-primary-dark"
             >
               Memory Bank
             </button>
@@ -359,7 +359,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         </p>
       ) : null}
       {quizStatus.kind === 'needs_facts' ? (
-        <div className="flex items-center justify-between gap-2 bg-teal/5 px-4 py-2">
+        <div className="flex items-center justify-between gap-2 bg-primary/5 px-4 py-2">
           <p className="text-patient-sm text-ink">
             Add at least {quizStatus.needed} people or life facts to the Memory Bank first
             ({quizStatus.have} so far) to generate a quiz.
@@ -367,7 +367,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
           <button
             type="button"
             onClick={() => router.push('/caregiver/memory-bank')}
-            className="whitespace-nowrap text-sm font-semibold text-teal hover:text-primary-dark"
+            className="whitespace-nowrap text-sm font-semibold text-primary hover:text-primary-dark"
           >
             Memory Bank
           </button>
@@ -379,15 +379,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
         </p>
       ) : null}
 
-      <div className="flex border-b border-gray-300 bg-white">
+      <div className="flex gap-1 overflow-x-auto border-b border-line200 bg-white px-2">
         {(['cognitive', 'reminders', 'history', 'companion', 'family'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
             className={
-              'flex-1 py-3 text-caregiver-body font-semibold capitalize ' +
-              (tab === t ? 'border-b-2 border-muga text-navy' : 'text-gray-600')
+              'shrink-0 whitespace-nowrap px-4 py-3 text-caregiver-body font-semibold capitalize ' +
+              (tab === t ? 'border-b-2 border-muga text-navy' : 'text-ink-muted')
             }
           >
             {t}
@@ -398,8 +398,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
         {tab === 'cognitive' ? (
           <div className="flex flex-col gap-4">
-            <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
-              <div className="h-1.5 bg-teal" />
+            <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+              <div className="h-1.5 bg-primary" />
               <div className="flex flex-col gap-2 p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-serif-display text-lg font-semibold text-navy">This week</p>
@@ -407,7 +407,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     type="button"
                     onClick={generateDigest}
                     disabled={digestGenerating}
-                    className="text-sm font-semibold text-teal hover:text-primary-dark disabled:opacity-50"
+                    className="text-sm font-semibold text-primary hover:text-primary-dark disabled:opacity-50"
                   >
                     {digestGenerating ? 'Refreshing…' : 'Refresh'}
                   </button>
@@ -418,20 +418,20 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <p className="text-caregiver-body text-ink-muted">No digest yet.</p>
                 ) : (
                   <>
-                    <p className="text-caregiver-body text-gray-700">{digests[0].summaryText}</p>
-                    <p className="text-patient-sm text-gray-600">
+                    <p className="text-caregiver-body text-ink-muted">{digests[0].summaryText}</p>
+                    <p className="text-patient-sm text-ink-muted">
                       Generated {new Date(digests[0].generatedAt).toLocaleDateString()} — not medical advice.
                     </p>
                   </>
                 )}
                 {digests && digests.length > 1 ? (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-sm font-semibold text-teal">Past weeks</summary>
+                    <summary className="cursor-pointer text-sm font-semibold text-primary">Past weeks</summary>
                     <ul className="mt-2 flex flex-col gap-3">
                       {digests.slice(1).map((d) => (
-                        <li key={d.id} className="border-t border-gray-100 pt-2">
-                          <p className="text-patient-sm text-gray-600">{new Date(d.generatedAt).toLocaleDateString()}</p>
-                          <p className="text-caregiver-body text-gray-700">{d.summaryText}</p>
+                        <li key={d.id} className="border-t border-line200 pt-2">
+                          <p className="text-patient-sm text-ink-muted">{new Date(d.generatedAt).toLocaleDateString()}</p>
+                          <p className="text-caregiver-body text-ink-muted">{d.summaryText}</p>
                         </li>
                       ))}
                     </ul>
@@ -452,7 +452,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   <TrafficLight status={alert.severity} size="sm" />
                   <span className="font-bold text-navy">{alert.title}</span>
                 </div>
-                <p className="line-clamp-2 text-caregiver-body text-gray-600">{alert.description}</p>
+                <p className="line-clamp-2 text-caregiver-body text-ink-muted">{alert.description}</p>
                 <BigButton
                   label="Mark Resolved"
                   variant="secondary"
@@ -475,10 +475,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {velocity ? (
-              <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
                 <div className="h-1.5 bg-muga" />
                 <div className="p-4">
-                  <p className="text-caregiver-body text-gray-600">Cognitive Trend</p>
+                  <p className="text-caregiver-body text-ink-muted">Cognitive Trend</p>
                   <p className={`font-serif-display text-2xl font-bold ${velocityClassName}`}>
                     {velocity.label}
                   </p>
@@ -501,10 +501,10 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             {adherence.isLoading ? (
               <Skeleton height={120} />
             ) : (
-              <div className="overflow-hidden rounded-card border border-gray-300 bg-white shadow-sm">
-                <div className="h-1.5 bg-teal" />
+              <div className="overflow-hidden rounded-card border border-line200 bg-white shadow-sm">
+                <div className="h-1.5 bg-primary" />
                 <div className="flex flex-col gap-4 p-4">
-                <p className="font-serif-display text-patient-heading font-bold text-teal">
+                <p className="font-serif-display text-patient-heading font-bold text-primary">
                   {adherence.overallPct}% reminders acknowledged this week
                 </p>
                 <div className="flex flex-col gap-3">
@@ -516,12 +516,12 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                         <div className="flex items-center gap-2 text-caregiver-body text-navy">
                           <span aria-hidden="true">{REMINDER_ICON[type]}</span>
                           <span className="capitalize">{type}</span>
-                          <span className="ml-auto text-gray-600">
+                          <span className="ml-auto text-ink-muted">
                             {stat.acked}/{stat.total}
                           </span>
                         </div>
-                        <div className="h-2 w-full rounded-full bg-gray-100">
-                          <div className="h-2 rounded-full bg-teal" style={{ width: `${pct}%` }} />
+                        <div className="h-2 w-full rounded-full bg-surface-muted">
+                          <div className="h-2 rounded-full bg-primary" style={{ width: `${pct}%` }} />
                         </div>
                       </div>
                     );
@@ -531,11 +531,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <section>
                   <h2 className="text-caregiver-body font-semibold text-navy">Missed Reminders</h2>
                   {adherence.missed.length === 0 ? (
-                    <p className="text-patient-sm text-gray-600">None this week.</p>
+                    <p className="text-patient-sm text-ink-muted">None this week.</p>
                   ) : (
                     <ul className="flex flex-col gap-1">
                       {adherence.missed.map((m, i) => (
-                        <li key={i} className="text-patient-sm text-gray-600">
+                        <li key={i} className="text-patient-sm text-ink-muted">
                           {m.date} {m.time} — {m.label}
                         </li>
                       ))}
@@ -565,12 +565,12 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               const cardClass = q.flaggedForFollowup
                 ? 'border-warning bg-warning/10'
                 : isSuggestion
-                  ? 'border-teal bg-teal/5'
-                  : 'border-gray-300 bg-white';
+                  ? 'border-primary bg-primary/5'
+                  : 'border-line200 bg-white';
               return (
                 <div key={q.id} className={`rounded-card border p-3 shadow-sm ${cardClass}`}>
                   <p className="font-bold text-navy">{q.question}</p>
-                  <p className="text-caregiver-body text-gray-700">{q.answer}</p>
+                  <p className="text-caregiver-body text-ink-muted">{q.answer}</p>
                   {q.flaggedForFollowup ? (
                     <p className="mt-1 text-patient-sm font-semibold text-warning">
                       Follow-up suggested — this question may need your attention.
@@ -579,7 +579,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     <button
                       type="button"
                       onClick={() => router.push('/caregiver/memory-bank')}
-                      className="mt-1 text-patient-sm font-semibold text-teal hover:text-primary-dark"
+                      className="mt-1 text-patient-sm font-semibold text-primary hover:text-primary-dark"
                     >
                       Consider adding this to the Memory Bank
                     </button>
@@ -592,9 +592,9 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
         {tab === 'family' ? (
           <div className="flex flex-col gap-6">
-            <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
+            <div className="rounded-card border border-line200 bg-white p-4 shadow-sm">
               <p className="font-serif-display text-lg font-semibold text-navy">Share with family</p>
-              <p className="mt-1 text-patient-sm text-gray-600">
+              <p className="mt-1 text-patient-sm text-ink-muted">
                 Read-only weekly summary, plus this week&apos;s engagement. No raw session data, Memory
                 Bank, or companion conversations are ever shared. Links expire after 30 days and can be
                 revoked any time.
@@ -608,7 +608,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   value={newShareLabel}
                   onChange={(e) => setNewShareLabel(e.target.value)}
                   placeholder="e.g. Son in Delhi"
-                  className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                  className="h-11 flex-1 rounded-control border border-line200 px-3 text-caregiver-body text-ink"
                 />
                 <button
                   type="button"
@@ -621,14 +621,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <div className="rounded-card border border-gray-300 bg-white p-4 shadow-sm">
+            <div className="rounded-card border border-line200 bg-white p-4 shadow-sm">
               <p className="font-serif-display text-lg font-semibold text-navy">Post a message</p>
-              <p className="mt-1 text-patient-sm text-gray-600">
+              <p className="mt-1 text-patient-sm text-ink-muted">
                 Goes straight to the patient&apos;s home screen — no review link needed. Shown as a short
                 card the patient can tap &ldquo;Seen&rdquo; on.
               </p>
               <div className="mt-3 flex flex-col gap-2">
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   <label htmlFor="message-sender-name" className="sr-only">
                     Your name
                   </label>
@@ -637,7 +637,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     value={newMessageSender}
                     onChange={(e) => setNewMessageSender(e.target.value)}
                     placeholder="Your name (optional)"
-                    className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                    className="h-11 rounded-control border border-line200 px-3 text-caregiver-body text-ink sm:flex-1"
                   />
                   <label htmlFor="message-sender-relation" className="sr-only">
                     Relation to patient
@@ -647,7 +647,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     value={newMessageRelation}
                     onChange={(e) => setNewMessageRelation(e.target.value)}
                     placeholder="Relation, e.g. Daughter"
-                    className="h-11 flex-1 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                    className="h-11 rounded-control border border-line200 px-3 text-caregiver-body text-ink sm:flex-1"
                   />
                 </div>
                 <label htmlFor="message-text" className="sr-only">
@@ -660,7 +660,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   placeholder="Write a short message…"
                   maxLength={280}
                   rows={3}
-                  className="rounded-control border border-gray-300 p-3 text-caregiver-body text-ink"
+                  className="rounded-control border border-line200 p-3 text-caregiver-body text-ink"
                 />
                 <label htmlFor="message-photo-url" className="sr-only">
                   Photo URL
@@ -670,7 +670,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                   value={newMessagePhotoUrl}
                   onChange={(e) => setNewMessagePhotoUrl(e.target.value)}
                   placeholder="Photo URL (optional)"
-                  className="h-11 rounded-control border border-gray-300 px-3 text-caregiver-body text-ink"
+                  className="h-11 rounded-control border border-line200 px-3 text-caregiver-body text-ink"
                 />
                 <button
                   type="button"
@@ -695,11 +695,11 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 return (
                   <div
                     key={share.id}
-                    className="flex items-center justify-between rounded-card border border-gray-300 bg-white p-3 shadow-sm"
+                    className="flex items-center justify-between rounded-card border border-line200 bg-white p-3 shadow-sm"
                   >
                     <div>
                       <p className="font-bold text-navy">{share.label}</p>
-                      <p className="text-patient-sm text-gray-600">
+                      <p className="text-patient-sm text-ink-muted">
                         {revoked
                           ? 'Revoked'
                           : expired
@@ -728,8 +728,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-caregiver-body text-ink-muted">Nothing waiting for review.</p>
               ) : null}
               {(familyNotes ?? []).map((note) => (
-                <div key={note.id} className="rounded-card border border-gray-300 bg-white p-3 shadow-sm">
-                  <p className="text-caregiver-body text-gray-800">&ldquo;{note.text}&rdquo;</p>
+                <div key={note.id} className="rounded-card border border-line200 bg-white p-3 shadow-sm">
+                  <p className="text-caregiver-body text-ink">&ldquo;{note.text}&rdquo;</p>
                   <div className="mt-2 flex gap-3">
                     <button
                       type="button"

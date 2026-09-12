@@ -25,7 +25,7 @@ export default function CaregiverTopNav() {
   const { syncStatus } = useSync();
 
   return (
-    <header className="hidden h-16 items-center justify-between border-b border-gray-300 bg-white px-6 md:flex">
+    <header className="hidden h-16 items-center justify-between border-b border-line200 bg-white px-6 md:flex">
       <Link
         href="/caregiver/dashboard"
         className="flex items-center gap-2 font-serif-display text-xl font-semibold text-navy"
@@ -44,7 +44,7 @@ export default function CaregiverTopNav() {
               aria-current={active ? 'page' : undefined}
               className={
                 'border-b-2 py-5 text-caregiver-body font-semibold transition-colors ' +
-                (active ? 'border-muga text-navy' : 'border-transparent text-gray-600 hover:text-navy')
+                (active ? 'border-muga text-navy' : 'border-transparent text-ink-muted hover:text-navy')
               }
             >
               {label}
@@ -53,7 +53,7 @@ export default function CaregiverTopNav() {
         })}
       </nav>
 
-      <div className="flex items-center gap-2 text-patient-sm text-gray-600" role="status">
+      <div className="flex items-center gap-2 text-patient-sm text-ink-muted" role="status">
         {syncStatus === 'offline' ? (
           <WifiOff size={16} aria-hidden="true" />
         ) : syncStatus === 'syncing' ? (
@@ -68,7 +68,7 @@ export default function CaregiverTopNav() {
 
       <Link
         href="/app"
-        className="ml-4 flex items-center gap-1.5 rounded-full border border-gray-300 px-3 py-1.5 text-patient-sm font-semibold text-gray-600 hover:border-primary hover:text-primary"
+        className="ml-4 flex items-center gap-1.5 rounded-full border border-line200 px-3 py-1.5 text-patient-sm font-semibold text-ink-muted hover:border-primary hover:text-primary"
       >
         <Home size={16} aria-hidden="true" />
         Patient View
