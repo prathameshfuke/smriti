@@ -3,7 +3,9 @@
     "greeting": "Hello",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
-    "myProgress": "My progress"
+    "myProgress": "My progress",
+    "streakCount": "day streak",
+    "streakStart": "Play today to start a streak"
   },
   "game": {
     "objectHunt": {

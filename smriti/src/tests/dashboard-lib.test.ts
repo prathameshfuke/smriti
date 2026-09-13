@@ -13,6 +13,7 @@ import {
 import { aggregateByGame } from '@/lib/dashboard/gameBreakdown';
 import { CANONICAL_GAMES, GAME_LABELS } from '@/lib/dashboard/gameLabels';
 import { toAdherenceAck, toAdherenceSchedule } from '@/lib/dashboard/adherenceAdapter';
+import { computeStreak } from '@/lib/dashboard/streak';
 
 const summary = (over: Partial<LocalDailySummary> = {}): LocalDailySummary => ({
   id: 'row-1',
@@ -266,5 +267,37 @@ describe('adherence adapter', () => {
 
   it('passes a null acknowledged_at through unchanged (never acknowledged)', () => {
     expect(toAdherenceAck({ ...ack, acknowledgedAt: null }).acknowledged_at).toBeNull();
+  });
+});
+
+describe('computeStreak', () => {
+  it('counts back from today through unbroken consecutive days', () => {
+    const dates = ['2026-09-10', '2026-09-11', '2026-09-12'];
+    expect(computeStreak(dates, '2026-09-12')).toEqual({ current: 3, playedToday: true });
+  });
+
+  it('still counts the streak through yesterday when nothing is logged yet today', () => {
+    const dates = ['2026-09-10', '2026-09-11'];
+    expect(computeStreak(dates, '2026-09-12')).toEqual({ current: 2, playedToday: false });
+  });
+
+  it('resets to 0 on any gap, with no grace day', () => {
+    const dates = ['2026-09-08', '2026-09-10', '2026-09-11', '2026-09-12'];
+    // 2026-09-09 is missing, so the streak can only reach back to the 10th.
+    expect(computeStreak(dates, '2026-09-12')).toEqual({ current: 3, playedToday: true });
+  });
+
+  it('is 0 when today and yesterday are both unplayed, even with older history', () => {
+    const dates = ['2026-09-01', '2026-09-02', '2026-09-03'];
+    expect(computeStreak(dates, '2026-09-12')).toEqual({ current: 0, playedToday: false });
+  });
+
+  it('is 0 with no history at all', () => {
+    expect(computeStreak([], '2026-09-12')).toEqual({ current: 0, playedToday: false });
+  });
+
+  it('ignores duplicate dates (multiple games played the same day)', () => {
+    const dates = ['2026-09-12', '2026-09-12', '2026-09-11'];
+    expect(computeStreak(dates, '2026-09-12')).toEqual({ current: 2, playedToday: true });
   });
 });

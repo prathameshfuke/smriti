@@ -3,7 +3,9 @@
     "greeting": "নমস্কাৰ",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
-    "myProgress": "মোৰ অগ্ৰগতি"
+    "myProgress": "মোৰ অগ্ৰগতি",
+    "streakCount": "দিন একেৰাহে",
+    "streakStart": "আজি খেলক"
   },
   "game": {
     "objectHunt": {

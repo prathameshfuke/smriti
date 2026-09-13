@@ -3,6 +3,7 @@ import 'fake-indexeddb/auto';
 import { renderHook, waitFor } from '@testing-library/react';
 import { db, SmritiDB, type LocalDailySummary, type LocalReminderAck, type LocalReminderSchedule } from '@/lib/db/schema';
 import { useCognitiveTrend } from '@/hooks/useCognitiveTrend';
+import { useGameStreak } from '@/hooks/useGameStreak';
 import { useReminderAdherence } from '@/hooks/useReminderAdherence';
 import { dateRange } from '@/lib/engine/adherence';
 
@@ -102,6 +103,47 @@ describe('useCognitiveTrend', () => {
       globalThis.fetch = originalFetch;
       if (originalOnLine) Object.defineProperty(window.navigator, 'onLine', originalOnLine);
     }
+  });
+});
+
+describe('useGameStreak', () => {
+  it('starts loading, then resolves to 0/not-played-today when Dexie has no rows', async () => {
+    const { result } = renderHook(() => useGameStreak('p1'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.current).toBe(0);
+    expect(result.current.playedToday).toBe(false);
+  });
+
+  it('counts consecutive days ending today from real Dexie rows', async () => {
+    await db.dailySummaries.bulkAdd([
+      summaryRow({ id: 'a', patientId: 'p1', summaryDate: isoDaysAgo(0) }),
+      summaryRow({ id: 'b', patientId: 'p1', summaryDate: isoDaysAgo(1), gameType: 'quick_tap' }),
+      summaryRow({ id: 'c', patientId: 'p1', summaryDate: isoDaysAgo(2) }),
+    ]);
+
+    const { result } = renderHook(() => useGameStreak('p1'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.current).toBe(3);
+    expect(result.current.playedToday).toBe(true);
+  });
+
+  it('never leaks another patient\'s rows into the streak', async () => {
+    await db.dailySummaries.bulkAdd([
+      summaryRow({ id: 'mine', patientId: 'p1', summaryDate: isoDaysAgo(0) }),
+      summaryRow({ id: 'theirs', patientId: 'p2', summaryDate: isoDaysAgo(0) }),
+    ]);
+
+    const { result } = renderHook(() => useGameStreak('p1'));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.current).toBe(1);
+  });
+
+  it('returns 0 immediately (loading resolves to false) when patientId is null', async () => {
+    const { result } = renderHook(() => useGameStreak(null));
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.current).toBe(0);
   });
 });
 
