@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -347,12 +349,20 @@ describe('CaregiverNav', () => {
     }
   });
 
-  it('adds the bottom safe-area inset on top of the 64px bar instead of eating into it', () => {
+  it('sizes height and bottom padding from the shared safe-area variables', () => {
     render(<CaregiverNav />);
-    // Classes, not inline style: border-box padding inside a fixed 64px
-    // height used to leave ~30px for icon + label on notched iPhones.
+    // Classes, not inline style: jsdom drops env() in inline styles, and a
+    // fixed height with the inset padded *inside* it used to leave ~29px of
+    // tap height on notched iPhones.
     const nav = screen.getByRole('navigation', { name: 'Caregiver' });
-    expect(nav.className).toContain('h-[calc(4rem+env(safe-area-inset-bottom))]');
-    expect(nav.className).toContain('pb-[env(safe-area-inset-bottom)]');
+    expect(nav.className).toMatch(/(^|\s)h-\(--caregiver-nav-h\)(\s|$)/);
+    expect(nav.className).toMatch(/(^|\s)pb-\(--caregiver-nav-pad\)(\s|$)/);
+  });
+
+  it('overlaps the home-indicator zone instead of stacking the full inset under the labels', () => {
+    const css = readFileSync(resolve(__dirname, '../app/globals.css'), 'utf8');
+    // Full inset (34px on iPhone) under a 64px bar read as a tall blank strip.
+    expect(css).toMatch(/--caregiver-nav-pad:\s*max\(calc\(env\(safe-area-inset-bottom\) - 14px\), 4px\)/);
+    expect(css).toMatch(/--caregiver-nav-h:\s*calc\(56px \+ var\(--caregiver-nav-pad\)\)/);
   });
 });
