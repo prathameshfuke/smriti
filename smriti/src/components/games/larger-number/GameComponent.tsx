@@ -425,7 +425,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                         rippleColor="bg-primary/20"
                                         className={cn(
                                             "flex-1 aspect-square rounded-tile flex items-center justify-center text-3xl sm:text-5xl font-bold cursor-pointer",
-                                            "bg-surface-card text-ink border-2 border-primary/40 shadow-sm hover:shadow-md",
+                                            "bg-surface-card text-ink border-2 border-primary/40 hover:shadow-md",
                                         )}
                                     >
                                         {option.value}

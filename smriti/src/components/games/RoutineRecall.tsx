@@ -142,7 +142,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
       ) : null}
 
       {phase === 'done' ? (
-        <div className="flex flex-col items-center gap-3 rounded-tile bg-surface-card p-6 text-center shadow-sm">
+        <div className="flex flex-col items-center gap-3 rounded-tile border border-line200 bg-surface-card p-6 text-center">
           <p className="text-patient-body font-semibold text-ink">
             {wasCorrect ? 'Wonderful! That is exactly how today went.' : "Let's remember together."}
           </p>

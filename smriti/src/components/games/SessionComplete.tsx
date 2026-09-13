@@ -50,7 +50,7 @@ export default function SessionComplete({
         {'⭐'.repeat(safeStars)}
         {'☆'.repeat(5 - safeStars)}
       </p>
-      <p className="text-patient-heading text-ink">
+      <p className="font-serif-display text-patient-heading text-ink">
         {correctCount} out of {totalCount} correct!
       </p>
       <p className="text-patient-body text-ink-muted">{message}</p>

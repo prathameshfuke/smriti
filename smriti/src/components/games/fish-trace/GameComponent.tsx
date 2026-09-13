@@ -278,7 +278,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         : 5;
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
+        <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
 
             {/* Top HUD */}
             <div className="flex justify-between items-center px-6 py-3 bg-transparent shrink-0 z-20">
