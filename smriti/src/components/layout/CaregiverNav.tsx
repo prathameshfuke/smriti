@@ -27,7 +27,7 @@ export default function CaregiverNav() {
     <nav
       aria-label="Caregiver"
       style={{ height: 64, paddingBottom: 'env(safe-area-inset-bottom)' }}
-      className="fixed inset-x-0 bottom-0 z-40 flex bg-surface-card border-t border-surface-muted md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex gap-1 px-2 bg-surface-card border-t border-surface-muted md:hidden"
     >
       {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname?.startsWith(`${href}/`);

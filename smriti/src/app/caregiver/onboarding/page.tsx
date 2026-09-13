@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
+import { Checkbox } from '@/components/ui/checkbox';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
 import { db, type LocalCaregiver, type LocalPatient, type LocalReminderSchedule } from '@/lib/db/schema';
@@ -46,6 +47,7 @@ interface WizardData {
   addMorningReminder: boolean;
   addHydrationReminders: boolean;
   deviceTrusted: boolean;
+  consentGiven: boolean;
 }
 
 const initialData: WizardData = {
@@ -61,11 +63,12 @@ const initialData: WizardData = {
   addMorningReminder: false,
   addHydrationReminders: false,
   deviceTrusted: false,
+  consentGiven: false,
 };
 
 function StepDots({ step }: { step: number }) {
   return (
-    <div className="flex justify-center gap-2" aria-label={`Step ${step} of 3`}>
+    <div className="flex justify-center gap-2" aria-label={`Step ${step} of 4`}>
       {STEPS.map((s) => (
         <span
           key={s}
@@ -126,7 +129,8 @@ export default function CaregiverOnboardingPage() {
   const [trustLoading, setTrustLoading] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const canContinueStep1 = data.caregiverName.trim().length > 0 && data.role !== null;
+  const canContinueStep1 =
+    data.caregiverName.trim().length > 0 && data.role !== null && data.consentGiven;
   const canContinueStep2 =
     data.patientName.trim().length > 0 &&
     data.gender !== null &&
@@ -273,6 +277,19 @@ export default function CaregiverOnboardingPage() {
               />
             ))}
           </div>
+          <label className="flex items-start gap-3 rounded-card border border-line200 p-4 text-caregiver-body text-ink">
+            <Checkbox
+              className="mt-1 shrink-0"
+              checked={data.consentGiven}
+              onCheckedChange={(checked) => setData((d) => ({ ...d, consentGiven: checked }))}
+            />
+            <span>
+              I consent to creating a cognitive care profile for my patient. SMRITI supports
+              cognitive engagement and monitoring — it does not diagnose or treat any medical
+              condition. I understand the collected data stays on this device and syncs only to
+              our secured account, and I can delete it at any time from Settings.
+            </span>
+          </label>
           <BigButton
             label="Continue"
             variant="primary"
