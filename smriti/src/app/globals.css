@@ -156,7 +156,23 @@ body {
 }
 
 /*
- * Clearance for the fixed caregiver bottom nav (CaregiverNav, mobile only).
+ * Caregiver bottom nav (CaregiverNav) sizing, shared with the page clearance
+ * below so the two can never drift apart.
+ *
+ * 56px holds a two-line label tab (1px border + 6px top + 20px icon + 2px
+ * gap + 2 x 13.2px lines = 55.4px). Below that, the home-indicator zone is
+ * overlapped by 14px rather than stacked in full: a 34px iPhone inset under
+ * the labels read as a tall blank strip. The iPhone indicator sits 8-13px
+ * above the screen edge, so a 20px pad still keeps labels clear of it; a 0px
+ * inset (most Android, desktop) gets a 4px floor.
+ */
+:root {
+  --caregiver-nav-pad: max(calc(env(safe-area-inset-bottom) - 14px), 4px);
+  --caregiver-nav-h: calc(56px + var(--caregiver-nav-pad));
+}
+
+/*
+ * Clearance for the fixed caregiver bottom nav (mobile only).
  * The root layout renders <Disclaimer> *after* each route's content, so
  * padding on the caregiver shell alone left the disclaimer's last lines
  * permanently under the nav. Where :has() exists the clearance moves to
@@ -165,7 +181,7 @@ body {
 @supports selector(body:has(*)) {
   @media (width < 48rem) {
     body:has([data-caregiver-nav]) {
-      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+      padding-bottom: var(--caregiver-nav-h);
     }
     body:has([data-caregiver-nav]) [data-caregiver-shell] {
       padding-bottom: 0;

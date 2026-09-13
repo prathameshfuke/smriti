@@ -17,8 +17,9 @@ import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
  * truncate. Measured in Atkinson Hyperlegible, the widest single word
  * ("Overview", 47.8px) keeps 8px clear on each side at 320px — "Dashboard"
  * (56.8px) cannot, which is why the label matches CaregiverTopNav's
- * "Overview". The bar's 64px excludes the safe-area inset, which is added
- * on top so the home indicator never eats into the tap area.
+ * "Overview". Height and bottom padding come from `--caregiver-nav-h` /
+ * `--caregiver-nav-pad` in globals.css, which overlap the home-indicator
+ * zone instead of stacking the full inset as a blank strip under the labels.
  */
 const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Overview', Icon: LayoutDashboard },
@@ -35,7 +36,7 @@ export default function CaregiverNav() {
     <nav
       aria-label="Caregiver"
       data-caregiver-nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-[calc(4rem+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-surface-card border-t border-surface-muted md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-(--caregiver-nav-h) pb-(--caregiver-nav-pad) bg-surface-card border-t border-surface-muted md:hidden"
     >
       {ITEMS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname?.startsWith(`${href}/`);
@@ -45,13 +46,13 @@ export default function CaregiverNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={
-              'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 pt-2 ' +
+              'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 pt-1.5 ' +
               'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ' +
               (active ? 'text-primary' : 'text-ink-muted')
             }
           >
             <Icon size={20} aria-hidden="true" className="shrink-0" />
-            <span className="px-2 text-center text-xs leading-tight">{label}</span>
+            <span className="px-2 text-center text-xs leading-[1.1]">{label}</span>
           </Link>
         );
       })}

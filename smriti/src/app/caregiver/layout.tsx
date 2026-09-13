@@ -137,7 +137,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <section data-caregiver-shell className="min-h-dvh bg-canvas pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+    <section data-caregiver-shell className="min-h-dvh bg-canvas pb-(--caregiver-nav-h) md:pb-0">
       <CaregiverTopNav />
       {children}
       <CaregiverNav />
