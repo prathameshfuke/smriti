@@ -154,3 +154,21 @@ body {
   color: var(--foreground);
   font-family: var(--font-smriti-sans);
 }
+
+/*
+ * Clearance for the fixed caregiver bottom nav (CaregiverNav, mobile only).
+ * The root layout renders <Disclaimer> *after* each route's content, so
+ * padding on the caregiver shell alone left the disclaimer's last lines
+ * permanently under the nav. Where :has() exists the clearance moves to
+ * <body>, below the disclaimer; older browsers keep the shell's own padding.
+ */
+@supports selector(body:has(*)) {
+  @media (width < 48rem) {
+    body:has([data-caregiver-nav]) {
+      padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+    }
+    body:has([data-caregiver-nav]) [data-caregiver-shell] {
+      padding-bottom: 0;
+    }
+  }
+}

@@ -83,18 +83,11 @@ export default function CaregiverPatientsPage() {
       {patients && patients.length > 0 ? (
         <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {patients.map((patient) => {
-            const stripColor =
-              patient.alertStatus === 'red'
-                ? 'bg-gamosa'
-                : patient.alertStatus === 'yellow'
-                  ? 'bg-warning'
-                  : 'bg-success';
             return (
               <li
                 key={patient.id}
                 className="flex items-center justify-between gap-2 overflow-hidden rounded-card border border-line200 bg-white"
               >
-                <div className={`h-full w-1.5 self-stretch shrink-0 ${stripColor}`} aria-hidden="true" />
                 <button
                   type="button"
                   onClick={() => router.push(`/caregiver/patients/${patient.id}`)}

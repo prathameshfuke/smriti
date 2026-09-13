@@ -116,7 +116,30 @@ describe('Caregiver dashboard', () => {
     expect(await screen.findByText('73%')).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
+
+  it('patient cards carry no colored edge stripe', async () => {
+    vi.stubGlobal('fetch', mockFetchJson({ patients: [patient({ id: 'p1', alertStatus: 'green' })] }));
+    const { default: DashboardPage } = await import('@/app/caregiver/dashboard/page');
+    const { container } = render(<DashboardPage />);
+
+    await screen.findByText('Aai');
+    expect(findStripes(container)).toEqual([]);
+    vi.unstubAllGlobals();
+  });
 });
+
+/**
+ * A card stripe is a thin (1/1.5 unit) bar filled with a status or brand
+ * color. StatusBadge's own dot is rounded-full and excluded.
+ */
+function findStripes(root: HTMLElement) {
+  return Array.from(root.querySelectorAll<HTMLElement>('[class]')).filter((el) => {
+    const cls = el.getAttribute('class') ?? '';
+    const thin = /(^|\s)[wh]-1(\.5)?(\s|$)/.test(cls) && !/(^|\s)rounded-full(\s|$)/.test(cls);
+    const colored = /(^|\s)bg-(success|warning|danger|gamosa|muga|primary)(\s|$)/.test(cls);
+    return (thin && colored) || /(^|\s)border-[lt]-\d/.test(cls);
+  });
+}
 
 describe('Patients list page', () => {
   it('renders all patients from the API response', async () => {
@@ -136,6 +159,26 @@ describe('Patients list page', () => {
     expect(await screen.findByText('Aai')).toBeInTheDocument();
     expect(screen.getByText('Deuta')).toBeInTheDocument();
     expect(screen.getByText('Khura')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('patient rows carry no colored edge stripe — TrafficLight already shows status', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchJson({
+        patients: [
+          patient({ id: 'p1', displayName: 'Aai', alertStatus: 'red' }),
+          patient({ id: 'p2', displayName: 'Deuta', alertStatus: 'yellow' }),
+          patient({ id: 'p3', displayName: 'Khura', alertStatus: 'green' }),
+        ],
+      }),
+    );
+    const { default: PatientsPage } = await import('@/app/caregiver/patients/page');
+    const { container } = render(<PatientsPage />);
+
+    await screen.findByText('Aai');
+    expect(findStripes(container)).toEqual([]);
+    expect(screen.getAllByRole('img', { name: /^Status:/ })).toHaveLength(3);
     vi.unstubAllGlobals();
   });
 });
