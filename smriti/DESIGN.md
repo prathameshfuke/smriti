@@ -112,9 +112,10 @@ Tightened from the original 20/32/16/10.4px scale to a stricter, more architectu
 
 Breakpoints are unmodified Tailwind defaults: `sm` 640px, `md` 768px, `lg` 1024px, `xl` 1280px.
 
-**Multi-item tab/pill rows** — one rule, two named cases:
+**Multi-item tab/pill rows** — one rule, three named cases:
 - *Navigational tabs* (a row whose selection changes which content panel is shown below it, e.g. the patient-detail Cognitive/Reminders/History/Companion/Family bar): **horizontal scroll, never wrap.** Buttons are `shrink-0 whitespace-nowrap`, the row is `overflow-x-auto`, and the active indicator (`border-b-2`) lives on the individual button so it never has to be repositioned for scroll or viewport changes. Wrapping a tab bar is prohibited — it pushes page content down unpredictably as tabs are added or the viewport narrows.
 - *Choice/selection chip groups* (a row of equal-weight options with no content panel beneath it, e.g. `LanguagePicker`, the onboarding gender/duration pickers): `flex flex-wrap`, so extra items simply start a second row. Never let a choice group overflow the viewport unwrapped.
+- *Persistent global bottom nav* (`CaregiverNav` — a fixed, always-visible set of app-level destinations, not in-page content tabs): **all items always visible, no scroll, no wrap.** Scrolling would hide destinations off-screen with no visible affordance that more exist (unacceptable for a nav whose whole job is one-tap reachability, e.g. "Patient View" — the only way back to patient mode); wrapping would double the bar's height and break the fixed-height thumb-reach contract. Equal-width `flex-1` columns, but the container needs `gap-1 px-2` (or equivalent) — without it, items sit with zero space between their text and zero margin from the screen edges, reading as visually cramped/touching even when nothing is actually truncating (confirmed via computed-style measurement: labels fit their columns with room to spare; the missing gap/padding was the entire defect). Before adding a new item to a bar already at this pattern's item count, measure total natural label width at 375px — if it no longer fits even with minimal gap/padding, an icon-only-until-active expanding-label treatment is a reasonable exception to reach for next, but re-verify the fit problem is real (computed widths, not assumption) before adding that complexity.
 
 **Multi-column form rows**: any row placing two or more `<input>`/`<select>` side by side (e.g. name + relation) must be `flex flex-col gap-2 sm:flex-row`, with each field `sm:flex-1` — full-width stacked below 640px, side-by-side at 640px and up. A fixed side-by-side row with no stacking breakpoint is never acceptable.
 
@@ -122,7 +123,7 @@ Breakpoints are unmodified Tailwind defaults: `sm` 640px, `md` 768px, `lg` 1024p
 
 ## Do's and Don'ts
 
-- **Don't** let a tab/pill row overflow the viewport with no wrap and no scroll — every button-row component must declare one of the two Responsive Behavior patterns above.
+- **Don't** let a tab/pill row overflow the viewport with no wrap and no scroll — every button-row component must declare one of the three Responsive Behavior patterns above.
 - **Don't** use a fixed side-by-side multi-column form row without a `sm:flex-row` (or equivalent) stacking rule for below-640px.
 - **Don't** drop below 48px on any tappable control, at any breakpoint.
 - **Do** give every card a `border border-line200` — that border is now the only depth signal, since resting shadows were removed app-wide; a card with neither is invisible against the page.
@@ -151,6 +152,12 @@ When a new screen needs a pattern not covered here: match the nearest existing c
 - Em dashes removed from all user-facing copy app-wide, across `.tsx` UI strings *and* `.ts` message catalogs (game instruction/narration text in `messages.ts` files, in all three locales — a first pass covered `.tsx` only and missed these). Rewritten to plain punctuation (periods, colons, commas) per clause, matching the app's existing register in each language rather than a literal dash-to-period find/replace.
 - Button labels standardized to sentence case app-wide, including plain `<button>`/`<Link>` text (not just the `BigButton` `label` prop, which a first pass covered but a plain-text scan didn't) — `Get Started`→`Get started`, `Verify Code`→`Verify code`, `Send Login Code`→`Send login code`, `Caregiver Login`→`Caregiver login` (button use) alongside the earlier `Try Again`→`Try again` and friends.
 - `FamilyMessageBoard.tsx` had lost its shadow with no border to replace it (a card with neither, invisible against the page) — added `border border-line200` to match every other card.
+
+## Implementation Log (bottom-nav crowding fix)
+
+- A prior pass (`a3a73ff`) shortened "Memory Bank" → "Memory" and added `min-w-0 truncate` to `CaregiverNav`, but a real-viewport screenshot at 375px still showed the 5 items visually cramped. Measured computed styles before touching code: no label was actually being truncated (`scrollWidth === clientWidth` for all 5) and the 5 natural label widths summed to 250px against a 375px viewport — the fit was never the problem. The container had zero `gap`/`px` between its `flex-1` columns and zero edge padding, so labels sat directly adjacent to each other and to the physical screen edges ("Patient View" ended exactly flush with the right edge). Fixed with `gap-1 px-2` on the nav container — no font/label/architecture change needed.
+- Documented as a third named case in Responsive Behavior above: this component is neither a content-switching tab bar (scroll would hide "Patient View", the only way back to patient mode) nor a wrapping choice group (would double the bar's fixed height) — it's a persistent global bottom nav, which must keep all items visible with adequate gap/padding.
+- Evaluated and rejected an icon-only/expanding-active-label pattern (offered as a reference example) for this fix: the measured data showed a spacing defect, not a fit-capacity one, so adopting a new interaction pattern (label appears only on the active tab) would have added complexity and an extra layer of relabeling-on-tap for elderly-adjacent caregiver users without solving a real constraint. Left as a documented fallback option in Responsive Behavior above if a future item addition genuinely doesn't fit.
 
 ## Discrepancies (doc vs. code, found while formalizing this document)
 
