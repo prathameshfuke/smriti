@@ -556,7 +556,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startRound(settings.startLevel)}
-                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('start')}
                                 </Button>
@@ -611,7 +611,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={restartGame}
-                                    className="font-semibold py-5 px-8 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                    className="font-semibold py-5 px-8 text-patient-body rounded-tile text-ink-inverse focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('start')}
                                 </Button>

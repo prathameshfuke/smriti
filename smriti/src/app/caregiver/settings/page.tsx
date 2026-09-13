@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
 import LanguagePicker from '@/components/layout/LanguagePicker';
+import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { db, SmritiDB } from '@/lib/db/schema';
@@ -11,6 +12,33 @@ import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTranslation } from '@/lib/i18n/provider';
+
+const SETTINGS_FAQ = [
+  {
+    id: 'patient-language',
+    question: 'Change patient language?',
+    answer:
+      'Use the Language card above. It changes what the patient sees and hears the next time they open the app — the patient never sees a language control themselves.',
+  },
+  {
+    id: 'forgot-pin',
+    question: 'Forgot my PIN?',
+    answer:
+      'There is no PIN reset from this screen for safety reasons. Log out and sign back in with your email to set a new PIN from a fresh caregiver login.',
+  },
+  {
+    id: 'offline',
+    question: 'Works without internet?',
+    answer:
+      'Yes. Games, reminders, and the Memory Bank all work offline on this device. Syncing to your other devices and the family-share links need a connection.',
+  },
+  {
+    id: 'family-share',
+    question: 'Share updates with family?',
+    answer:
+      'Open a patient, go to the Family tab, and create a link. It is read-only, expires after 30 days, and can be revoked any time — no login needed on their end.',
+  },
+];
 
 const PIN_LENGTH = 4;
 type PinChangeStage = 'current' | 'new' | 'confirm';
@@ -234,6 +262,10 @@ export default function CaregiverSettingsPage() {
             <p>{t('disclaimer')}</p>
           </div>
         </section>
+
+        <div className="md:col-span-2">
+          <FaqTabsCard title="Help & FAQ" items={SETTINGS_FAQ} />
+        </div>
 
         <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white md:col-span-2">
           <div className="flex flex-col gap-3 p-6">

@@ -472,7 +472,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startGame()}
-                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                    className="w-56 text-patient-body font-semibold rounded-tile text-ink-inverse focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('startBtn')}
                                 </Button>
@@ -491,7 +491,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             <Button
                                 size="lg"
                                 onClick={confirmSelection}
-                                className="font-semibold py-6 px-12 text-patient-body rounded-tile text-ink-inverse shadow-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                className="font-semibold py-6 px-12 text-patient-body rounded-tile text-ink-inverse focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                             >
                                 {t('confirmSelection')}
                             </Button>
@@ -520,7 +520,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                 <Button
                                     size="lg"
                                     onClick={() => startGame()}
-                                    className="font-semibold py-5 px-10 text-patient-body rounded-tile text-ink-inverse shadow-sm hover:scale-105 transition-transform focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+                                    className="font-semibold py-5 px-10 text-patient-body rounded-tile text-ink-inverse hover:scale-105 transition-transform focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
                                 >
                                     {t('tryAgain')}
                                 </Button>

@@ -117,7 +117,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
               disabled={phase !== 'playing'}
               style={{ minHeight: BIG_TARGET_MIN_PX }}
               className={
-                'flex flex-col items-center justify-center gap-2 rounded-tile border-2 shadow-sm ' +
+                'flex flex-col items-center justify-center gap-2 rounded-tile border-2 ' +
                 `${icon.bg} ` +
                 (placed
                   ? 'border-success/50'

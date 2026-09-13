@@ -6,7 +6,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import BigButton from '@/components/ui/BigButton';
 import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
-import StatusBadge from '@/components/ui/StatusBadge';
+import AccountAccessCard from '@/components/caregiver/AccountAccessCard';
 import CognitiveTrendChart from '@/components/caregiver/CognitiveTrendChart';
 import GameBreakdownChart from '@/components/caregiver/GameBreakdownChart';
 import SessionCalendar from '@/components/caregiver/SessionCalendar';
@@ -184,6 +184,21 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       })
       .catch(() => setError(true))
       .finally(() => setCreatingShare(false));
+  };
+
+  const updateShareReviewRequired = (shareId: string, reviewRequired: boolean) => {
+    setFamilyShares((prev) =>
+      (prev ?? []).map((s) => (s.id === shareId ? { ...s, review_required: reviewRequired } : s)),
+    );
+    authedFetch(`/api/family-share/${shareId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reviewRequired }),
+    }).catch(() => {
+      // Revert on failure — the optimistic flip above assumed success.
+      setFamilyShares((prev) =>
+        (prev ?? []).map((s) => (s.id === shareId ? { ...s, review_required: !reviewRequired } : s)),
+      );
+    });
   };
 
   const revokeFamilyShare = (shareId: string) => {
@@ -702,33 +717,22 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                 const revoked = Boolean(share.revoked_at);
                 const expired = !revoked && new Date(share.expires_at).getTime() < Date.now();
                 return (
-                  <div
+                  <AccountAccessCard
                     key={share.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-white p-3"
-                  >
-                    <div className="flex flex-col gap-1">
-                      <p className="font-bold text-navy">{share.label}</p>
-                      <StatusBadge
-                        tone={revoked ? 'danger' : expired ? 'warning' : 'success'}
-                        label={
-                          revoked
-                            ? 'Revoked'
-                            : expired
-                              ? 'Expired'
-                              : `Expires ${new Date(share.expires_at).toLocaleDateString()}`
-                        }
-                      />
-                    </div>
-                    {!revoked && !expired ? (
-                      <button
-                        type="button"
-                        onClick={() => revokeFamilyShare(share.id)}
-                        className="text-caregiver-body font-semibold text-danger"
-                      >
-                        Revoke
-                      </button>
-                    ) : null}
-                  </div>
+                    label={share.label}
+                    active={!revoked && !expired}
+                    statusTone={revoked ? 'danger' : expired ? 'warning' : 'success'}
+                    statusLabel={
+                      revoked
+                        ? 'Revoked'
+                        : expired
+                          ? 'Expired'
+                          : `Expires ${new Date(share.expires_at).toLocaleDateString()}`
+                    }
+                    reviewRequired={share.review_required}
+                    onReviewRequiredChange={(next) => updateShareReviewRequired(share.id, next)}
+                    onRevoke={() => revokeFamilyShare(share.id)}
+                  />
                 );
               })}
             </div>
