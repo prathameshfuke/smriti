@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import {
   CartesianGrid,
   Line,
@@ -72,6 +73,17 @@ export default function CognitiveTrendChart({
   const daily = useMemo(() => aggregateDailyBlended(points), [points]);
   const state = getTrendState(sessionDays, minSessionsForTrend);
   const drops = useMemo(() => (state === 'trend' ? findAccuracyDrops(daily) : []), [state, daily]);
+
+  // Draws the line in once, the first time real trend data appears — not on
+  // every range switch or background refresh (that "isAnimationActive on
+  // every re-render" path was evaluated and rejected once already, see
+  // DESIGN.md's card top-strip removal log: a jarring re-animate on each
+  // data refresh). `hasAnimatedRef` flips permanently after the first
+  // completed draw, so recharts renders instantly from then on, same as the
+  // `isAnimationActive={false}` this replaces for the steady state.
+  const hasAnimatedRef = useRef(false);
+  const reduceMotion = useReducedMotion();
+  const shouldAnimateLine = state === 'trend' && !hasAnimatedRef.current && !reduceMotion;
 
   const tabs = (
     <div role="group" aria-label="Timeline range" className="flex gap-2">
@@ -180,7 +192,12 @@ export default function CognitiveTrendChart({
                 stroke={ACCURACY_LINE_COLOR}
                 strokeWidth={2}
                 connectNulls
-                isAnimationActive={false}
+                isAnimationActive={shouldAnimateLine}
+                animationDuration={900}
+                animationEasing="ease-out"
+                onAnimationEnd={() => {
+                  hasAnimatedRef.current = true;
+                }}
                 dot={{ r: 3, fill: ACCURACY_LINE_COLOR }}
               />
             </LineChart>

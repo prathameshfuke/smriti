@@ -73,6 +73,42 @@ export async function GET(_request: Request, { params }: RouteContext) {
   });
 }
 
+/**
+ * Toggle whether a family member's notes need caregiver approval before the
+ * patient sees them. Caregiver-authenticated, ownership-checked — same
+ * pattern as DELETE below; the only mutable field on a share post-issuance.
+ */
+export async function PATCH(request: Request, { params }: RouteContext) {
+  const { id } = await params;
+  const auth = await authenticateRequest(request);
+  if (!auth) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+  const body = (await request.json()) as { reviewRequired?: unknown };
+  if (typeof body.reviewRequired !== 'boolean') {
+    return Response.json({ error: 'invalid_body' }, { status: 400 });
+  }
+
+  const { supabase, userId } = auth;
+  const { data: caregiver } = await supabase.from('caregivers').select('id').eq('auth_id', userId).single();
+  if (!caregiver) return Response.json({ error: 'caregiver_not_found' }, { status: 404 });
+
+  const { data: share } = await supabase
+    .from('family_shares')
+    .select('id')
+    .eq('id', id)
+    .eq('caregiver_id', caregiver.id)
+    .single();
+  if (!share) return Response.json({ error: 'share_not_found' }, { status: 404 });
+
+  const { error } = await supabase
+    .from('family_shares')
+    .update({ review_required: body.reviewRequired })
+    .eq('id', id);
+  if (error) return Response.json({ error: 'update_failed' }, { status: 500 });
+
+  return Response.json({ reviewRequired: body.reviewRequired });
+}
+
 /** Revoke. Caregiver-authenticated, ownership-checked — same as issuance. */
 export async function DELETE(request: Request, { params }: RouteContext) {
   const { id } = await params;

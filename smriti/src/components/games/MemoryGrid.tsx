@@ -54,7 +54,7 @@ export default function MemoryGrid({ tiles, faceUpIndices, onTileSelect, inputLo
               backgroundColor: isFaceUp ? `${tile.object.categoryColor}33` : undefined,
             }}
             className={
-              'flex items-center justify-center rounded-card border-2 shadow-sm ' +
+              'flex items-center justify-center rounded-card border-2 ' +
               'transition-all duration-300 ' +
               (tile.matched
                 ? 'border-success/40 bg-success/10'

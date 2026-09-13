@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
 import appIcon from '@/appicon.png';
 import GameTile from '@/components/ui/GameTile';
-import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
 import ReminderCard, { REMINDER_ICON } from '@/components/ui/ReminderCard';
 import Skeleton from '@/components/ui/Skeleton';
@@ -347,8 +346,6 @@ export default function HomePage() {
       )}
 
       {currentPatient ? <FamilyMessageBoard patientId={currentPatient.id} /> : null}
-
-      <LanguagePicker />
 
       <div className="grid grid-cols-2 gap-4">
         {GAMES.map((game) => (

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
 import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
@@ -28,6 +29,15 @@ const NATIVE_NAME: Record<UILanguage, string> = {
 export default function LanguagePicker() {
   const language = useSettingsStore((s) => s.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
+  const pathname = usePathname();
+
+  // Language is a caregiver-only setting — a dementia patient who
+  // accidentally switches the app into a language they don't read has no
+  // way to switch it back unsupervised. This isn't just "no patient screen
+  // renders this today": the component itself refuses to act outside
+  // `/caregiver/*` so a future page that imports it by mistake can't
+  // silently re-expose the control on a patient-facing screen.
+  if (!pathname?.startsWith('/caregiver')) return null;
 
   return (
     <div className="flex flex-wrap gap-touch-gap" role="group" aria-label="Choose language">

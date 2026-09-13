@@ -11,8 +11,8 @@ import {
   generateDefaultHydrationSchedule,
   saveReminderSchedules,
 } from '@/lib/engine/reminders';
-import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { usePatientStore } from '@/stores/patientStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import type { ReminderType } from '@/lib/supabase/types';
 
 const TYPE_ICON: Record<ReminderType, string> = {
@@ -42,7 +42,14 @@ export default function RemindersPage() {
 
   const [schedules, setSchedules] = useState<LocalReminderSchedule[]>([]);
   const [todayAcks, setTodayAcks] = useState<LocalReminderAck[]>([]);
-  const [hasSession, setHasSession] = useState(false);
+  // Gates the add/edit/delete form below, same as elsewhere in the app: a
+  // *live Supabase session* used to be the check here, but that stays true
+  // in the background (auto-refreshing tokens) long after a caregiver has
+  // handed the device back to the patient — it answers "has anyone ever
+  // logged in on this browser," not "is a caregiver holding it right now."
+  // `isCaregiverSessionFresh` is the same PIN-freshness signal `/app`'s PIN
+  // dialog and every other caregiver-only surface already gates on.
+  const [caregiverPresent, setCaregiverPresent] = useState(false);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState<ReminderType>('medication');
@@ -66,13 +73,7 @@ export default function RemindersPage() {
   }, [currentPatient?.id]);
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      queueMicrotask(() => setHasSession(false));
-      return;
-    }
-    createBrowserClient()
-      .auth.getSession()
-      .then(({ data }) => setHasSession(!!data.session));
+    setCaregiverPresent(useSettingsStore.getState().isCaregiverSessionFresh());
   }, []);
 
   const resetForm = () => {
@@ -197,7 +198,7 @@ export default function RemindersPage() {
           )}
         </section>
 
-        {hasSession ? (
+        {caregiverPresent ? (
           <>
             <section className="flex flex-col gap-3">
               <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">

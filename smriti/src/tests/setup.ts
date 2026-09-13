@@ -1,3 +1,4 @@
+import { beforeEach } from 'vitest';
 import '@testing-library/jest-dom';
 
 /**
@@ -57,3 +58,40 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
   }
   globalThis.ResizeObserver = ResizeObserverStub;
 }
+
+/**
+ * `useSettingsStore` persists to the localStorage polyfill above, and that
+ * polyfill's backing Map lives for the whole worker process, not one test
+ * file — so whichever test last called `setLanguage('hi')` (there are
+ * several, all covering real multilingual behavior) leaves the language
+ * store as Hindi for every test file that runs after it in the same
+ * worker. Order-independent under `vitest run`'s default file order, this
+ * surfaced as real, reproducible failures under `--sequence.shuffle`:
+ * `reminders.test.tsx`'s `ReminderCard` suite hardcodes English fixture
+ * text and never sets language itself, so it silently depended on running
+ * before any Hindi-setting test happened to execute. Resetting here, once,
+ * for every test, removes that ordering dependency at the source rather
+ * than patching one call site's `beforeEach`.
+ *
+ * Dynamic `import()` deliberately, not a static one at the top of this
+ * file: a static import is resolved before any of this file's own
+ * top-level statements run, so `settingsStore.ts`'s Zustand `persist`
+ * middleware would read `localStorage` before `installLocalStorage()`
+ * above ever executes — against Node's broken experimental global, not
+ * jsdom's. Importing inside `beforeEach` guarantees the polyfill is
+ * already installed first.
+ */
+beforeEach(async () => {
+  const [{ useSettingsStore }, { DEFAULT_LANGUAGE }] = await Promise.all([
+    import('@/stores/settingsStore'),
+    import('@/lib/i18n/languages'),
+  ]);
+  useSettingsStore.setState({
+    language: DEFAULT_LANGUAGE,
+    isFirstLaunch: true,
+    caregiverPinHash: null,
+    caregiverSessionVerifiedAt: null,
+    pinAttempts: 0,
+    pinCooldownUntil: null,
+  });
+});
