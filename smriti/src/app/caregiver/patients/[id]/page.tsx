@@ -12,6 +12,7 @@ import SessionCalendar from '@/components/caregiver/SessionCalendar';
 import { authedFetch } from '@/lib/api/client';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { useCognitiveTrend, type TrendRange } from '@/hooks/useCognitiveTrend';
+import { useGameStreak } from '@/hooks/useGameStreak';
 import { useReminderAdherence } from '@/hooks/useReminderAdherence';
 import { aggregateDailyBlended, classifyVelocity } from '@/lib/dashboard/trend';
 import type { ReminderType } from '@/lib/supabase/types';
@@ -104,6 +105,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   // `/api/sync` never sends `daily_summaries` back down — lib/db/sync.ts).
   const trend = useCognitiveTrend(patientId, range);
   const adherence = useReminderAdherence(patientId);
+  const streak = useGameStreak(patientId);
 
   useEffect(() => {
     let cancelled = false;
@@ -398,6 +400,18 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
         {tab === 'cognitive' ? (
           <div className="flex flex-col gap-4">
+            {!streak.isLoading ? (
+              <div className="overflow-hidden rounded-card border border-line200 bg-white">
+                <div className="h-1.5 bg-muga" />
+                <div className="flex items-center justify-between p-4">
+                  <p className="text-caregiver-body text-ink-muted">Daily streak</p>
+                  <p className="font-serif-display text-2xl font-bold text-navy">
+                    {streak.current > 0 ? `🔥 ${streak.current} day${streak.current === 1 ? '' : 's'}` : 'No streak yet'}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <div className="overflow-hidden rounded-card border border-line200 bg-white">
               <div className="h-1.5 bg-primary" />
               <div className="flex flex-col gap-2 p-4">

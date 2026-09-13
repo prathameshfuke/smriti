@@ -12,6 +12,7 @@ import ReminderCard, { REMINDER_ICON } from '@/components/ui/ReminderCard';
 import Skeleton from '@/components/ui/Skeleton';
 import FamilyMessageBoard from '@/components/patient/FamilyMessageBoard';
 import { useReminders } from '@/hooks/useReminders';
+import { useGameStreak } from '@/hooks/useGameStreak';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { getDeviceTrustToken, isTokenWellFormed } from '@/lib/auth/deviceTrust';
 import { restoreLocalSession, checkLiveCaregiverSession } from '@/lib/auth/localSession';
@@ -196,6 +197,7 @@ export default function HomePage() {
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const [showPin, setShowPin] = useState(false);
   const { pendingReminder, clearPendingReminder } = useReminders();
+  const streak = useGameStreak(currentPatient?.id ?? null);
   const [familyNote, setFamilyNote] = useState<{ id: string; text: string } | null>(null);
 
   // `usePatientStore` is in-memory only, so it resets on every fresh load of
@@ -317,9 +319,18 @@ export default function HomePage() {
       </h1>
 
       {currentPatient ? (
-        <p className="text-center font-serif-display text-patient-heading text-ink">
-          Hello, {currentPatient.displayName}!
-        </p>
+        <>
+          <p className="text-center font-serif-display text-patient-heading text-ink">
+            Hello, {currentPatient.displayName}!
+          </p>
+          {!streak.isLoading ? (
+            <p className="text-center text-patient-body text-ink-muted" aria-live="off">
+              {streak.current > 0
+                ? `🔥 ${streak.current} ${t('home.streakCount')}`
+                : t('home.streakStart')}
+            </p>
+          ) : null}
+        </>
       ) : restoring ? (
         <div aria-busy="true" aria-label="Loading" className="flex flex-col items-center gap-2">
           <Skeleton height={28} width="60%" />
