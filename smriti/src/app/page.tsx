@@ -207,7 +207,7 @@ export default function LandingPage() {
           <h1 className="motion-safe:animate-rise-in mt-4 font-serif-display text-4xl font-medium leading-[0.98] text-ink950 lg:text-6xl">
             Care that stays with you, <em className="italic text-terra600">even offline</em>.
           </h1>
-          <p className="motion-safe:animate-rise-in mt-6 max-w-md border-l-2 border-terra600 pl-5 text-lg leading-relaxed text-ink700 [animation-delay:150ms] lg:text-xl">
+          <p className="motion-safe:animate-rise-in mt-6 max-w-md text-lg leading-relaxed text-ink700 [animation-delay:150ms] lg:text-xl">
             Simple games. Remembered medication. A steadier day, lived at home.
           </p>
           <div className="motion-safe:animate-rise-in mt-8 [animation-delay:300ms]">

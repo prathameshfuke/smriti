@@ -323,16 +323,36 @@ describe('PatientNav', () => {
 describe('CaregiverNav', () => {
   it('renders the caregiver destinations', () => {
     render(<CaregiverNav />);
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /patients/i })).toBeInTheDocument();
+    const names = screen.getAllByRole('link').map((link) => link.textContent);
+    // Full labels, matching CaregiverTopNav's desktop wording — no shortened
+    // "Memory", no "Dashboard" (the page itself is titled "Overview").
+    expect(names).toEqual(['Overview', 'Patients', 'Memory Bank', 'Settings', 'Patient View']);
   });
 
-  it('keeps each label column shrinkable so it cannot overflow the nav row at narrow widths', () => {
+  it('never clips a label: labels wrap between words instead of truncating', () => {
     render(<CaregiverNav />);
     for (const link of screen.getAllByRole('link')) {
-      expect(link.className).toMatch(/\bmin-w-0\b/);
       const label = link.querySelector('span');
-      expect(label?.className).toMatch(/\btruncate\b/);
+      expect(label?.className).not.toMatch(/\b(truncate|whitespace-nowrap|overflow-hidden)\b/);
     }
+  });
+
+  it('tabs run edge to edge so each one gets a full fifth of the width', () => {
+    render(<CaregiverNav />);
+    const nav = screen.getByRole('navigation', { name: 'Caregiver' });
+    expect(nav.className).not.toMatch(/(^|\s)(gap|px)-/);
+    for (const link of screen.getAllByRole('link')) {
+      expect(link.className).toMatch(/\bflex-1\b/);
+      expect(link.className).toMatch(/\bbasis-0\b/);
+    }
+  });
+
+  it('adds the bottom safe-area inset on top of the 64px bar instead of eating into it', () => {
+    render(<CaregiverNav />);
+    // Classes, not inline style: border-box padding inside a fixed 64px
+    // height used to leave ~30px for icon + label on notched iPhones.
+    const nav = screen.getByRole('navigation', { name: 'Caregiver' });
+    expect(nav.className).toContain('h-[calc(4rem+env(safe-area-inset-bottom))]');
+    expect(nav.className).toContain('pb-[env(safe-area-inset-bottom)]');
   });
 });
