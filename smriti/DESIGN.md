@@ -26,9 +26,9 @@ colors:
     bg:        { value: "#F9FAFB", role: "game canvas background" }
     tile:      { value: "#F3F4F6", role: "game tile fill" }
     active:    { value: "#D1D5DB", role: "game tile active/pressed fill" }
-  gamosa:      { value: "#BE3A34", role: "cultural accent — red alert strip on dashboard patient cards" }
+  gamosa:      { value: "#BE3A34", role: "cultural accent — red alert marker (traffic-light dot, patient-status text)" }
   muga:
-    DEFAULT:   { value: "#C9A227", role: "cultural accent (gold) — active tab underline, stat card top-strip" }
+    DEFAULT:   { value: "#C9A227", role: "cultural accent (gold) — active tab underline, per-game accuracy figure" }
     dark:      { value: "#8B6914", role: "muga text on light backgrounds (muga itself fails AA)" }
   line200:     { value: "#D8D2CB", role: "border/divider token — now the standard border/secondary-gray replacement across app+caregiver UI (see Implementation Log)" }
 typography:
@@ -65,7 +65,7 @@ Structurally the product is two apps in one: patient screens (`max-w-patient`, 4
 See the frontmatter table for every token and its real usage. In practice:
 - `primary` (`#B3452D`) is the one action color — filled buttons, active tab underlines, focus rings, links.
 - `muga` (gold) marks the active state on the patient-detail sub-tab bar and tops stat cards; `muga-dark` is used for its text because `muga` itself fails WCAG AA.
-- `gamosa` (red) marks the "needs review" strip on caregiver dashboard patient cards, alongside `danger` for hard errors — `gamosa` reads as a status-severity accent, `danger` as a system error.
+- `gamosa` (red) marks patient status-severity (traffic-light dot, status text), alongside `danger` for hard errors — `gamosa` reads as a status-severity accent, `danger` as a system error.
 - `ink-muted` is the standard secondary-text color and `line200` the standard border color — as of this pass, every bare `text-gray-*`/`border-gray-*` in app/caregiver UI has been replaced with these (see Implementation Log). New code should always reach for the semantic token, never a raw Tailwind gray.
 
 ## Typography
@@ -86,9 +86,19 @@ Body sizes keep the full 1.6 line-height the elderly/low-vision legibility requi
 
 ## Elevation & Depth
 
-The app now uses a **hairline-border, no-shadow** system for resting elevation: every card, tile, input, and button dropped its resting `shadow-sm`, and `border border-line200` alone carries the depth signal. `hover:shadow-md` is kept everywhere it existed, but it's interaction feedback (a press/hover lift), not static elevation — a different concern the "no shadow" rule doesn't touch. Modals/dialogs keep their heavier `shadow-lg`/`shadow-xl`/`shadow-2xl` (they float above the page, not on it) — that's the one place this codebase still uses shadow as elevation, deliberately out of scope for the hairline rule.
+Three levels, formalized here as the enforceable standard (no new values — these are the tokens already defined in the frontmatter):
 
-This reverses this document's earlier position (previously: "border + shadow-sm together, that pairing is what card means here") — the earlier statement was accurate for the code at the time; it no longer is. If a component still has a resting `shadow-sm`, that's drift to fix, not a variant to preserve.
+| Level | Treatment | Use |
+|---|---|---|
+| **Level 0 — Flat** | `surface` (`#F8F7F3`) background, no border, no shadow | Page canvas |
+| **Level 1 — Card** | `surface-card`/`bg-white` on `surface`, 1px `border-line200`, **no resting shadow** | Every card, tile, input, and button at rest — `border-line200` alone carries the depth signal |
+| **Level 2 — Muted/inset** | `surface-muted` (`#F0EEE9`) | Secondary/nested surfaces — a card-within-a-card, an inactive chip fill |
+
+`hover:shadow-md` is kept wherever it existed, but it's interaction feedback (a press/hover lift), not static elevation — a different concern the no-shadow rule at Level 1 doesn't touch. Modals, dialogs, and floating overlays (bottom sheets, full-screen backdrop-blur results screens) keep their heavier `shadow-lg`/`shadow-xl`/`shadow-2xl` — they float above the page rather than sitting on it, which is a fourth, deliberately-separate category from the three resting levels above, not a Level 1 card with an exception bolted on.
+
+Status/semantic signal is never a full-edge stripe or border treatment at any level — use `StatusBadge` (small pill, dot + label, semantic tone) or the existing `TrafficLight`/`SyncIndicator` components, layered on top of whatever level the card itself sits at.
+
+This reverses this document's earlier position (previously: "border + shadow-sm together, that pairing is what card means here") — the earlier statement was accurate for the code at the time; it no longer is. If a component still has a resting `shadow-sm` at Level 1, that's drift to fix, not a variant to preserve. Confirmed clean app-wide as of the two Implementation Log entries below (card top-strip removal, app-wide resting-shadow sweep) — every remaining resting shadow in the codebase is a Level-4 (floating/modal) case, not a missed Level 1 card.
 
 ## Shapes
 
@@ -104,7 +114,7 @@ Tightened from the original 20/32/16/10.4px scale to a stricter, more architectu
 ## Components
 
 - **BigButton** — the one primary-action control on patient screens. `primary`/`secondary`/`success` variants, flat at rest (no shadow), `hover:shadow-md` as a lift/press cue, minimum 64px tall (`touch` token), same string drives the visible label and the spoken audio prompt.
-- **Cards** — `rounded-card border border-line200 bg-white`, no resting shadow, frequently with a 1.5px colored top strip (`h-1.5 bg-{status}`) to carry status without relying on color alone in text.
+- **Cards** — `rounded-card border border-line200 bg-white`, no resting shadow, no color stripe. A card's own content (a number, a heading) is the primary signal; where a card genuinely needs a separate status signal, use `StatusBadge` (small pill, icon-equivalent dot + label, semantic tone) or the existing `TrafficLight`/`SyncIndicator` components — never a full-edge color bar. (Earlier passes used a `h-1.5 bg-{status}` top strip on every card; removed in this pass — audited call by call, most were fixed-color decoration duplicating a signal already carried by the card's own text or an adjacent status component, not a real per-card status.)
 - **Inputs** — `h-11`–`h-14`, `rounded-control`, `border border-line200`, `focus:ring-2 focus:ring-primary/20`.
 - **Tab bars / button rows** — two distinct, deliberate patterns (see Responsive Behavior): navigational tabs scroll horizontally and never wrap; choice/selection chip groups (language picker, gender/duration pickers) wrap onto a new line.
 
@@ -158,6 +168,31 @@ When a new screen needs a pattern not covered here: match the nearest existing c
 - A prior pass (`a3a73ff`) shortened "Memory Bank" → "Memory" and added `min-w-0 truncate` to `CaregiverNav`, but a real-viewport screenshot at 375px still showed the 5 items visually cramped. Measured computed styles before touching code: no label was actually being truncated (`scrollWidth === clientWidth` for all 5) and the 5 natural label widths summed to 250px against a 375px viewport — the fit was never the problem. The container had zero `gap`/`px` between its `flex-1` columns and zero edge padding, so labels sat directly adjacent to each other and to the physical screen edges ("Patient View" ended exactly flush with the right edge). Fixed with `gap-1 px-2` on the nav container — no font/label/architecture change needed.
 - Documented as a third named case in Responsive Behavior above: this component is neither a content-switching tab bar (scroll would hide "Patient View", the only way back to patient mode) nor a wrapping choice group (would double the bar's fixed height) — it's a persistent global bottom nav, which must keep all items visible with adequate gap/padding.
 - Evaluated and rejected an icon-only/expanding-active-label pattern (offered as a reference example) for this fix: the measured data showed a spacing defect, not a fit-capacity one, so adopting a new interaction pattern (label appears only on the active tab) would have added complexity and an extra layer of relabeling-on-tap for elderly-adjacent caregiver users without solving a real constraint. Left as a documented fallback option in Responsive Behavior above if a future item addition genuinely doesn't fit.
+
+## Implementation Log (card top-strip removal)
+
+- Removed the `h-1.5 bg-{color}` card top-strip (and one `w-1.5` left-edge variant on dashboard patient cards) from every site: [dashboard/page.tsx](src/app/caregiver/dashboard/page.tsx) (3 sites), [settings/page.tsx](src/app/caregiver/settings/page.tsx) (4), [patients/[id]/page.tsx](src/app/caregiver/patients/[id]/page.tsx) (6). Audited each: 12 of 13 were fixed-color decoration applied regardless of the card's actual data (e.g. "Daily streak" and "This week" always got a strip color with no relation to streak/digest content); the dashboard left-edge strip on patient cards duplicated a signal the same card already carries via `TrafficLight` + colored status text.
+- Added `StatusBadge` ([components/ui/StatusBadge.tsx](src/components/ui/StatusBadge.tsx)) for the one site with a genuine per-render status (dashboard "Needs review" card, tone flips success/danger with `attentionCount`). Settings' Danger Zone kept its `border-danger/40` + danger-colored heading, which already carried that signal without the strip — no badge added there, to avoid restating the same thing twice.
+- Not done in this pass, and why: a broader radius unification was considered and rejected — the app's existing 4-tier `card`/`tile`/`control`/`panel` scale is deliberate and was already tightened in an earlier pass (see Implementation Log above); grepping every `rounded-*` usage found zero real inconsistencies outside two already-documented game-canvas exceptions. Collapsing to a single radius would have undone that intentional work without fixing a real defect.
+- Restyled the family "Active shares" row (`patients/[id]/page.tsx`) to use `StatusBadge` for revoked/expired/active state instead of a plain muted-text line — the one other real per-item status the app has.
+- Evaluated swapping `CognitiveTrendChart` for an animated chart library and rejected it: the current component already handles 4 distinct states (loading/empty/low-data/full trend), a drop-detection callout, and a `sr-only` accessible data table alongside the visual SVG — a generic animated-chart component would need all of that re-built around it to match, for no functional gain, and `isAnimationActive={false}` on the line is a deliberate choice (avoids a jarring re-animate on every data refresh) that a default-animated component would need overriding to preserve.
+- Did not touch the per-patient sub-tab bar (Cognitive/Reminders/History/Companion/Family): it was already fixed twice for overflow and is now a documented, deliberate pattern (see Responsive Behavior above, "navigational tabs... horizontal scroll, never wrap"). A generic tabs component wasn't evaluated against it in this pass since there was no concrete alternative implementation to compare against — the existing pattern already meets its documented constraints.
+- No new toggle/switch component added: grepped the whole app for `role="switch"` and found none — there is no existing toggle UI in caregiver Settings to re-skin. `review_required` on family shares is a typed field with no checkbox/toggle UI today; adding one would be a new feature, not a design-system pass, so it's out of scope here.
+
+## Implementation Log (app-wide resting-shadow sweep)
+
+- Extended the no-resting-shadow rule (see Elevation & Depth) past the caregiver dashboard/settings/patient pages into every game component: found and removed resting `shadow-sm`/`shadow-md` from opaque `bg-surface-card`/`bg-game-tile` cards and tiles in `ObjectGrid.tsx`, `RoutineRecall.tsx`, `DualNBackClearLeaderboard.tsx` (3 sites), `MemoryTestGame.tsx` (6 sites), `larger-number/GameComponent.tsx`, and one tile in `double-decision/PeripheralSpeedGame.tsx`. `hover:shadow-md` interaction feedback kept everywhere it existed, per the existing rule.
+- Added the missing `border-line200` to 3 of those (`ObjectGrid.tsx`'s target card, `RoutineRecall.tsx`'s result card, the double-decision vehicle-choice tile) — same "a card with neither border nor shadow is invisible" rule already documented above, just not yet applied to these game-result/game-choice cards.
+- Also fixed `ObjectGrid.tsx`'s target card from an ad hoc `border-black/5` to the standard `border-line200` token.
+- Deliberately left alone: `app/page.tsx`'s family-note dialog, `ReminderCard.tsx`, `SessionCalendar.tsx`'s bottom sheet, and `PatternRecallGame.tsx`'s game-over overlay — all are floating dialog/bottom-sheet/full-screen-overlay treatments, which this doc's Elevation section already exempts from the no-shadow rule (same category as any other modal). `counting-boxes/GameComponent.tsx`'s HUD chips and `double-decision`'s own two floating overlay controls use translucent (`/80`–`/95`) backdrop-blur backgrounds — a floating-over-content HUD, not a resting card — also left as-is. No color values were changed anywhere in this pass; only elevation (shadow/border) treatment.
+
+## Implementation Log (full DESIGN.md compliance pass)
+
+- Re-audited every Do/Don't in this document against the live codebase (not just the files touched by earlier passes): every card has `border-line200` ✓, zero bare Tailwind grays ✓, zero remaining `h-1.5 bg-` stripes ✓, radius scale consistent app-wide ✓ (all confirmed by earlier passes, re-verified here).
+- Found and fixed 2 real gaps against "give every card a `border-line200`": `frog-leap/GameComponent.tsx` and `fish-trace/GameComponent.tsx`'s full-bleed game-board containers (`bg-surface-card rounded-card`, no border) — added `border border-line200`, same treatment already applied elsewhere this session (`ObjectGrid.tsx`, the double-decision vehicle-choice tile).
+- Found and fixed 3 real gaps against "pair every heading-scale font size with `font-serif-display`": `ReminderCard.tsx`'s reminder label, `SessionComplete.tsx`'s result line, `reminiscence-quiz/GameComponent.tsx`'s question text — all used `text-patient-heading` without the serif font. Added `font-serif-display` to each; this only changes the typeface, not the token's line-height/tracking, so it doesn't reintroduce the cramped-wrapping bug the Typography section warns about.
+- Deliberately left alone: `caregiver/login/page.tsx`'s OTP code input (`text-caregiver-heading` on an `<input>`, not a heading) — it's a 6-digit code-entry field, not a title; forcing the display serif onto numeral entry would work against the app's own low-vision-legibility rationale for keeping digits in Atkinson Hyperlegible. Judgment call, not an oversight.
+- Off-palette colors: `ReminderCard.tsx`'s per-reminder-type icon backgrounds (`bg-blue-100`, `bg-green-100`, `bg-orange-100`) are pre-existing and outside the frontmatter palette, but left untouched per explicit instruction this session not to change existing colors — flagged here as a known, deliberate exception rather than silently ignored.
 
 ## Discrepancies (doc vs. code, found while formalizing this document)
 

@@ -191,7 +191,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                 {currentWords.map((phrase, index) => (
                   <div
                     key={index}
-                    className="group p-4 bg-surface-card rounded-tile text-center font-medium shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 border border-line200"
+                    className="group p-4 bg-surface-card rounded-tile text-center font-medium hover:shadow-md transition-all duration-200 hover:scale-105 border border-line200"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
                     <span className="text-patient-body text-ink">
@@ -234,7 +234,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                       key={index}
                       value={input}
                       onChange={(e) => updateUserInput(index, e.target.value)}
-                      className="text-center h-12 rounded-tile bg-surface-card border border-line200 shadow-sm hover:shadow-md transition-all duration-200 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="text-center h-12 rounded-tile bg-surface-card border border-line200 hover:shadow-md transition-all duration-200 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       style={{ animationDelay: `${index * 50}ms` }}
                     />
                   ))}
@@ -265,7 +265,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                 </p>
               </div>
 
-              <div className="bg-surface-card rounded-panel p-8 max-w-2xl mx-auto border-2 border-primary/20 shadow-md">
+              <div className="bg-surface-card rounded-panel p-8 max-w-2xl mx-auto border-2 border-primary/20">
                 <div className="space-y-8">
                   {/* Age Group Section */}
                   <div className="space-y-4">
@@ -384,7 +384,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
               </div>
 
               <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-                <Card className="bg-surface-card border-line200 shadow-sm">
+                <Card className="bg-surface-card border-line200">
                   <CardHeader>
                     <CardTitle className="font-serif-display text-patient-body text-ink">
                       {t('results.performance')}
@@ -412,7 +412,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-surface-card border-line200 shadow-sm">
+                <Card className="bg-surface-card border-line200">
                   <CardHeader>
                     <CardTitle className="font-serif-display text-patient-body text-ink">
                       {t('results.correctWords')}
@@ -444,7 +444,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
               </div>
 
               {/* Encouragement Section */}
-              <div className="bg-surface-card rounded-panel p-6 max-w-4xl mx-auto border border-line200 shadow-sm">
+              <div className="bg-surface-card rounded-panel p-6 max-w-4xl mx-auto border border-line200">
                 <div className="text-center space-y-4">
                   <h4 className="font-serif-display text-patient-body text-ink">
                     {t('results.encouragement')}

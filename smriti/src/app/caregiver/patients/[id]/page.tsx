@@ -6,6 +6,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import BigButton from '@/components/ui/BigButton';
 import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
+import StatusBadge from '@/components/ui/StatusBadge';
 import CognitiveTrendChart from '@/components/caregiver/CognitiveTrendChart';
 import GameBreakdownChart from '@/components/caregiver/GameBreakdownChart';
 import SessionCalendar from '@/components/caregiver/SessionCalendar';
@@ -402,7 +403,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
           <div className="flex flex-col gap-4">
             {!streak.isLoading ? (
               <div className="overflow-hidden rounded-card border border-line200 bg-white">
-                <div className="h-1.5 bg-muga" />
                 <div className="flex items-center justify-between p-4">
                   <p className="text-caregiver-body text-ink-muted">Daily streak</p>
                   <p className="font-serif-display text-2xl font-bold text-navy">
@@ -413,7 +413,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             ) : null}
 
             <div className="overflow-hidden rounded-card border border-line200 bg-white">
-              <div className="h-1.5 bg-primary" />
               <div className="flex flex-col gap-2 p-4">
                 <div className="flex items-center justify-between">
                   <p className="font-serif-display text-lg font-semibold text-navy">This week</p>
@@ -476,7 +475,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             ))}
 
             <div data-testid="score-graph" className="overflow-hidden rounded-card border border-line200 bg-white">
-              <div className="h-1.5 bg-muga" />
               <div className="p-4">
                 <CognitiveTrendChart
                   points={trend.points}
@@ -490,7 +488,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
 
             {velocity ? (
               <div className="overflow-hidden rounded-card border border-line200 bg-white">
-                <div className="h-1.5 bg-muga" />
                 <div className="p-4">
                   <p className="text-caregiver-body text-ink-muted">Cognitive Trend</p>
                   <p className={`font-serif-display text-2xl font-bold ${velocityClassName}`}>
@@ -501,7 +498,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             ) : null}
 
             <div className="overflow-hidden rounded-card border border-line200 bg-white">
-              <div className="h-1.5 bg-muga" />
               <div className="flex flex-col gap-3 p-4">
                 <p className="font-serif-display text-lg font-semibold text-navy">Per-Game Breakdown</p>
                 <GameBreakdownChart points={trend.points} isLoading={trend.isLoading} />
@@ -516,7 +512,6 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
               <Skeleton height={120} />
             ) : (
               <div className="overflow-hidden rounded-card border border-line200 bg-white">
-                <div className="h-1.5 bg-primary" />
                 <div className="flex flex-col gap-4 p-4">
                 <p className="font-serif-display text-patient-heading font-bold text-primary">
                   {adherence.overallPct}% reminders acknowledged this week
@@ -711,15 +706,18 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
                     key={share.id}
                     className="flex items-center justify-between rounded-card border border-line200 bg-white p-3"
                   >
-                    <div>
+                    <div className="flex flex-col gap-1">
                       <p className="font-bold text-navy">{share.label}</p>
-                      <p className="text-patient-sm text-ink-muted">
-                        {revoked
-                          ? 'Revoked'
-                          : expired
-                            ? 'Expired'
-                            : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
-                      </p>
+                      <StatusBadge
+                        tone={revoked ? 'danger' : expired ? 'warning' : 'success'}
+                        label={
+                          revoked
+                            ? 'Revoked'
+                            : expired
+                              ? 'Expired'
+                              : `Expires ${new Date(share.expires_at).toLocaleDateString()}`
+                        }
+                      />
                     </div>
                     {!revoked && !expired ? (
                       <button

@@ -83,7 +83,7 @@ export default function ReminderCard({ reminder, onAcknowledge, onSnooze }: Remi
             <span className="text-5xl">{icon.emoji}</span>
           </div>
           <p className="text-caregiver-body text-ink-muted">{t('reminder.timeFor')}</p>
-          <p className="text-patient-heading font-bold text-ink">{label}</p>
+          <p className="font-serif-display text-patient-heading font-bold text-ink">{label}</p>
 
           <BigButton label={doneLabel} variant="success" onClick={onAcknowledge} />
 

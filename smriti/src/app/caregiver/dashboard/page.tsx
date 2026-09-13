@@ -7,6 +7,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import Skeleton from '@/components/ui/Skeleton';
 import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { authedFetch } from '@/lib/api/client';
 import { useSync } from '@/hooks/useSync';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -89,21 +90,24 @@ function CaregiverDashboardPageInner() {
       {patients && patients.length > 0 ? (
         <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
           <div className="overflow-hidden rounded-card border border-line200 bg-white">
-            <div className="h-1.5 bg-muga" />
             <div className="p-4">
               <p className="font-serif-display text-3xl font-bold text-navy">{patients.length}</p>
               <p className="text-patient-sm text-ink-muted">Total patients</p>
             </div>
           </div>
           <div className="overflow-hidden rounded-card border border-line200 bg-white">
-            <div className={`h-1.5 ${attentionCount > 0 ? 'bg-gamosa' : 'bg-success'}`} />
             <div className="p-4">
               <p className="font-serif-display text-3xl font-bold text-navy">{attentionCount}</p>
               <p className="text-patient-sm text-ink-muted">Needs review</p>
+              <div className="mt-2">
+                <StatusBadge
+                  tone={attentionCount > 0 ? 'danger' : 'success'}
+                  label={attentionCount > 0 ? 'Attention needed' : 'On track'}
+                />
+              </div>
             </div>
           </div>
           <div className="col-span-2 overflow-hidden rounded-card border border-line200 bg-white sm:col-span-1">
-            <div className="h-1.5 bg-primary" />
             <div className="flex items-center justify-between p-4">
               <div>
                 <p className="text-caregiver-body font-semibold text-navy">
@@ -163,12 +167,6 @@ function CaregiverDashboardPageInner() {
       {patients && patients.length > 0 ? (
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((patient) => {
-            const stripColor =
-              patient.alertStatus === 'red'
-                ? 'bg-gamosa'
-                : patient.alertStatus === 'yellow'
-                  ? 'bg-warning'
-                  : 'bg-success';
             return (
               <li key={patient.id}>
                 <button
@@ -176,7 +174,6 @@ function CaregiverDashboardPageInner() {
                   onClick={() => router.push(`/caregiver/patients/${patient.id}`)}
                   className="flex w-full overflow-hidden rounded-card border border-line200 bg-white text-left transition-shadow hover:shadow-md"
                 >
-                  <div className={`w-1.5 shrink-0 ${stripColor}`} aria-hidden="true" />
                   <div className="flex flex-1 flex-col gap-3 p-4">
                     <div className="flex items-center gap-2">
                       <TrafficLight status={patient.alertStatus} size="sm" />

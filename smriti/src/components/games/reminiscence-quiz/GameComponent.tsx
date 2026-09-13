@@ -78,7 +78,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
         <img src={photoUrl} alt={question.entryTitle} className="mx-auto h-40 w-40 rounded-full object-cover" />
       ) : null}
 
-      <p className="text-center text-patient-heading text-ink">{question.question}</p>
+      <p className="text-center font-serif-display text-patient-heading text-ink">{question.question}</p>
 
       <div className="flex flex-col gap-3">
         {question.options.map((option, i) => {

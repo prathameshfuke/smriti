@@ -154,7 +154,7 @@ export default function DualNBackClearLeaderboard() {
 
     if (!hasEnteredViewport) {
         return (
-            <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden shadow-sm">
+            <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden">
                 <div className="flex justify-center p-8 text-patient-sm text-ink-muted">
                     {t('loadPrompt')}
                 </div>
@@ -164,7 +164,7 @@ export default function DualNBackClearLeaderboard() {
 
     if (loading) {
         return (
-            <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden shadow-sm">
+            <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden">
                 <div className="flex justify-center p-8 text-patient-sm text-ink-muted animate-pulse">
                     {t('loading')}
                 </div>
@@ -173,7 +173,7 @@ export default function DualNBackClearLeaderboard() {
     }
 
     return (
-        <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden shadow-sm">
+        <div ref={containerRef} className="w-full rounded-card border border-line200 bg-surface-card overflow-hidden">
             <div className="border-b border-line200 bg-surface-muted p-4 md:p-6 flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="flex items-center gap-2">
                     <div className="rounded-full bg-primary/10 p-2">

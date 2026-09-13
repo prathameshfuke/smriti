@@ -42,7 +42,7 @@ export default function ObjectGrid({
   return (
     <div className="flex flex-col items-center gap-4">
       <div
-        className="flex flex-col items-center gap-1 rounded-tile border border-black/5 bg-surface-card p-4 shadow-sm"
+        className="flex flex-col items-center gap-1 rounded-tile border border-line200 bg-surface-card p-4"
         style={{ backgroundColor: `${targetObject.categoryColor}1A` }}
       >
         <span className="text-4xl" aria-hidden="true">
@@ -85,7 +85,7 @@ export default function ObjectGrid({
                 backgroundColor: isOpen && obj ? `${obj.categoryColor}33` : undefined,
               }}
               className={
-                'flex items-center justify-center rounded-card border-2 border-surface-muted shadow-sm ' +
+                'flex items-center justify-center rounded-card border-2 border-surface-muted ' +
                 `bg-game-tile transition-all duration-300 ${
                   tapEnabled ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-md hover:border-primary/40 motion-reduce:hover:translate-y-0' : 'cursor-default'
                 } ` +

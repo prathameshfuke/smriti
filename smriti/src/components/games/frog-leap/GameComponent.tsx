@@ -389,7 +389,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const frogStars = starsFromRate(Math.min(100, level * 12) / 100);
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col bg-surface-card rounded-card overflow-hidden">
+        <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
 
             {/* Top HUD */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 bg-transparent shrink-0 z-20">

@@ -820,7 +820,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
                   key={id}
                   type="button"
                   onClick={() => chooseVehicle(id)}
-                  className="group flex min-h-36 flex-col items-center justify-center gap-3 rounded-tile bg-surface-card shadow-sm transition duration-150 hover:-translate-y-1 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
+                  className="group flex min-h-36 flex-col items-center justify-center gap-3 rounded-tile border border-line200 bg-surface-card transition duration-150 hover:-translate-y-1 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
                 >
                   <Icon
                     className="h-16 w-16 transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
