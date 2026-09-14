@@ -200,22 +200,54 @@ flowchart LR
     Engine -.-> Dashboard["Caregiver Dashboard"]
 ```
 
-<p align="center">
-  <img src="smriti/public/images/game-object-hunt.svg" width="52" title="Object Hunt" />
-  <img src="smriti/public/images/game-word-stream.svg" width="52" title="Word Stream" />
-  <img src="smriti/public/images/game-quick-tap.svg" width="52" title="Quick Tap" />
-  <img src="smriti/public/images/game-path-match.svg" width="52" title="Path Match" />
-  <img src="smriti/public/images/game-memory-match.svg" width="52" title="Memory Match" />
-  <img src="smriti/public/images/game-memory-span.svg" width="52" title="Memory Span" />
-  <img src="smriti/public/images/game-memory-blocks.svg" width="52" title="Memory Blocks" />
-  <img src="smriti/public/images/game-n-back.svg" width="52" title="N-Back" />
-  <img src="smriti/public/images/game-double-decision.svg" width="52" title="Double Decision" />
-  <img src="smriti/public/images/game-counting-boxes.svg" width="52" title="Counting Boxes" />
-  <img src="smriti/public/images/game-larger-number.svg" width="52" title="Larger Number" />
-  <img src="smriti/public/images/game-frog-leap.svg" width="52" title="Frog Leap" />
-  <img src="smriti/public/images/game-fish-trace.svg" width="52" title="Fish Trace" />
-  <img src="smriti/public/images/game-reminiscence-quiz.svg" width="52" title="Reminiscence Quiz" />
-</p>
+### The games
+
+<table align="center">
+  <tr>
+    <td align="center" width="20%"><img src="smriti/public/images/game-object-hunt.png" width="96" alt="Object Hunt" /><br /><sub><b>Object Hunt</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-word-stream.png" width="96" alt="Word Stream" /><br /><sub><b>Word Stream</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-quick-tap.png" width="96" alt="Quick Tap" /><br /><sub><b>Quick Tap</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-path-match.png" width="96" alt="Path Match" /><br /><sub><b>Path Match</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-memory-match.png" width="96" alt="Memory Match" /><br /><sub><b>Memory Match</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="20%"><img src="smriti/public/images/game-memory-span.png" width="96" alt="Memory Span" /><br /><sub><b>Memory Span</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-memory-blocks.png" width="96" alt="Memory Blocks" /><br /><sub><b>Memory Blocks</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-n-back.png" width="96" alt="N-Back" /><br /><sub><b>N-Back</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-double-decision.png" width="96" alt="Double Decision" /><br /><sub><b>Double Decision</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-counting-boxes.png" width="96" alt="Counting Boxes" /><br /><sub><b>Counting Boxes</b></sub></td>
+  </tr>
+  <tr>
+    <td align="center" width="20%"><img src="smriti/public/images/game-larger-number.png" width="96" alt="Larger Number" /><br /><sub><b>Larger Number</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-frog-leap.png" width="96" alt="Frog Leap" /><br /><sub><b>Frog Leap</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-fish-trace.png" width="96" alt="Fish Trace" /><br /><sub><b>Fish Trace</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-reminiscence-quiz.png" width="96" alt="Family &amp; Life Quiz" /><br /><sub><b>Family &amp; Life Quiz</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/game-routine-recall.png" width="96" alt="Routine Recall" /><br /><sub><b>Routine Recall</b></sub></td>
+  </tr>
+</table>
+
+### Reminder icons
+
+<table align="center">
+  <tr>
+    <td align="center" width="25%"><img src="smriti/public/images/reminders/medication.png" width="80" alt="Medication" /><br /><sub><b>Medication</b></sub></td>
+    <td align="center" width="25%"><img src="smriti/public/images/reminders/hydration.png" width="80" alt="Hydration" /><br /><sub><b>Hydration</b></sub></td>
+    <td align="center" width="25%"><img src="smriti/public/images/reminders/activity.png" width="80" alt="Activity" /><br /><sub><b>Activity</b></sub></td>
+    <td align="center" width="25%"><img src="smriti/public/images/reminders/appointment.png" width="80" alt="Appointment" /><br /><sub><b>Appointment</b></sub></td>
+  </tr>
+</table>
+
+### Interface icons
+
+<table align="center">
+  <tr>
+    <td align="center" width="20%"><img src="smriti/public/images/ask-smriti.png" width="72" alt="Ask Smriti" /><br /><sub><b>Ask Smriti</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/caregiver-access.png" width="72" alt="Caregiver access" /><br /><sub><b>Caregiver access</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/family-message.png" width="72" alt="Family message" /><br /><sub><b>Family message</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/done-acknowledged.png" width="72" alt="Seen / done" /><br /><sub><b>Seen / done</b></sub></td>
+    <td align="center" width="20%"><img src="smriti/public/images/error.png" width="72" alt="Could not connect" /><br /><sub><b>Could not connect</b></sub></td>
+  </tr>
+</table>
 
 ## Offline-First Sync
 
