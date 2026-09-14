@@ -142,6 +142,44 @@ export interface DayActivity {
   accuracy: number | null;
 }
 
+/**
+ * Combines the same patient's rows from two sources (this phone's Dexie and
+ * the server). A game-day present in both keeps whichever copy has more
+ * rounds: the phone is ahead of the server until it syncs, the server is
+ * ahead when another phone played.
+ */
+export function mergeScoreRows(...sources: ScoreRow[][]): ScoreRow[] {
+  const byKey = new Map<string, ScoreRow>();
+  for (const rows of sources) {
+    for (const row of rows) {
+      const key = `${row.date}|${row.gameType}`;
+      const existing = byKey.get(key);
+      if (!existing || row.totalRounds > existing.totalRounds) byKey.set(key, row);
+    }
+  }
+  return [...byKey.values()];
+}
+
+export interface PatientActivitySummary {
+  score: CognitiveScore | null;
+  /** Rounds-weighted accuracy today, or null when nothing was played today. */
+  accuracyToday: number | null;
+  daysPlayedThisWeek: number;
+  week: Array<number | null>;
+}
+
+/** Everything the Overview card shows for one patient, from one set of rows. */
+export function summarizeActivity(rows: ScoreRow[], today: string): PatientActivitySummary {
+  const week = recentActivity(rows, today, 7);
+  const todayAccuracy = week[6].accuracy;
+  return {
+    score: computeCognitiveScore(rows, today),
+    accuracyToday: todayAccuracy === null ? null : Math.round(todayAccuracy),
+    daysPlayedThisWeek: week.filter((d) => d.accuracy !== null).length,
+    week: week.map((d) => (d.accuracy === null ? null : Math.round(d.accuracy))),
+  };
+}
+
 /** The last `days` calendar days ending `today`, oldest first, one entry per day. */
 export function recentActivity(rows: ScoreRow[], today: string, days = 7): DayActivity[] {
   const byDate = new Map<string, { correct: number; total: number }>();

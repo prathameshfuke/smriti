@@ -1,4 +1,5 @@
 import type { UILanguage } from '@/lib/i18n/languages';
+import { claimChannel } from './channel';
 
 /** BCP-47 tags to match against installed voices' `.lang`. Bodo (`brx`) and
  * Manipuri (`mni`) have no standard BCP-47 tag with real browser voice
@@ -21,10 +22,10 @@ const LANG_TAG: Record<UILanguage, string> = {
  * never touch `window.speechSynthesis` directly so this guard lives in one
  * place.
  *
- * Cancels any speech already queued before speaking: without this, calls
- * fired in quick succession (a reveal sequence, a re-triggered effect) pile
- * up in the browser's utterance queue and play back one after another,
- * sounding like the same line repeating.
+ * Claims the app's audio channel before speaking, which cancels queued
+ * speech and stops any recorded or TTS clip still playing: without this,
+ * calls fired in quick succession (a reveal sequence, a re-triggered effect)
+ * pile up or play over one another.
  *
  * Picks a voice matching `language` when one is installed; Assamese voices
  * are rare even on devices with Hindi support, so when no matching voice
@@ -35,7 +36,7 @@ const LANG_TAG: Record<UILanguage, string> = {
 export function speak(text: string, language: UILanguage = 'en'): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-  window.speechSynthesis.cancel();
+  claimChannel();
 
   const tag = LANG_TAG[language];
   const voices = window.speechSynthesis.getVoices();

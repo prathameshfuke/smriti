@@ -17,6 +17,9 @@ export interface SyncResult {
   error?: string;
 }
 
+/** Waits this long at most for the server's rate-limit window before one retry. */
+const MAX_RATE_LIMIT_WAIT_MS = 15_000;
+
 /** Raw wire shape from /api/sync — PostgREST returns snake_case columns, never camelCase. */
 interface ServerPatientRow {
   id: string;
@@ -40,10 +43,14 @@ interface ServerReminderRow {
   days_of_week: number[];
   is_active: boolean;
   updated_at: string;
+  created_at?: string;
 }
 
 /** Which of one patient's row categories the server rejected this sync — see api/sync/route.ts. */
 interface PatientSyncErrors {
+  /** The whole patient was refused (not on this account); nothing was saved. */
+  patient?: string;
+  reminderSchedules?: string;
   sessions?: string;
   events?: string;
   dailySummaries?: string;
@@ -151,6 +158,20 @@ interface PatientSyncPayload {
   dailySummaries: LocalDailySummary[];
   reminderAcks: LocalReminderAck[];
   memoryBankEntries: LocalMemoryBankEntry[];
+  reminderSchedules: LocalReminderSchedule[];
+  /** syncQueue rows behind `reminderSchedules`, removed once the server saves them. */
+  scheduleQueueIds: string[];
+}
+
+function payloadSize(p: PatientSyncPayload): number {
+  return (
+    p.sessions.length +
+    p.events.length +
+    p.dailySummaries.length +
+    p.reminderAcks.length +
+    p.memoryBankEntries.length +
+    p.reminderSchedules.length
+  );
 }
 
 /**
@@ -195,12 +216,13 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
     daysOfWeek: row.days_of_week,
     isActive: row.is_active,
     updatedAt: row.updated_at,
+    createdAt: row.created_at,
   };
 }
 
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
-  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries] = await Promise.all([
+  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries, scheduleQueue] = await Promise.all([
     db.gameSessions.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.telemetryEvents.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     // dailySummaries has no plain `patientId` index (only the compound
@@ -208,7 +230,19 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     db.dailySummaries.toCollection().filter((r) => r.patientId === patientId && !r.synced).toArray(),
     db.reminderAcks.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.memoryBankEntries.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
+    // Schedules have no `synced` flag; edits made on the Reminders page are
+    // recorded in syncQueue instead, which nothing used to send.
+    db.syncQueue.where('tableName').equals('reminder_schedules').toArray(),
   ]);
+  const queuedIds = [...new Set(scheduleQueue.map((q) => q.recordId))];
+  const found = await db.reminderSchedules.bulkGet(queuedIds);
+  // A queued schedule that no longer exists locally can never be sent.
+  const orphans = new Set(queuedIds.filter((_, i) => found[i] === undefined));
+  if (orphans.size) await db.syncQueue.bulkDelete(scheduleQueue.filter((q) => orphans.has(q.recordId)).map((q) => q.id));
+  const schedules = found.filter(
+    (s): s is LocalReminderSchedule => s !== undefined && s.patientId === patientId,
+  );
+  const scheduleIds = new Set(schedules.map((s) => s.id));
   return {
     patientId,
     sessions,
@@ -216,6 +250,8 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     dailySummaries,
     reminderAcks,
     memoryBankEntries: await uploadMemoryBankPhotos(memoryBankEntries),
+    reminderSchedules: schedules,
+    scheduleQueueIds: scheduleQueue.filter((q) => scheduleIds.has(q.recordId)).map((q) => q.id),
   };
 }
 
@@ -241,10 +277,15 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
       db.memoryBankEntries,
       db.patients,
       db.reminderSchedules,
+      db.syncQueue,
     ],
     async () => {
       for (const payload of payloads) {
         const errors = body.syncErrors?.[payload.patientId] ?? {};
+        if (errors.patient) continue;
+        if (!errors.reminderSchedules && payload.scheduleQueueIds.length) {
+          await db.syncQueue.bulkDelete(payload.scheduleQueueIds);
+        }
         if (!errors.sessions) {
           await db.gameSessions.bulkPut(payload.sessions.map((s) => ({ ...s, synced: true })) as never[]);
         }
@@ -286,7 +327,7 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
   );
 }
 
-async function postSync(payloads: PatientSyncPayload[], accessToken: string): Promise<SyncResult> {
+async function postSync(payloads: PatientSyncPayload[], accessToken: string, retried = false): Promise<SyncResult> {
   try {
     const res = await fetch('/api/sync', {
       method: 'POST',
@@ -294,17 +335,32 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string): Pr
       body: JSON.stringify({
         deviceId: getDeviceId(),
         lastSyncTimestamp: null,
-        // memoryBankEntries is mapped to its snake_case wire shape here;
-        // every other category is sent as-is, matching the existing
-        // (pre-existing, out of scope) pattern for this endpoint.
+        // Game, reminder and schedule rows go up in their local camelCase
+        // shape; api/sync converts them to column names (lib/db/wire.ts).
         patients: payloads.map((p) => ({
-          ...p,
+          patientId: p.patientId,
+          sessions: p.sessions,
+          events: p.events,
+          dailySummaries: p.dailySummaries,
+          reminderAcks: p.reminderAcks,
+          reminderSchedules: p.reminderSchedules,
           memoryBankEntries: p.memoryBankEntries.map(toWireMemoryBankEntry),
         })),
       }),
       signal: AbortSignal.timeout(SYNC_TIMEOUT_MS),
     });
 
+    if (res.status === 429 && !retried) {
+      // A tap on Sync now right after an automatic sync lands inside the
+      // server's short rate-limit window. Wait it out once instead of
+      // reporting that the account could not be reached.
+      const hint = await res.json().catch(() => ({}));
+      const wait = Math.min(MAX_RATE_LIMIT_WAIT_MS, Math.max(500, Number(hint?.retryAfterMs) || 10_000));
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      return postSync(payloads, accessToken, true);
+    }
+    if (res.status === 401) return { success: false, error: 'no_session' };
+    if (res.status === 429) return { success: false, error: 'rate_limited' };
     if (!res.ok) {
       return { success: false, error: `sync failed with status ${res.status}` };
     }
@@ -345,14 +401,7 @@ export async function syncToServer(patientId: string): Promise<SyncResult> {
   if (!accessToken) return { success: false, error: 'no_session' };
 
   const payload = await gatherUnsyncedRows(patientId);
-  const isEmpty =
-    payload.sessions.length +
-      payload.events.length +
-      payload.dailySummaries.length +
-      payload.reminderAcks.length +
-      payload.memoryBankEntries.length ===
-    0;
-  if (isEmpty) return { success: true };
+  if (payloadSize(payload) === 0) return { success: true };
 
   return postSync([payload], accessToken);
 }
@@ -383,13 +432,11 @@ export async function syncAllPatients(): Promise<SyncResult> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { success: false, error: 'no_session' };
 
-  const patients = await db.patients.toArray();
+  // Removed patients are refused by the server; their leftover rows would
+  // otherwise make every sync report a failure.
+  const patients = (await db.patients.toArray()).filter((p) => p.isActive !== false);
   const payloads = await Promise.all(patients.map((p) => gatherUnsyncedRows(p.id)));
-  const nonEmpty = payloads.filter(
-    (p) =>
-      p.sessions.length + p.events.length + p.dailySummaries.length + p.reminderAcks.length + p.memoryBankEntries.length >
-      0,
-  );
+  const nonEmpty = payloads.filter((p) => payloadSize(p) > 0);
   if (nonEmpty.length === 0) return { success: true };
 
   return postSync(nonEmpty, accessToken);

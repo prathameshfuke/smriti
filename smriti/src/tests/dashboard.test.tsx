@@ -252,7 +252,7 @@ describe('Patient detail page', () => {
     await screen.findByTestId('score-graph');
     fireEvent.click(screen.getByRole('button', { name: /reminders/i }));
 
-    expect(await screen.findByText(/100% reminders acknowledged this week/i)).toBeInTheDocument();
+    expect(await screen.findByText('7 of 7 marked done')).toBeInTheDocument();
     vi.unstubAllGlobals();
     await db.reminderSchedules.clear();
     await db.reminderAcks.clear();

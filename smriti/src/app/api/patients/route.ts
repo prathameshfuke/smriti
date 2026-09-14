@@ -1,12 +1,6 @@
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import type { AlertSeverity } from '@/lib/supabase/types';
-import {
-  SCORE_WINDOW_DAYS,
-  computeCognitiveScore,
-  recentActivity,
-  shiftDate,
-  type ScoreRow,
-} from '@/lib/dashboard/cognitiveScore';
+import { SCORE_WINDOW_DAYS, shiftDate, summarizeActivity, type ScoreRow } from '@/lib/dashboard/cognitiveScore';
 
 function reduceAlertStatus(severities: AlertSeverity[]): AlertSeverity {
   if (severities.includes('red')) return 'red';
@@ -37,7 +31,6 @@ export async function GET(request: Request) {
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const scoreFrom = shiftDate(todayStr, -(2 * SCORE_WINDOW_DAYS - 1));
-  const weekFrom = shiftDate(todayStr, -6);
 
   const results = await Promise.all(
     (patients ?? []).map(async (patient) => {
@@ -76,13 +69,8 @@ export async function GET(request: Request) {
           maxDifficultyReached: s.max_difficulty_reached ?? 1,
         };
       });
-      const week = recentActivity(scoreRows, todayStr, 7);
-      // Rounds-weighted across every game played today, not the first row found.
-      const accuracyToday = Math.round(week[6].accuracy ?? 0);
-      const sessionsThisWeek = new Set(
-        recentSummaries.filter((s) => s.summary_date >= weekFrom).map((s) => s.summary_date),
-      ).size;
-      const score = computeCognitiveScore(scoreRows, todayStr);
+      const activity = summarizeActivity(scoreRows, todayStr);
+      const score = activity.score;
 
       return {
         id: patient.id,
@@ -93,12 +81,17 @@ export async function GET(request: Request) {
         primaryLanguage: patient.primary_language,
         isActive: patient.is_active,
         latestSummary: recentSummaries[0] ?? null,
-        accuracyToday,
-        sessionsThisWeek,
+        // Null when nothing was played today, so the card can say so rather
+        // than show 0%.
+        accuracyToday: activity.accuracyToday,
+        sessionsThisWeek: activity.daysPlayedThisWeek,
+        // Raw rows too: the Overview merges them with this phone's own
+        // not-yet-synced games (mergeScoreRows) before showing anything.
+        scoreRows,
         cognitiveScore: score
           ? { score: score.score, band: score.band, delta: score.delta, enoughData: score.enoughData }
           : null,
-        week: week.map((d) => (d.accuracy === null ? null : Math.round(d.accuracy))),
+        week: activity.week,
         alertStatus,
         unreadAlertCount,
       };

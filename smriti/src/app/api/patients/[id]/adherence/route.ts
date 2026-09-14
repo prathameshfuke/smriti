@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const [{ data: schedules }, { data: acks }] = await Promise.all([
     supabase
       .from('reminder_schedules')
-      .select('id, reminder_type, label, time_of_day, days_of_week')
+      .select('id, reminder_type, label, time_of_day, days_of_week, created_at')
       .eq('patient_id', patientId)
       .eq('is_active', true),
     supabase

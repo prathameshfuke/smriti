@@ -15,7 +15,7 @@ import { authedFetch } from '@/lib/api/client';
 import { useCognitiveTrend, type TrendRange } from '@/hooks/useCognitiveTrend';
 import { useGameStreak } from '@/hooks/useGameStreak';
 import { useReminderAdherence } from '@/hooks/useReminderAdherence';
-import { computeCognitiveScore, recentActivity, type ScoreRow } from '@/lib/dashboard/cognitiveScore';
+import { computeCognitiveScore, mergeScoreRows, recentActivity, type ScoreRow } from '@/lib/dashboard/cognitiveScore';
 
 export interface AlertRow {
   id: string;
@@ -37,6 +37,8 @@ export interface CognitiveTabProps {
   onResolveAlert: (alertId: string) => void;
   resolveFailed: boolean;
   onError: () => void;
+  /** Game-days already synced (possibly from another phone), merged with this phone's. */
+  serverScoreRows?: ScoreRow[];
 }
 
 /**
@@ -46,7 +48,7 @@ export interface CognitiveTabProps {
  * this tab (digest fetch/refresh); the alert list and its resolve action stay
  * on the page shell since the header's "needs attention" copy depends on them.
  */
-export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolveFailed, onError }: CognitiveTabProps) {
+export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolveFailed, onError, serverScoreRows }: CognitiveTabProps) {
   const [range, setRange] = useState<TrendRange>('30d');
   const [digests, setDigests] = useState<DigestEntry[] | null>(null);
   const [digestGenerating, setDigestGenerating] = useState(false);
@@ -69,14 +71,17 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
 
   const scoreRows = useMemo<ScoreRow[]>(
     () =>
-      scoreTrend.points.map((p) => ({
-        date: p.date,
-        gameType: p.gameType,
-        correctRounds: (p.accuracy / 100) * p.totalRounds,
-        totalRounds: p.totalRounds,
-        maxDifficultyReached: p.maxDifficultyReached,
-      })),
-    [scoreTrend.points],
+      mergeScoreRows(
+        serverScoreRows ?? [],
+        scoreTrend.points.map((p) => ({
+          date: p.date,
+          gameType: p.gameType,
+          correctRounds: (p.accuracy / 100) * p.totalRounds,
+          totalRounds: p.totalRounds,
+          maxDifficultyReached: p.maxDifficultyReached,
+        })),
+      ),
+    [scoreTrend.points, serverScoreRows],
   );
   const cognitiveScore = useMemo(() => computeCognitiveScore(scoreRows, today), [scoreRows, today]);
   const lastSevenDays = useMemo(() => recentActivity(scoreRows, today, 7), [scoreRows, today]);
@@ -187,7 +192,7 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
               <p className="font-serif-display text-[1.625rem] font-medium leading-none text-ink">
                 {adherence.isLoading ? '–' : `${adherence.overallPct}%`}
               </p>
-              <p className="text-patient-sm text-ink-muted">Reminders taken</p>
+              <p className="text-patient-sm text-ink-muted">Reminders done</p>
             </div>
           </section>
 

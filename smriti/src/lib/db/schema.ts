@@ -75,6 +75,9 @@ export interface LocalReminderSchedule {
   daysOfWeek: number[];
   isActive: boolean;
   updatedAt: string;
+  /** When the reminder was first set up. Adherence never counts days before
+   * it. Absent on rows saved by older builds, which fall back to `updatedAt`. */
+  createdAt?: string;
 }
 
 export interface LocalReminderAck {

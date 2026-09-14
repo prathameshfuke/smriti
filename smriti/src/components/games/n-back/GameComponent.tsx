@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { stopAllAudio } from '@/lib/audio/channel';
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GAME_CONFIG } from "./config";
@@ -621,6 +622,9 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
         
         // 只在需要时播放音频
         if (settings.selectedTypes.includes("audio") && audioRefs.current[finalStimuli.letter]) {
+            // One sound at a time: silence narration and the previous letter first.
+            stopAllAudio();
+            Object.values(audioRefs.current).forEach((sound) => sound.stop());
             audioRefs.current[finalStimuli.letter].play(); // 播放音频
         }
         

@@ -1,40 +1,30 @@
 'use client';
 
 import { useMemo } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import Skeleton from '@/components/ui/Skeleton';
-import { aggregateByGame, type GameBreakdownRow } from '@/lib/dashboard/gameBreakdown';
+import { aggregateByGame } from '@/lib/dashboard/gameBreakdown';
+import { formatShortDate } from '@/lib/dashboard/formatDate';
 import type { TrendPoint } from '@/lib/dashboard/trend';
 
 export interface GameBreakdownChartProps {
   points: TrendPoint[];
   isLoading?: boolean;
+  /** Height of the loading placeholder. */
   height?: number;
 }
 
-const BAR_COLOR = '#B3452D';
-const GRID_COLOR = '#D8D2CB'; // line200
-const AXIS_TICK_COLOR = '#4B4541'; // ink-muted
-const TOOLTIP_BORDER_COLOR = '#D8D2CB'; // line200
-const ROW_HEIGHT_PX = 32;
-
 /**
- * Per-game accuracy, `layout="vertical"` (horizontal bars) so all 15 game
- * labels stay readable on a phone. Presentational only, same no-fetching
- * rationale as CognitiveTrendChart — `points` is the identical Dexie-backed
- * array `useCognitiveTrend` returns, aggregated per game instead of per day.
+ * Per-game accuracy as a plain list of labelled bars. It replaced a Recharts
+ * bar chart that printed raw values such as 66.66666666666667, cut long game
+ * names off, and drew nothing at all for a game played at 0%. Here every
+ * number is rounded, names wrap, and each row states its value in words, so
+ * no separate screen-reader table is needed.
  */
-export default function GameBreakdownChart({ points, isLoading = false, height = 360 }: GameBreakdownChartProps) {
-  const rows = useMemo(() => aggregateByGame(points), [points]);
+export default function GameBreakdownChart({ points, isLoading = false, height = 240 }: GameBreakdownChartProps) {
+  const rows = useMemo(
+    () => aggregateByGame(points).sort((a, b) => b.lastPlayed.localeCompare(a.lastPlayed) || a.label.localeCompare(b.label)),
+    [points],
+  );
 
   if (isLoading) return <Skeleton height={height} />;
 
@@ -42,73 +32,26 @@ export default function GameBreakdownChart({ points, isLoading = false, height =
     return <p className="text-caregiver-body text-ink-muted">No sessions recorded yet.</p>;
   }
 
-  const accuracies = rows.map((r) => r.accuracy);
-  const ariaLabel =
-    `Bar chart of accuracy by game across ${rows.length} game${rows.length === 1 ? '' : 's'} played, ` +
-    `ranging from ${Math.round(Math.min(...accuracies))}% to ${Math.round(Math.max(...accuracies))}%`;
-  const chartHeight = Math.max(height, rows.length * ROW_HEIGHT_PX + 40);
-
   return (
-    <div role="img" aria-label={ariaLabel} className="flex flex-col gap-2">
-      <div aria-hidden="true" style={{ height: chartHeight }} className="w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={rows} layout="vertical" margin={{ top: 8, right: 72, bottom: 8, left: 8 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} horizontal={false} />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12, fill: AXIS_TICK_COLOR }} tickLine={false} />
-            <YAxis
-              type="category"
-              dataKey="label"
-              width={120}
-              tick={{ fontSize: 12, fill: AXIS_TICK_COLOR }}
-              tickLine={false}
-            />
-            <Tooltip
-              contentStyle={{
-                background: '#FFFFFF',
-                border: `1px solid ${TOOLTIP_BORDER_COLOR}`,
-                borderRadius: 12,
-              }}
-              formatter={(v) => [`${Math.round(Number(v))}%`, 'Accuracy']}
-            />
-            <Bar dataKey="accuracy" name="accuracy" fill={BAR_COLOR} radius={[0, 4, 4, 0]} isAnimationActive={false}>
-              <LabelList
-                dataKey="accuracy"
-                position="right"
-                style={{ fill: AXIS_TICK_COLOR, fontSize: 11 }}
-                valueAccessor={(entry) => {
-                  const row = entry.payload as GameBreakdownRow;
-                  return `Lvl ${row.maxDifficultyReached}/${row.maxLevel}`;
-                }}
-              />
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Accessible equivalent — see CognitiveTrendChart for why. */}
-      <table className="sr-only">
-        <caption>Per-game accuracy and difficulty level</caption>
-        <thead>
-          <tr>
-            <th scope="col">Game</th>
-            <th scope="col">Accuracy</th>
-            <th scope="col">Level</th>
-            <th scope="col">Last played</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.gameType}>
-              <td>{r.label}</td>
-              <td>{Math.round(r.accuracy)}%</td>
-              <td>
-                {r.maxDifficultyReached} / {r.maxLevel}
-              </td>
-              <td>{r.lastPlayed}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <ul className="flex flex-col gap-4" aria-label="Accuracy by game">
+      {rows.map((r) => {
+        const pct = Math.round(r.accuracy);
+        return (
+          <li key={r.gameType} data-testid="game-breakdown-row" className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 text-caregiver-body font-bold text-ink">{r.label}</span>
+              <span className="shrink-0 text-caregiver-body font-bold tabular-nums text-ink">{pct}%</span>
+            </div>
+            <div aria-hidden="true" className="h-2.5 w-full overflow-hidden rounded-full bg-surface-muted">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-patient-sm text-ink-muted">
+              {r.maxLevel > 1 ? `Level ${r.maxDifficultyReached} of ${r.maxLevel}. ` : ''}
+              Last played {formatShortDate(r.lastPlayed)}.
+            </p>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

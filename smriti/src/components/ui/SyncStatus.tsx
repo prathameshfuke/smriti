@@ -15,6 +15,21 @@ export interface SyncStatusProps {
 const CONFIRM_MS = 2500;
 
 /**
+ * Says what actually went wrong. Every failure used to read "Could not reach
+ * your account… sign in again", so a caregiver signed in again for problems
+ * signing in could never fix.
+ */
+function failureDetail(error: string | null): string {
+  if (error === 'no_session') return 'You are signed out on this device. Sign in again from Settings, then sync.';
+  if (error === 'offline') return 'This device is offline. Changes will sync when it is back online.';
+  if (error === 'rate_limited') return 'A sync just ran. Wait a few seconds, then try again.';
+  if (error?.startsWith('sync rejected')) {
+    return 'Your account did not accept some changes. They are still saved on this device and will be sent again.';
+  }
+  return 'Could not reach your account. Check the connection, then try again.';
+}
+
+/**
  * Whether this device's data has reached the account, plus a real Sync now
  * button. The button spins its arrows while syncing and swaps to a check and
  * "Synced" for a moment after a successful sync, so a tap always shows a
@@ -22,7 +37,7 @@ const CONFIRM_MS = 2500;
  */
 export default function SyncStatus({ variant = 'card' }: SyncStatusProps) {
   const { t } = useTranslation();
-  const { syncStatus, lastSynced, pendingCount, syncNow } = useSync();
+  const { syncStatus, lastSynced, pendingCount, lastError, syncNow } = useSync();
   const [confirmed, setConfirmed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,7 +87,7 @@ export default function SyncStatus({ variant = 'card' }: SyncStatusProps) {
   const detail = gameActive
     ? 'A game is in progress. Finish it, then sync.'
     : failed && !syncing
-    ? 'Could not reach your account. Check the connection, or sign in again from Settings.'
+    ? failureDetail(lastError)
     : offline
     ? 'Everything is saved on this device and will sync when you are back online.'
     : syncing

@@ -3,8 +3,20 @@ import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { detectCognitiveDrop, detectLowAdherence, detectMissedSessions } from '@/lib/engine/alerts';
 import { computeAdherence, dateRange } from '@/lib/engine/adherence';
 import type { GameType } from '@/lib/supabase/types';
+import {
+  dedupeDailySummaries,
+  hasValidIds,
+  toWireDailySummary,
+  toWireEvent,
+  toWireReminderAck,
+  toWireReminderSchedule,
+  toWireSession,
+} from '@/lib/db/wire';
 
-const RATE_LIMIT_MS = 30_000;
+/** Long enough to stop a runaway loop, short enough that a caregiver tapping
+ * Sync now right after an automatic sync only waits a moment (the client
+ * retries once after `retryAfterMs`). */
+const RATE_LIMIT_MS = 10_000;
 
 /**
  * In-memory, per-process — resets on redeploy/cold-start and doesn't share
@@ -22,10 +34,15 @@ interface PatientSyncPayload {
   /** Already snake_case (mapped client-side in lib/db/sync.ts) — safe to
    * upsert directly, unlike the categories above. */
   memoryBankEntries: Array<Record<string, unknown> & { id: string }>;
+  /** Schedules created or edited on the phone since the last sync. Saved
+   * before reminderAcks, which reference them by foreign key. */
+  reminderSchedules?: Array<Record<string, unknown> & { id: string }>;
 }
 
 /** Which of one patient's row categories Supabase actually rejected this sync. */
 interface PatientSyncErrors {
+  patient?: string;
+  reminderSchedules?: string;
   sessions?: string;
   events?: string;
   dailySummaries?: string;
@@ -44,8 +61,9 @@ export async function POST(request: Request) {
   if (!auth) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   const lastSync = lastSyncByUser.get(auth.userId) ?? 0;
-  if (Date.now() - lastSync < RATE_LIMIT_MS) {
-    return Response.json({ error: 'rate_limited' }, { status: 429 });
+  const waited = Date.now() - lastSync;
+  if (waited < RATE_LIMIT_MS) {
+    return Response.json({ error: 'rate_limited', retryAfterMs: RATE_LIMIT_MS - waited }, { status: 429 });
   }
   lastSyncByUser.set(auth.userId, Date.now());
 
@@ -91,33 +109,66 @@ export async function POST(request: Request) {
   // know which rows never made it to the server — it just marked everything
   // "synced" off the response status alone.
   const syncErrors: Record<string, PatientSyncErrors> = {};
+  // A patient this account does not have (still being saved, or removed) is
+  // reported rather than skipped silently: the phone would otherwise mark
+  // those rows synced and they would never reach the server.
+  for (const p of body.patients) {
+    if (!ownedIds.has(p.patientId)) syncErrors[p.patientId] = { patient: 'patient_not_on_account' };
+  }
 
   for (const patient of ownedPatients) {
     const errors: PatientSyncErrors = {};
+    // Every row is pinned to the patient whose ownership was just checked,
+    // whatever patient id the row itself carries.
+    const own = <T extends { patient_id: string }>(row: T): T => ({ ...row, patient_id: patient.patientId });
 
+    if (patient.reminderSchedules?.length) {
+      const { error } = await supabase
+        .from('reminder_schedules')
+        .upsert(
+          patient.reminderSchedules.map((r) => own(toWireReminderSchedule(r))).filter((r) => hasValidIds(r, ['id'])) as never[],
+          { onConflict: 'id' },
+        );
+      if (error) errors.reminderSchedules = error.message;
+    }
     if (patient.sessions?.length) {
       const { error } = await supabase
         .from('game_sessions')
-        .upsert(patient.sessions as never[], { onConflict: 'id', ignoreDuplicates: true });
+        .upsert(
+          patient.sessions.map((s) => own(toWireSession(s, body.deviceId ?? null))).filter((s) => hasValidIds(s, ['id'])) as never[],
+          { onConflict: 'id' },
+        );
       if (error) errors.sessions = error.message;
     }
     if (patient.events?.length) {
+      const events = patient.events.map((e) => own(toWireEvent(e))).filter((e) => hasValidIds(e, ['id', 'session_id']));
       const { error } = await supabase
         .from('telemetry_events')
-        .upsert(patient.events as never[], { onConflict: 'id', ignoreDuplicates: true });
+        .upsert(events as never[], { onConflict: 'id', ignoreDuplicates: true });
       if (error) errors.events = error.message;
-      else syncedEventCount += patient.events.length;
+      else syncedEventCount += events.length;
     }
     if (patient.dailySummaries?.length) {
+      // A summary's own id is not referenced anywhere, so a malformed one is
+      // replaced rather than dropping that day's numbers.
+      const rows = dedupeDailySummaries(
+        patient.dailySummaries.map((d) => {
+          const row = own(toWireDailySummary(d));
+          return hasValidIds(row, ['id']) ? row : { ...row, id: crypto.randomUUID() };
+        }),
+      );
       const { error } = await supabase
         .from('daily_summaries')
-        .upsert(patient.dailySummaries as never[], { onConflict: 'id' });
+        .upsert(rows as never[], { onConflict: 'patient_id,summary_date,game_type' });
       if (error) errors.dailySummaries = error.message;
     }
     if (patient.reminderAcks?.length) {
       const { error } = await supabase
         .from('reminder_acks')
-        .upsert(patient.reminderAcks as never[], { onConflict: 'id', ignoreDuplicates: true });
+        .upsert(
+          patient.reminderAcks.map((a) => own(toWireReminderAck(a))).filter((a) => hasValidIds(a, ['id', 'reminder_id'])) as never[],
+          { onConflict: 'id', ignoreDuplicates: true },
+        );
       if (error) errors.reminderAcks = error.message;
     }
     if (patient.memoryBankEntries?.length) {
@@ -139,7 +190,7 @@ export async function POST(request: Request) {
     // just proved may not actually contain this patient's rows — skip a
     // check that would otherwise query the row it knows just failed to write.
     const gameTypes = new Set(
-      patient.dailySummaries?.filter(() => !errors.dailySummaries).map((s) => s.gameType) ?? [],
+      patient.dailySummaries?.filter(() => !errors.dailySummaries).map((s) => toWireDailySummary(s).game_type) ?? [],
     );
     for (const gameType of gameTypes) {
       await checkCognitiveDropAlert(supabase, patient.patientId, gameType as GameType);
@@ -235,39 +286,44 @@ async function checkCognitiveDropAlert(
   });
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function resolveAlert(supabase: AuthedSupabase, alertId: string): Promise<void> {
+  await supabase.from('alerts').update({ is_resolved: true, resolved_at: new Date().toISOString() }).eq('id', alertId);
+}
+
 /**
- * Inserts a `missed_sessions` (yellow) alert when a patient has no
- * daily_summaries row for 3+ consecutive days — unless one is already
- * unresolved, in which case re-firing every sync would just be spam. It
- * clears the same way every alert does: the caregiver resolves it, or a
- * future feature could auto-resolve on the next played session (out of
- * scope here).
+ * Keeps one `missed_sessions` (yellow) alert in step with reality: raised when
+ * nothing was played on today or the 3 days before it, and resolved again as
+ * soon as a game is played. It used to fire for a patient added that same
+ * day, ignore a game played today, and stay open forever once raised, so a
+ * patient who was playing every day still read "Needs attention".
  */
 async function checkMissedSessionsAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from('alerts')
-    .select('id')
-    .eq('patient_id', patientId)
-    .eq('alert_type', 'missed_sessions')
-    .eq('is_resolved', false)
-    .limit(1);
-  if (existing && existing.length > 0) return;
+  const since = new Date(Date.now() - 3 * DAY_MS).toISOString().slice(0, 10);
+  const [{ data: existing }, { data: summaries }, { data: patientRow }] = await Promise.all([
+    supabase
+      .from('alerts')
+      .select('id')
+      .eq('patient_id', patientId)
+      .eq('alert_type', 'missed_sessions')
+      .eq('is_resolved', false)
+      .limit(1),
+    supabase.from('daily_summaries').select('summary_date').eq('patient_id', patientId).gte('summary_date', since),
+    supabase.from('patients').select('caregiver_id, created_at').eq('id', patientId).single(),
+  ]);
+  const openAlert = existing?.[0];
+  const dates = (summaries ?? []).map((s) => s.summary_date);
+  const playedToday = dates.includes(new Date().toISOString().slice(0, 10));
+  const missed = !playedToday && detectMissedSessions(dates);
 
-  const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const { data: summaries } = await supabase
-    .from('daily_summaries')
-    .select('summary_date')
-    .eq('patient_id', patientId)
-    .gte('summary_date', since);
-
-  if (!detectMissedSessions((summaries ?? []).map((s) => s.summary_date))) return;
-
-  const { data: patientRow } = await supabase
-    .from('patients')
-    .select('caregiver_id')
-    .eq('id', patientId)
-    .single();
-  if (!patientRow) return;
+  if (!missed) {
+    if (openAlert) await resolveAlert(supabase, openAlert.id);
+    return;
+  }
+  if (openAlert || !patientRow) return;
+  // A patient added in the last 3 days has not had the chance to miss 3 days.
+  if (patientRow.created_at && Date.now() - new Date(patientRow.created_at).getTime() < 3 * DAY_MS) return;
 
   await supabase.from('alerts').insert({
     id: uuid(),
@@ -285,26 +341,25 @@ async function checkMissedSessionsAlert(supabase: AuthedSupabase, patientId: str
 }
 
 /**
- * Inserts a `low_adherence` (yellow) alert when 7-day reminder adherence
- * (see lib/engine/adherence.ts — the same calc the caregiver's Adherence tab
- * shows) drops below 50%, unless one is already unresolved.
+ * Keeps one `low_adherence` (yellow) alert in step with 7-day reminder
+ * adherence (lib/engine/adherence.ts, the same calculation as the Reminders
+ * tab): raised below 50%, resolved again at 50% or above. Nothing is raised
+ * when no reminder was due yet, which used to read as 0% and raise it.
  */
 async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
-  const { data: existing } = await supabase
-    .from('alerts')
-    .select('id')
-    .eq('patient_id', patientId)
-    .eq('alert_type', 'low_adherence')
-    .eq('is_resolved', false)
-    .limit(1);
-  if (existing && existing.length > 0) return;
-
   const days = dateRange(7);
   const earliest = days[0];
-  const [{ data: schedules }, { data: acks }] = await Promise.all([
+  const [{ data: existing }, { data: schedules }, { data: acks }] = await Promise.all([
+    supabase
+      .from('alerts')
+      .select('id')
+      .eq('patient_id', patientId)
+      .eq('alert_type', 'low_adherence')
+      .eq('is_resolved', false)
+      .limit(1),
     supabase
       .from('reminder_schedules')
-      .select('id, reminder_type, label, time_of_day, days_of_week')
+      .select('id, reminder_type, label, time_of_day, days_of_week, created_at')
       .eq('patient_id', patientId)
       .eq('is_active', true),
     supabase
@@ -313,10 +368,17 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
       .eq('patient_id', patientId)
       .gte('scheduled_at', `${earliest}T00:00:00.000Z`),
   ]);
-  if (!schedules || schedules.length === 0) return;
+  const openAlert = existing?.[0];
 
-  const { overallPct } = computeAdherence(schedules, acks ?? [], days);
-  if (!detectLowAdherence(overallPct)) return;
+  const { overallPct, byType } = computeAdherence(schedules ?? [], acks ?? [], days);
+  const due = Object.values(byType).reduce((sum, t) => sum + t.total, 0);
+  const low = due > 0 && detectLowAdherence(overallPct);
+
+  if (!low) {
+    if (openAlert) await resolveAlert(supabase, openAlert.id);
+    return;
+  }
+  if (openAlert) return;
 
   const { data: patientRow } = await supabase
     .from('patients')
@@ -332,7 +394,7 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
     alert_type: 'low_adherence',
     severity: 'yellow',
     title: 'Low reminder adherence',
-    description: `Only ${overallPct}% of reminders were acknowledged in the last 7 days.`,
+    description: `Only ${overallPct}% of reminders were marked done in the last 7 days.`,
     is_read: false,
     is_resolved: false,
     resolved_at: null,

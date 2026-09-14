@@ -254,7 +254,12 @@ describe('adherence adapter', () => {
       time_of_day: '08:00',
       days_of_week: [0, 1, 2, 3, 4, 5, 6],
       label: 'Aspirin',
+      // No createdAt on rows from older builds: falls back to updatedAt.
+      created_at: '2026-09-01T00:00:00.000Z',
     });
+    expect(toAdherenceSchedule({ ...schedule, createdAt: '2026-08-20T09:00:00.000Z' }).created_at).toBe(
+      '2026-08-20T09:00:00.000Z',
+    );
   });
 
   it('maps camelCase ack rows to the snake_case shape computeAdherence expects', () => {

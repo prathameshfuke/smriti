@@ -319,7 +319,7 @@ describe('POST /api/sync', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 429 when called twice within 30 seconds by the same user', async () => {
+  it('returns 429 when called twice within 10 seconds by the same user', async () => {
     getUser.mockResolvedValue({ data: { user: { id: 'u-rate-limit-test' } }, error: null });
     const { POST } = await import('@/app/api/sync/route');
 

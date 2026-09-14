@@ -27,6 +27,7 @@ export function buildStarterReminders(patientId: string, choice: StarterReminder
       daysOfWeek: EVERY_DAY,
       isActive: true,
       updatedAt: now,
+      createdAt: now,
     });
   }
 
@@ -41,6 +42,7 @@ export function buildStarterReminders(patientId: string, choice: StarterReminder
         daysOfWeek: EVERY_DAY,
         isActive: true,
         updatedAt: now,
+        createdAt: now,
       });
     }
   }

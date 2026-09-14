@@ -17,6 +17,7 @@ export function toAdherenceSchedule(schedule: LocalReminderSchedule): AdherenceS
     time_of_day: schedule.timeOfDay,
     days_of_week: schedule.daysOfWeek,
     label: schedule.label,
+    created_at: schedule.createdAt ?? schedule.updatedAt,
   };
 }
 

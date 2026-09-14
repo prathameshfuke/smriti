@@ -1,5 +1,6 @@
 import { speak } from './speech';
 import { playBase64Audio } from './player';
+import { claimChannel, isCurrent } from './channel';
 import { findCachedSpeech, cacheSpeech } from '@/lib/ai/speech-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import type { UILanguage } from '@/lib/i18n/languages';
@@ -20,11 +21,15 @@ const SPEAK_FETCH_TIMEOUT_MS = 25_000;
  */
 export async function narrate(text: string, language: UILanguage, isOnline: boolean): Promise<void> {
   if (!text) return;
+  // Claimed before any await: a line requested later wins, and this one is
+  // dropped if it is overtaken while its audio is still being looked up.
+  const token = claimChannel();
 
   try {
     const cached = await findCachedSpeech(language, text);
+    if (!isCurrent(token)) return;
     if (cached) {
-      playBase64Audio(cached.audioBase64, cached.audioFormat, text, language);
+      playBase64Audio(cached.audioBase64, cached.audioFormat, text, language, token);
       return;
     }
   } catch {
@@ -35,25 +40,26 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
   // acquireTranscript): never spend a request — or the rate-limited
   // Bhashini quota — on a call already known to fail.
   if (!isOnline) {
-    speak(text, language);
+    if (isCurrent(token)) speak(text, language);
     return;
   }
 
   try {
-    const token = await getDeviceTrustToken();
+    const trustToken = await getDeviceTrustToken();
     const res = await fetch('/api/ai/speak', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, language, deviceTrustToken: token }),
+      body: JSON.stringify({ text, language, deviceTrustToken: trustToken }),
       signal: AbortSignal.timeout(SPEAK_FETCH_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error('speak route failed');
     const body = await res.json();
     if (typeof body.audioBase64 !== 'string') throw new Error('no audio in response');
 
-    playBase64Audio(body.audioBase64, body.audioFormat, text, language);
+    // Cached even when overtaken, so the next time this line is asked for it plays at once.
     void cacheSpeech({ language, text, audioBase64: body.audioBase64, audioFormat: body.audioFormat });
+    playBase64Audio(body.audioBase64, body.audioFormat, text, language, token);
   } catch {
-    speak(text, language);
+    if (isCurrent(token)) speak(text, language);
   }
 }

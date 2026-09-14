@@ -12,7 +12,7 @@ import CompanionTab from '@/components/caregiver/CompanionTab';
 import FamilyTab from '@/components/caregiver/FamilyTab';
 import { authedFetch } from '@/lib/api/client';
 import { useCognitiveTrend } from '@/hooks/useCognitiveTrend';
-import { computeCognitiveScore, type ScoreRow } from '@/lib/dashboard/cognitiveScore';
+import { computeCognitiveScore, mergeScoreRows, type ScoreRow } from '@/lib/dashboard/cognitiveScore';
 import type { TriageStatus } from '@/components/ui/TrafficLight';
 
 type Tab = 'cognitive' | 'reminders' | 'companion' | 'family';
@@ -23,6 +23,8 @@ interface DetailPatient {
   ageYears: number;
   primaryLanguage: string;
   alertStatus: TriageStatus;
+  /** Synced game-days from the server, merged with this phone's own. */
+  scoreRows?: ScoreRow[];
 }
 
 const TABS: Tab[] = ['cognitive', 'reminders', 'companion', 'family'];
@@ -63,13 +65,14 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   // from — kept here (not passed down) so it renders even while that tab
   // isn't the active one.
   const scoreTrend = useCognitiveTrend(patientId, '30d');
-  const scoreRows: ScoreRow[] = scoreTrend.points.map((p) => ({
+  const localRows: ScoreRow[] = scoreTrend.points.map((p) => ({
     date: p.date,
     gameType: p.gameType,
     correctRounds: (p.accuracy / 100) * p.totalRounds,
     totalRounds: p.totalRounds,
     maxDifficultyReached: p.maxDifficultyReached,
   }));
+  const scoreRows = mergeScoreRows(patient?.scoreRows ?? [], localRows);
   const cognitiveScore = computeCognitiveScore(scoreRows, today);
 
   useEffect(() => {
@@ -205,6 +208,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             onResolveAlert={(id) => void resolveAlert(id)}
             resolveFailed={resolveFailed}
             onError={() => setError(true)}
+            serverScoreRows={patient?.scoreRows}
           />
         ) : null}
         {patientId && tab === 'reminders' ? <RemindersTab patientId={patientId} /> : null}
