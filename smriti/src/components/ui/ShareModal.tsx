@@ -11,6 +11,7 @@ export interface ShareModalProps {
   [key: string]: unknown;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented prop-shape contract above
 export function ShareModal(_props: ShareModalProps) {
   return null;
 }

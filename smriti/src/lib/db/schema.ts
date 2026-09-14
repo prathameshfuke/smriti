@@ -220,7 +220,20 @@ export interface DeviceTrustToken {
   signature: string;
 }
 
+/**
+ * A patient's photo, kept on this device only. It exists so a shared phone's
+ * "Who is playing?" screen can show faces; it is never synced, since the
+ * server `patients` table has no photo column and a face is more personal
+ * than anything else the app stores.
+ */
+export interface LocalPatientPhoto {
+  patientId: string;
+  dataUrl: string;
+  updatedAt: string;
+}
+
 export class SmritiDB extends Dexie {
+  patientPhotos!: Table<LocalPatientPhoto, string>;
   caregivers!: Table<LocalCaregiver>;
   patients!: Table<LocalPatient>;
   gameSessions!: Table<LocalGameSession>;
@@ -279,6 +292,10 @@ export class SmritiDB extends Dexie {
     // IndexedDB connection to this same database name).
     this.version(5).stores({
       deviceTrust: '',
+    });
+    // New store only. Local-only patient photos for the shared-phone picker.
+    this.version(6).stores({
+      patientPhotos: 'patientId',
     });
   }
 

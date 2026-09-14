@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { GAME_CONFIG } from "./config";
 import { cn } from "@/lib/utils";
@@ -164,6 +165,7 @@ function useGameSettings() {
 }
 
 export default function GameComponent({ t: propT, onComplete }: GameComponentProps) {
+    const router = useRouter();
     // 如果提供了 t prop，则使用它，否则使用 useTranslations 获取
     const defaultT = useTranslations('games.dualNBack.gameUI');
     const t = propT || defaultT;
@@ -261,7 +263,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     // app's original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== "idle") return;
-        void narrate(`${t('challenge')}. ${t('improveMemorySubtitle')}`, language, isOnline);
+        void narrate(`${t('challenge', { level: settings.selectedNBack })}. ${t('improveMemorySubtitle')}`, language, isOnline);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 
@@ -671,7 +673,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                         <div className="text-center py-8">
                             <div className="mb-6">
                                 <h3 className="font-serif-display text-patient-heading font-semibold mb-4 text-primary">
-                                    {t('challenge')}
+                                    {t('challenge', { level: settings.selectedNBack })}
                                 </h3>
                                 <p className="text-patient-body text-ink-muted mb-6">
                                     {t('improveMemorySubtitle')}
@@ -953,7 +955,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                     from_page: '/games/n-back',
                                                     to_page: '/app'
                                                 });
-                                                window.location.href = '/app';
+                                                router.push('/app');
                                             }}
                                         >
                                             {t('allGames')}

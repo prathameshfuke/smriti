@@ -53,11 +53,11 @@ export function DialogContent({ className, children }: { className?: string; chi
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
       onClick={() => ctx.setOpen(false)}
     >
       <div
-        className={cn('w-full max-w-md rounded-card border border-line200 bg-white p-6 shadow-md', className)}
+        className={cn('w-full max-w-md rounded-card border border-line200 bg-white p-6 shadow-xl', className)}
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -71,11 +71,11 @@ export function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLD
 }
 
 export function DialogTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h2 className={cn('text-lg font-semibold text-navy', className)} {...props} />;
+  return <h2 className={cn('font-serif-display text-[1.375rem] font-medium leading-tight text-ink', className)} {...props} />;
 }
 
 export function DialogDescription({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
-  return <p className={cn('text-sm text-ink-muted', className)} {...props} />;
+  return <p className={cn('text-base text-ink-muted', className)} {...props} />;
 }
 
 export function DialogFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

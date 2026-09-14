@@ -2,7 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
+import { LANGUAGES, NATIVE_LANGUAGE_NAME, type UILanguage } from '@/lib/i18n/languages';
 import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 
 /**
@@ -16,17 +16,14 @@ import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
  * Bengali script here (Meitei Mayek has no font loaded in this app yet —
  * see languages.ts).
  */
-const NATIVE_NAME: Record<UILanguage, string> = {
-  as: 'অসমীয়া',
-  hi: 'हिन्दी',
-  en: 'English',
-  brx: 'बड़ो',
-  mni: 'মৈতৈলোন্',
-  bn: 'বাংলা',
-  ne: 'नेपाली',
-};
+const NATIVE_NAME = NATIVE_LANGUAGE_NAME;
 
-export default function LanguagePicker() {
+export interface LanguagePickerProps {
+  /** Called after the app language changes, e.g. to save it on the patient. */
+  onSelect?: (language: UILanguage) => void;
+}
+
+export default function LanguagePicker({ onSelect }: LanguagePickerProps = {}) {
   const language = useSettingsStore((s) => s.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const pathname = usePathname();
@@ -48,18 +45,21 @@ export default function LanguagePicker() {
             key={code}
             type="button"
             lang={code}
-            onClick={() => setLanguage(code)}
+            onClick={() => {
+              setLanguage(code);
+              onSelect?.(code);
+            }}
             aria-pressed={active}
             style={{ minHeight: LANGUAGE_TARGET_MIN_PX }}
             className={
-              'flex-1 rounded-tile px-5 text-patient-body font-semibold ' +
+              'flex-1 rounded-control px-5 text-patient-body font-bold ' +
               'transition-transform duration-100 active:scale-[0.97] ' +
               'motion-reduce:active:scale-100 focus-visible:outline ' +
               'focus-visible:outline-4 focus-visible:outline-offset-2 ' +
               'focus-visible:outline-primary-dark ' +
               (active
                 ? 'bg-primary text-ink-inverse'
-                : 'bg-surface-card text-ink border-2 border-surface-muted hover:bg-surface-muted')
+                : 'bg-surface-card text-ink border-2 border-ink-muted/60 hover:bg-surface-muted')
             }
           >
             {NATIVE_NAME[code]}

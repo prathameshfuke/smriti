@@ -32,7 +32,9 @@ export default function ObjectGrid({
   onTileSelect,
   revealState,
   revealedTileIndex,
-  correctTileIndex,
+  // Not destructured to a local binding: kept in ObjectGridProps only so
+  // callers still type-check against the real target index. See the
+  // isOpen comment below for why this component must never read it itself.
   targetObject,
   flashIndex,
   flashCorrect,

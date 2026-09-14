@@ -3,7 +3,11 @@ import 'fake-indexeddb/auto';
 import type { ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+// The param's type is what keeps later .mockImplementation((table: string) => ...)
+// calls in this file type-checking against the same shape.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const serviceFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const callerFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
 const getUser = vi.fn();
 
@@ -251,7 +255,7 @@ describe('reminiscence-quiz GameComponent', () => {
     }
 
     expect(onComplete).toHaveBeenCalledWith(0);
-    expect(screen.getByText('⭐☆☆☆☆')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '1 of 5 stars' })).toBeInTheDocument();
   });
 });
 

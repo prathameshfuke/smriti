@@ -7,60 +7,77 @@ import BigButton from '@/components/ui/BigButton';
 import appIcon from '@/appicon.png';
 import GameTile from '@/components/ui/GameTile';
 import PinPad from '@/components/ui/PinPad';
-import ReminderCard, { REMINDER_ICON } from '@/components/ui/ReminderCard';
+import ReminderCard from '@/components/ui/ReminderCard';
+import PinDots from '@/components/ui/PinDots';
+import StreakFlame from '@/components/ui/StreakFlame';
 import Skeleton from '@/components/ui/Skeleton';
 import FamilyMessageBoard from '@/components/patient/FamilyMessageBoard';
 import { useReminders } from '@/hooks/useReminders';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useGameStreak } from '@/hooks/useGameStreak';
 import { acknowledgeReminder } from '@/lib/engine/reminders';
 import { getDeviceTrustToken, isTokenWellFormed } from '@/lib/auth/deviceTrust';
-import { restoreLocalSession, checkLiveCaregiverSession } from '@/lib/auth/localSession';
+import {
+  restoreLocalSession,
+  checkLiveCaregiverSession,
+  getDevicePatients,
+  needsDevicePatientChoice,
+  selectActivePatient,
+} from '@/lib/auth/localSession';
+import WhoIsPlaying from '@/components/patient/WhoIsPlaying';
+import type { LocalPatient } from '@/lib/db/schema';
 import { speak } from '@/lib/audio/speech';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTranslation } from '@/lib/i18n/provider';
 
 const GAMES = [
-  { gameName: 'Object Hunt', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.svg' },
-  { gameName: 'Word Stream', gameType: 'word_stream', href: '/games/word-stream', illustrationSrc: '/images/game-word-stream.svg' },
-  { gameName: 'Quick Tap', gameType: 'quick_tap', href: '/games/quick-tap', illustrationSrc: '/images/game-quick-tap.svg' },
-  { gameName: 'Path Match', gameType: 'path_match', href: '/games/path-match', illustrationSrc: '/images/game-path-match.svg' },
-  { gameName: 'Memory Match', gameType: 'memory_match', href: '/games/memory-match', illustrationSrc: '/images/game-memory-match.svg' },
-  { gameName: 'Memory Blocks', gameType: 'memory_blocks', href: '/games/memory-blocks', illustrationSrc: '/images/game-memory-blocks.svg' },
-  { gameName: 'Frog Leap', gameType: 'frog_leap', href: '/games/frog-leap', illustrationSrc: '/images/game-frog-leap.svg' },
-  { gameName: 'Counting Boxes', gameType: 'counting_boxes', href: '/games/counting-boxes', illustrationSrc: '/images/game-counting-boxes.svg' },
-  { gameName: 'Larger Number', gameType: 'larger_number', href: '/games/larger-number', illustrationSrc: '/images/game-larger-number.svg' },
-  { gameName: 'Memory Span', gameType: 'memory_span', href: '/games/memory-span', illustrationSrc: '/images/game-memory-span.svg' },
-  { gameName: 'Fish Trace', gameType: 'fish_trace', href: '/games/fish-trace', illustrationSrc: '/images/game-fish-trace.svg' },
-  { gameName: 'Double Decision', gameType: 'double_decision', href: '/games/double-decision', illustrationSrc: '/images/game-double-decision.svg' },
-  { gameName: 'N-Back', gameType: 'n_back', href: '/games/n-back', illustrationSrc: '/images/game-n-back.svg' },
+  { gameName: 'Object Hunt', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.png' },
+  { gameName: 'Word Stream', gameType: 'word_stream', href: '/games/word-stream', illustrationSrc: '/images/game-word-stream.png' },
+  { gameName: 'Quick Tap', gameType: 'quick_tap', href: '/games/quick-tap', illustrationSrc: '/images/game-quick-tap.png' },
+  { gameName: 'Path Match', gameType: 'path_match', href: '/games/path-match', illustrationSrc: '/images/game-path-match.png' },
+  { gameName: 'Memory Match', gameType: 'memory_match', href: '/games/memory-match', illustrationSrc: '/images/game-memory-match.png' },
+  { gameName: 'Memory Blocks', gameType: 'memory_blocks', href: '/games/memory-blocks', illustrationSrc: '/images/game-memory-blocks.png' },
+  { gameName: 'Frog Leap', gameType: 'frog_leap', href: '/games/frog-leap', illustrationSrc: '/images/game-frog-leap.png' },
+  { gameName: 'Counting Boxes', gameType: 'counting_boxes', href: '/games/counting-boxes', illustrationSrc: '/images/game-counting-boxes.png' },
+  { gameName: 'Larger Number', gameType: 'larger_number', href: '/games/larger-number', illustrationSrc: '/images/game-larger-number.png' },
+  { gameName: 'Memory Span', gameType: 'memory_span', href: '/games/memory-span', illustrationSrc: '/images/game-memory-span.png' },
+  { gameName: 'Fish Trace', gameType: 'fish_trace', href: '/games/fish-trace', illustrationSrc: '/images/game-fish-trace.png' },
+  { gameName: 'Double Decision', gameType: 'double_decision', href: '/games/double-decision', illustrationSrc: '/images/game-double-decision.png' },
+  { gameName: 'N-Back', gameType: 'n_back', href: '/games/n-back', illustrationSrc: '/images/game-n-back.png' },
   {
-    gameName: 'Memory Match: Family & Life',
+    // Never "Memory Match: ..." — that collides with the actual Memory
+    // Match pairs game above and reads as a variant of it. Matches the
+    // in-game nav title (game.reminiscenceQuiz.name) and the landing page.
+    gameName: 'Family & Life Quiz',
     gameType: 'reminiscence_quiz',
     href: '/games/reminiscence-quiz',
-    illustrationSrc: '/images/game-reminiscence-quiz.svg',
+    illustrationSrc: '/images/game-reminiscence-quiz.png',
   },
   {
     gameName: 'Routine Recall',
     gameType: 'routine_recall',
     href: '/games/routine-recall',
-    illustrationSrc: undefined,
+    illustrationSrc: '/images/game-routine-recall.png',
   },
 ] as const;
 
-/** No new illustration asset — reuses the same reminder-type icons already on the home screen's reminder cards. */
-function RoutineRecallIcon() {
-  return (
-    <span className="flex gap-1 text-3xl" aria-hidden="true">
-      <span>{REMINDER_ICON.medication.emoji}</span>
-      <span>{REMINDER_ICON.hydration.emoji}</span>
-      <span>{REMINDER_ICON.activity.emoji}</span>
-      <span>{REMINDER_ICON.appointment.emoji}</span>
-    </span>
-  );
-}
+/** BCP 47 tags for the date line. Browsers without Assamese or Bodo date
+ * data fall back to the nearest locale they have; the date still shows. */
+const DATE_LOCALE: Record<string, string> = {
+  as: 'as-IN',
+  hi: 'hi-IN',
+  en: 'en-IN',
+  brx: 'hi-IN',
+  mni: 'bn-IN',
+  bn: 'bn-IN',
+  ne: 'ne-NP',
+};
 
 const PIN_LENGTH = 4;
+
+/** A shared phone asks "Who is playing?" again after this long untouched. */
+const SHARED_IDLE_MS = 30 * 60_000;
 
 function PinDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
@@ -158,26 +175,25 @@ function PinDialog({ onClose }: { onClose: () => void }) {
     setDigits((d) => d.slice(0, -1));
   };
 
+  useEscapeKey(true, onClose);
+
   return (
     <div
       role="dialog"
       aria-label="Enter caregiver PIN"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/50 p-4"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 sm:items-center sm:p-4"
     >
-      <div className="flex w-full max-w-xs flex-col items-center gap-4 rounded-tile bg-surface-card p-6">
-        <h2 className="text-patient-body font-semibold text-ink">Enter Caregiver PIN</h2>
-
-        <div aria-hidden="true" className="flex gap-3">
-          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-            <span
-              key={i}
-              className={`h-4 w-4 rounded-full ${i < digits.length ? 'bg-primary' : 'bg-surface-muted'}`}
-            />
-          ))}
+      <div className="flex w-full max-w-sm flex-col gap-5 rounded-t-card bg-surface-card p-6 shadow-xl sm:rounded-card">
+        <div>
+          <h2 className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">Enter Caregiver PIN</h2>
+          <p className="mt-1 text-caregiver-body text-ink-muted">For the caregiver only.</p>
         </div>
 
+        <PinDots filled={digits.length} length={PIN_LENGTH} />
+
         {locked ? (
-          <p role="status" className="text-patient-sm text-danger">
+          <p role="status" className="text-caregiver-body font-bold text-danger">
             Too many wrong attempts. Try again in {remainingSeconds}s.
           </p>
         ) : null}
@@ -192,7 +208,7 @@ function PinDialog({ onClose }: { onClose: () => void }) {
 
 export default function HomePage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const [showPin, setShowPin] = useState(false);
   const { pendingReminder, clearPendingReminder } = useReminders();
@@ -228,9 +244,90 @@ export default function HomePage() {
     };
   }, [currentPatient]);
 
+  // Who uses this phone. More than one person means a shared phone: ask who
+  // is playing on open, after a long idle, and whenever someone taps "Not you?".
+  const [devicePatients, setDevicePatients] = useState<LocalPatient[]>([]);
+  const [needsPick, setNeedsPick] = useState(false);
+  const [unassigned, setUnassigned] = useState(false);
+  const [deviceChecked, setDeviceChecked] = useState(false);
+
+
+  useEffect(() => {
+    if (restoring) return;
+    let cancelled = false;
+    void Promise.all([getDevicePatients(), needsDevicePatientChoice()]).then(([patients, choice]) => {
+      if (cancelled) return;
+      setDevicePatients(patients);
+      setUnassigned(choice);
+      const current = usePatientStore.getState().currentPatient;
+
+      if (patients.length === 0) {
+        // Nobody is linked to this phone: never leave another patient's
+        // profile selected behind the "choose" prompt.
+        if (choice && current) usePatientStore.getState().setCurrentPatient(null);
+      } else if (patients.length === 1) {
+        if (current?.id !== patients[0].id) selectActivePatient(patients[0]);
+      } else {
+        const { activePatientId, lastActivityAt } = useSettingsStore.getState();
+        const active = patients.find((p) => p.id === activePatientId);
+        const idle = lastActivityAt !== null && Date.now() - lastActivityAt > SHARED_IDLE_MS;
+        if (!active || idle) setNeedsPick(true);
+        else if (current?.id !== active.id) selectActivePatient(active);
+      }
+      setDeviceChecked(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [restoring]);
+
+  useEffect(() => {
+    if (devicePatients.length < 2) return;
+    const check = () => {
+      const { lastActivityAt } = useSettingsStore.getState();
+      if (lastActivityAt !== null && Date.now() - lastActivityAt > SHARED_IDLE_MS) setNeedsPick(true);
+    };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    const interval = setInterval(check, 60_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [devicePatients.length]);
+
+  /**
+   * Opens the caregiver area. With a PIN, the PIN dialog. Without one (it
+   * can be skipped at sign-in) the PIN dialog could never succeed, so it
+   * goes through email sign-in, which then offers to set a PIN.
+   */
+  const openCaregiver = (destination: string) => {
+    if (useSettingsStore.getState().caregiverPinHash) {
+      setShowPin(true);
+      return;
+    }
+    router.push(`/caregiver/login?next=${encodeURIComponent(destination)}`);
+  };
+
+  const choosePatient = (patient: LocalPatient) => {
+    selectActivePatient(patient);
+    setFamilyNote(null);
+    setNeedsPick(false);
+  };
+
+  const isShared = devicePatients.length > 1;
+  const reminderFor = isShared
+    ? devicePatients.find((p) => p.id === pendingReminder?.patientId)?.displayName
+    : undefined;
+
   const onAcknowledgeReminder = async () => {
-    if (pendingReminder && currentPatient) {
-      await acknowledgeReminder(pendingReminder.id, currentPatient.id, 'touch');
+    // The reminder's own patient, not whoever is selected: on a shared phone
+    // Hari's reminder can come up while Maya is playing.
+    const patientId = pendingReminder?.patientId ?? currentPatient?.id;
+    if (pendingReminder && patientId) {
+      await acknowledgeReminder(pendingReminder.id, patientId, 'touch');
     }
     clearPendingReminder();
   };
@@ -239,10 +336,13 @@ export default function HomePage() {
   // hasn't been shown yet. Rate limit (max 1/day) is enforced server-side in
   // GET /api/patients/[id]/surface-note — this is just the client asking.
   useEffect(() => {
-    if (!currentPatient) return;
+    // Not until we know who is actually playing: on a shared phone the
+    // restored patient may be the wrong person, and the server marks a note
+    // as shown the moment it is fetched.
+    if (!currentPatient || !deviceChecked || needsPick || unassigned) return;
     let cancelled = false;
 
-    getDeviceTrustToken().then((token) => {
+    getDeviceTrustToken(currentPatient.id).then((token) => {
       if (cancelled || !token || !isTokenWellFormed(token)) return;
       fetch(
         `/api/patients/${currentPatient.id}/surface-note?deviceTrustToken=${encodeURIComponent(
@@ -259,114 +359,170 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [currentPatient]);
+  }, [currentPatient, deviceChecked, needsPick, unassigned]);
 
   useEffect(() => {
     if (familyNote) speak(familyNote.text);
   }, [familyNote]);
 
+  // Today's date, read in an effect (not during render) and refreshed each
+  // minute so a tablet left on overnight rolls over to the new day.
+  const [today, setToday] = useState<Date | null>(null);
+  useEffect(() => {
+    const tick = () => setToday(new Date());
+    tick();
+    const interval = setInterval(tick, 60_000);
+    return () => clearInterval(interval);
+  }, []);
+  const todayLabel = today
+    ? today.toLocaleDateString(DATE_LOCALE[language] ?? 'en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+    : null;
+
   return (
-    <main className="mx-auto flex w-full max-w-patient flex-col gap-6 bg-canvas px-4 py-6 relative">
-      <button
-        data-testid="caregiver-access-icon"
-        aria-label="Caregiver access"
-        onClick={() => setShowPin(true)}
-        className="absolute top-4 right-4 h-10 w-10 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex items-center justify-center"
-        title="Caregiver dashboard"
-      >
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className="text-primary"
-          aria-hidden="true"
+    <main className="mx-auto flex w-full max-w-patient flex-col bg-canvas px-5 pt-4 pb-10">
+      <header className="flex min-h-touch items-center justify-between gap-4">
+        <p className="flex items-center gap-2.5 font-serif-display text-[1.375rem] font-medium text-ink">
+          <Image src={appIcon} alt="" width={28} height={28} className="h-7 w-7" priority />
+          SMRITI
+        </p>
+        <button
+          type="button"
+          data-testid="caregiver-access-icon"
+          aria-label="Caregiver access"
+          onClick={() => openCaregiver('/caregiver/dashboard')}
+          className="flex min-h-touch-min items-center gap-1.5 rounded-control px-3 text-patient-sm font-bold text-ink-muted underline decoration-ink-muted/40 underline-offset-4 transition-colors hover:bg-surface-muted hover:text-ink"
         >
-          <circle cx="12" cy="8" r="4" />
-          <path d="M 12 14 C 7.58 14 4 16.69 4 20 v 2 h 16 v -2 c 0 -3.31 -3.58 -6 -8 -6 Z" />
-        </svg>
-      </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/caregiver-access.png" alt="" className="h-5 w-5" />
+          Caregiver
+        </button>
+      </header>
 
       {pendingReminder ? (
         <ReminderCard
           reminder={pendingReminder}
           onAcknowledge={() => void onAcknowledgeReminder()}
           onSnooze={clearPendingReminder}
+          forName={reminderFor}
         />
       ) : null}
 
       {familyNote && !pendingReminder ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="mx-4 max-w-patient rounded-tile bg-surface-card p-8 text-center shadow-2xl">
-            <p className="text-4xl" aria-hidden="true">
-              💌
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="family-note-title"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 sm:items-center"
+        >
+          <div className="w-full max-w-patient rounded-card bg-surface-card p-6 shadow-2xl sm:p-8">
+            <p id="family-note-title" className="font-serif-display text-patient-heading font-medium leading-[1.1] text-ink">
+              A message for you
             </p>
-            <p className="mt-3 font-serif-display text-patient-heading leading-[1.05] tracking-[-0.02em] text-ink">A message for you</p>
-            <p className="mt-3 text-patient-body text-ink">{familyNote.text}</p>
-            <div className="mt-6">
+            <p className="mt-4 text-patient-body text-ink">{familyNote.text}</p>
+            <div className="mt-8">
               <BigButton label="Thank you!" variant="primary" onClick={() => setFamilyNote(null)} />
             </div>
           </div>
         </div>
       ) : null}
 
-      <h1 className="flex items-center justify-center gap-2 text-center text-2xl font-bold text-primary">
-        <Image src={appIcon} alt="" width={32} height={32} className="h-8 w-8" priority />
-        SMRITI
-      </h1>
+      {unassigned ? (
+        <section className="mt-8 flex flex-col gap-4">
+          <h1 className="font-serif-display text-patient-heading font-medium text-ink">
+            {t('home.chooseWhoTitle')}
+          </h1>
+          <p className="text-patient-body text-ink-muted">{t('home.chooseWhoBody')}</p>
+          <BigButton label={t('home.caregiver')} variant="primary" onClick={() => openCaregiver('/caregiver/device?setup=1')} />
+        </section>
+      ) : isShared && needsPick ? (
+        <WhoIsPlaying patients={devicePatients} onSelect={choosePatient} />
+      ) : null}
 
+      {unassigned || (isShared && needsPick) ? null : (
+      <>
       {currentPatient ? (
-        <>
-          <p className="text-center font-serif-display text-patient-heading text-ink">
-            Hello, {currentPatient.displayName}!
-          </p>
-          {!streak.isLoading ? (
-            <p className="text-center text-patient-body text-ink-muted" aria-live="off">
-              {streak.current > 0
-                ? `🔥 ${streak.current} ${t('home.streakCount')}`
-                : t('home.streakStart')}
+        <section aria-label="Today" className="mt-8">
+          <h1 className="font-serif-display text-[2.5rem] font-medium leading-[1.1] tracking-[-0.01em] text-ink">
+            {t('home.greeting')}, {currentPatient.displayName}
+          </h1>
+          {isShared ? (
+            <button
+              type="button"
+              onClick={() => setNeedsPick(true)}
+              className="mt-2 inline-flex min-h-touch-min items-center rounded-control px-1 text-patient-body font-bold text-primary-dark underline decoration-primary/40 underline-offset-4"
+            >
+              {t('home.notYou').replace('{name}', currentPatient.displayName)}
+            </button>
+          ) : null}
+          {todayLabel ? (
+            <p className="mt-3 text-patient-body font-bold text-ink">
+              <time dateTime={today?.toISOString().slice(0, 10)}>{todayLabel}</time>
             </p>
           ) : null}
-        </>
+          {!streak.isLoading ? (
+            <p
+              className={
+                'mt-5 flex items-center gap-3 rounded-card border px-4 py-3 text-patient-body ' +
+                (streak.current > 0 ? 'border-warning/40 bg-warning/5 font-bold text-ink' : 'border-line200 bg-surface-card text-ink-muted')
+              }
+              aria-live="off"
+            >
+              <StreakFlame active={streak.current > 0} size={30} />
+              <span>{streak.current > 0 ? `${streak.current} ${t('home.streakCount')}` : t('home.streakStart')}</span>
+            </p>
+          ) : null}
+        </section>
       ) : restoring ? (
-        <div aria-busy="true" aria-label="Loading" className="flex flex-col items-center gap-2">
-          <Skeleton height={28} width="60%" />
+        <div aria-busy="true" aria-label="Loading" className="mt-8 flex flex-col gap-3">
+          <Skeleton height={44} width="75%" />
+          <Skeleton height={28} width="50%" />
         </div>
       ) : (
-        <div className="flex flex-col items-center gap-4">
-          <p className="text-patient-body text-ink">No patient selected</p>
+        <section className="mt-8 flex flex-col gap-4">
+          <h1 className="font-serif-display text-patient-heading font-medium text-ink">No patient selected</h1>
+          <p className="text-patient-body text-ink-muted">A caregiver needs to sign in to set up this device.</p>
           <BigButton
             label="Caregiver login"
             variant="primary"
             onClick={() => router.push('/caregiver/login?next=/app')}
           />
-        </div>
+        </section>
       )}
 
-      {currentPatient ? <FamilyMessageBoard patientId={currentPatient.id} /> : null}
-
-      <div className="grid grid-cols-2 gap-4">
-        {GAMES.map((game) => (
-          <GameTile
-            key={game.gameType}
-            gameName={game.gameName}
-            href={game.href}
-            illustrationSrc={game.illustrationSrc}
-            icon={game.illustrationSrc ? undefined : <RoutineRecallIcon />}
-            difficultyLevel={
-              ((currentPatient?.currentDifficulty[game.gameType] ?? 1) as 1 | 2 | 3)
-            }
-          />
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-3">
+      <div className="mt-8 flex flex-col gap-touch-gap">
         <BigButton label="Ask Smriti" variant="primary" onClick={() => router.push('/companion')} />
         <BigButton label="Reminders" variant="secondary" onClick={() => router.push('/reminders')} />
-        <BigButton label={t('home.myProgress')} variant="secondary" onClick={() => setShowPin(true)} />
       </div>
+
+      {currentPatient ? (
+        <div className="mt-10 empty:hidden">
+          <FamilyMessageBoard patientId={currentPatient.id} />
+        </div>
+      ) : null}
+
+      <section aria-labelledby="games-heading" className="mt-10">
+        <h2 id="games-heading" className="font-serif-display text-[1.75rem] font-medium leading-tight text-ink">
+          Choose a game
+        </h2>
+        <ul className="mt-4 flex flex-col gap-3">
+          {GAMES.map((game) => (
+            <li key={game.gameType}>
+              <GameTile
+                gameName={game.gameName}
+                href={game.href}
+                illustrationSrc={game.illustrationSrc}
+                difficultyLevel={((currentPatient?.currentDifficulty[game.gameType] ?? 1) as 1 | 2 | 3)}
+              />
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="mt-10 border-t border-line200 pt-6">
+        <BigButton label={t('home.myProgress')} variant="secondary" onClick={() => openCaregiver('/caregiver/dashboard')} />
+      </div>
+      </>
+      )}
 
       {showPin ? <PinDialog onClose={() => setShowPin(false)} /> : null}
     </main>

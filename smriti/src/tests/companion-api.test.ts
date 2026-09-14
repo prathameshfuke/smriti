@@ -28,7 +28,11 @@ function makeChain(result: { data: unknown; error: unknown }) {
   return chain;
 }
 
+// The param's type is what keeps later .mockImplementation((table: string) => ...)
+// calls in this file type-checking against the same shape.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const serviceFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const callerFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
 
 vi.mock('@/lib/supabase/client', () => ({

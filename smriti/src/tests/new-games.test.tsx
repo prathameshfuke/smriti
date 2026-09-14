@@ -121,6 +121,17 @@ describe('New games — smoke render + PatientNav back always present', () => {
     renderPage(<NBackPage />);
     expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
   });
+
+  it('N-Back shows real instruction text, not the raw next-intl key', () => {
+    // Regression: `t('challenge')` was called with no `{level}` param even
+    // though the message requires one ('...matches from {level} step(s)
+    // back.'). next-intl has no fallback for a missing required param — it
+    // renders the literal key string instead, so the idle screen showed
+    // "games.dualNBack.gameUI.challenge" verbatim.
+    renderPage(<NBackPage />);
+    expect(screen.queryByText(/games\.dualNBack/)).not.toBeInTheDocument();
+    expect(screen.getByText(/step\(s\) back/i)).toBeInTheDocument();
+  });
 });
 
 describe('New games — instruction audio goes through narrate(), not raw browser speak()', () => {

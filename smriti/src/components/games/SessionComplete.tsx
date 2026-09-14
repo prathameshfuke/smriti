@@ -45,16 +45,37 @@ export default function SessionComplete({
   }, []);
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-game-bg px-4 text-center">
-      <p className="text-4xl" aria-hidden="true">
-        {'⭐'.repeat(safeStars)}
-        {'☆'.repeat(5 - safeStars)}
-      </p>
-      <p className="font-serif-display text-patient-heading text-ink">
-        {correctCount} out of {totalCount} correct!
-      </p>
-      <p className="text-patient-body text-ink-muted">{message}</p>
-      <BigButton label="Back to home" variant="success" onClick={onGoHome} />
+    <div className="flex min-h-dvh flex-col justify-center bg-surface px-6 py-10">
+      <div className="mx-auto flex w-full max-w-patient flex-col gap-6">
+        <div role="img" aria-label={`${safeStars} of 5 stars`} className="flex gap-2">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Star key={i} filled={i < safeStars} />
+          ))}
+        </div>
+        <div>
+          <p className="font-serif-display text-patient-heading font-medium text-ink">
+            {correctCount} out of {totalCount} correct
+          </p>
+          <p className="mt-3 text-patient-body text-ink-muted">{message}</p>
+        </div>
+        <BigButton label="Back to home" variant="primary" onClick={onGoHome} />
+      </div>
     </div>
+  );
+}
+
+/** Five-point star, muga gold. The gold outline on empty stars keeps the
+ * count of five visible, so one star reads as "one of five", not "one". */
+function Star({ filled }: { filled: boolean }) {
+  return (
+    <svg width="44" height="44" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M12 2.8l2.8 5.7 6.3.9-4.55 4.43 1.07 6.27L12 17.13 6.38 20.1l1.07-6.27L2.9 9.4l6.3-.9L12 2.8z"
+        fill={filled ? '#C9A227' : 'none'}
+        stroke={filled ? '#8B6914' : '#C9A227'}
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

@@ -85,7 +85,7 @@ function ReminiscenceQuizPageInner() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
       <PatientNav
-        title={t('game.reminiscenceQuiz.name') || 'Memory Match'}
+        title={t('game.reminiscenceQuiz.name')}
         onBack={() => {
           void goHome();
         }}

@@ -37,13 +37,13 @@ export default function AnimatedSwitch({ checked, onChange, label, disabled = fa
       <span
         aria-hidden="true"
         className={
-          'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors duration-150 ' +
-          (checked ? 'border-primary bg-primary' : 'border-line200 bg-surface-muted')
+          'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border-2 transition-colors duration-150 ' +
+          (checked ? 'border-primary bg-primary' : 'border-ink-muted bg-surface-card')
         }
       >
         <motion.span
-          className="h-5 w-5 rounded-full bg-white"
-          animate={{ x: checked ? 22 : 3 }}
+          className={`h-4 w-4 rounded-full ${checked ? 'bg-white' : 'bg-ink-muted'}`}
+          animate={{ x: checked ? 23 : 3 }}
           transition={reduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 500, damping: 32 }}
         />
       </span>

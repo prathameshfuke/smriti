@@ -61,6 +61,14 @@ function dotColorClass(accuracy: number): string {
  * low-data session list (below `minSessionsForTrend`, no line drawn so a
  * 1-2 point blip is never mistaken for a trend), or the full line chart.
  */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** "2026-09-02" -> "2 Sep": the year adds nothing inside a 30-180 day chart. */
+function shortDate(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return m && d ? `${Number(d)} ${MONTHS[Number(m) - 1]}` : iso;
+}
+
 export default function CognitiveTrendChart({
   points,
   sessionDays,
@@ -94,11 +102,10 @@ export default function CognitiveTrendChart({
           onClick={() => onRangeChange(r)}
           aria-pressed={range === r}
           className={
-            'rounded-card px-3 py-2 text-caregiver-body font-semibold transition-colors ' +
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ' +
+            'min-h-12 min-w-16 rounded-control px-4 text-caregiver-body font-bold transition-colors ' +
             (range === r
               ? 'bg-primary text-ink-inverse'
-              : 'bg-surface-muted text-ink hover:bg-game-active')
+              : 'border-2 border-ink-muted/60 bg-surface-card text-ink hover:bg-surface-muted')
           }
         >
           {r}
@@ -157,7 +164,7 @@ export default function CognitiveTrendChart({
       {tabs}
 
       {drops.length > 0 ? (
-        <p className="flex items-center gap-2 text-caregiver-body text-danger">
+        <p className="flex items-center gap-2 text-caregiver-body font-bold text-ink">
           <span aria-hidden="true" className="h-3 w-3 shrink-0 rounded-full bg-danger" />
           {drops.length === 1
             ? `${Math.round(drops[0].delta)} point drop on ${drops[0].date}`
@@ -170,7 +177,13 @@ export default function CognitiveTrendChart({
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={daily} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: AXIS_TICK_COLOR }} tickLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 13, fill: AXIS_TICK_COLOR }}
+                tickLine={false}
+                tickFormatter={shortDate}
+                minTickGap={24}
+              />
               <YAxis
                 domain={[0, 100]}
                 tick={{ fontSize: 12, fill: AXIS_TICK_COLOR }}
@@ -184,6 +197,7 @@ export default function CognitiveTrendChart({
                   borderRadius: 12,
                 }}
                 formatter={(v) => [`${Math.round(Number(v))}%`, 'Accuracy']}
+                labelFormatter={(d) => shortDate(String(d))}
               />
               <Line
                 type="monotone"

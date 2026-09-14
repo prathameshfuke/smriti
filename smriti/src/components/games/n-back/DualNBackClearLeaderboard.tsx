@@ -221,7 +221,7 @@ export default function DualNBackClearLeaderboard() {
                 </div>
             )}
 
-            <div className="max-h-[420px] overflow-y-auto">
+            <div>
                 {entries.length === 0 ? (
                     <div className="p-8 text-center text-patient-sm text-ink-muted">
                         {t('empty')}

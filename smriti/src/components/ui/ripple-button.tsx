@@ -13,6 +13,7 @@ export interface RippleButtonProps extends ButtonProps {
  * shimmer-button.tsx for the same reasoning).
  */
 export const RippleButton = React.forwardRef<HTMLButtonElement, RippleButtonProps>(
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- accepted and dropped, see RippleButtonProps above
   ({ rippleColor: _rippleColor, rippleDuration: _rippleDuration, ...props }, ref) => (
     <Button ref={ref} {...props} />
   ),

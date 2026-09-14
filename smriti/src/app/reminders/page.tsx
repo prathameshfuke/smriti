@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2 } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
+import { buttonClass, fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { db, type LocalReminderAck, type LocalReminderSchedule } from '@/lib/db/schema';
 import {
   generateDefaultHydrationSchedule,
@@ -15,13 +15,6 @@ import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import type { ReminderType } from '@/lib/supabase/types';
 
-const TYPE_ICON: Record<ReminderType, string> = {
-  medication: '💊',
-  hydration: '💧',
-  activity: '🚶',
-  appointment: '📅',
-};
-
 const TYPE_LABEL: Record<ReminderType, string> = {
   medication: 'Medication',
   hydration: 'Hydration',
@@ -29,7 +22,8 @@ const TYPE_LABEL: Record<ReminderType, string> = {
   appointment: 'Appointment',
 };
 
-const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 function todayDateString(): string {
@@ -56,6 +50,7 @@ export default function RemindersPage() {
   const [label, setLabel] = useState('');
   const [timeOfDay, setTimeOfDay] = useState('08:00');
   const [days, setDays] = useState<boolean[]>(ALL_DAYS.map(() => true));
+  const [savedLabel, setSavedLabel] = useState<string | null>(null);
 
   const reload = async () => {
     if (!currentPatient) return;
@@ -104,6 +99,7 @@ export default function RemindersPage() {
     };
 
     await saveReminderSchedules([row]);
+    setSavedLabel(`${editingId ? 'Updated' : 'Added'}: ${row.label} at ${row.timeOfDay}.`);
     resetForm();
     await reload();
   };
@@ -150,47 +146,38 @@ export default function RemindersPage() {
   const ackByReminderId = new Map(todayAcks.map((a) => [a.reminderId, a]));
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-surface">
       <PatientNav title="Reminders" onBack={() => router.push('/app')} />
 
-      <main className="flex flex-1 flex-col gap-8 px-4 py-6">
-        <section className="flex flex-col gap-3">
-          <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+      <main className="flex flex-1 flex-col gap-10 px-5 py-8">
+        <section aria-labelledby="today-heading" className="flex flex-col gap-4">
+          <h2 id="today-heading" className="font-serif-display text-[2rem] font-medium leading-tight text-ink">
             Today
           </h2>
           {todaysSchedules.length === 0 ? (
-            <p className="text-caregiver-body text-ink-muted">No reminders scheduled today.</p>
+            <p className="text-patient-body text-ink-muted">No reminders scheduled today.</p>
           ) : (
-            <ul className="flex flex-col gap-2">
+            <ul className="divide-y divide-line200 overflow-hidden rounded-card border border-line200 bg-surface-card">
               {todaysSchedules.map((s) => {
                 const ack = ackByReminderId.get(s.id);
                 return (
-                  <li
-                    key={s.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl" aria-hidden="true">
-                        {TYPE_ICON[s.reminderType]}
-                      </span>
-                      <div>
-                        <p className="text-caregiver-body text-ink">
-                          {s.timeOfDay} · {s.label}
+                  <li key={s.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-4 px-5 py-4">
+                    <span className="font-serif-display text-[1.5rem] font-medium tabular-nums text-ink">{s.timeOfDay}</span>
+                    <div className="min-w-0">
+                      <p className="text-patient-body font-bold text-ink">{s.label}</p>
+                      {ack?.acknowledgedAt ? (
+                        <p className="mt-1 flex items-center gap-2 text-patient-sm text-ink">
+                          <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-success" />
+                          Done at{' '}
+                          {new Date(ack.acknowledgedAt).toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
                         </p>
-                        {ack?.acknowledgedAt ? (
-                          <p className="text-patient-sm text-success">
-                            Done at{' '}
-                            {new Date(ack.acknowledgedAt).toLocaleTimeString([], {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                            })}
-                          </p>
-                        ) : null}
-                      </div>
+                      ) : (
+                        <p className="mt-1 text-patient-sm text-ink-muted">Not done yet</p>
+                      )}
                     </div>
-                    <span aria-hidden="true" className={ack ? 'text-success' : 'text-ink-muted'}>
-                      {ack ? '✓' : '○'}
-                    </span>
                   </li>
                 );
               })}
@@ -200,110 +187,151 @@ export default function RemindersPage() {
 
         {caregiverPresent ? (
           <>
-            <section className="flex flex-col gap-3">
-              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
-                {editingId ? 'Edit Reminder' : 'Add Reminder'}
-              </h2>
-
-              <div className="grid grid-cols-2 gap-2">
-                {(Object.keys(TYPE_LABEL) as ReminderType[]).map((t) => (
-                  <BigButton
-                    key={t}
-                    label={`${TYPE_ICON[t]} ${TYPE_LABEL[t]}`}
-                    variant={type === t ? 'primary' : 'secondary'}
-                    onClick={() => setType(t)}
-                  />
-                ))}
+            <section aria-labelledby="edit-reminder-heading" className="flex flex-col gap-5 rounded-card border border-line200 bg-surface-card p-5">
+              <div>
+                <h2 id="edit-reminder-heading" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+                  {editingId ? 'Edit Reminder' : 'Add Reminder'}
+                </h2>
+                <p className="mt-1 text-patient-sm text-ink-muted">Only shown while a caregiver is signed in.</p>
               </div>
 
-              <input
-                type="text"
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Morning red pill"
-                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
+              <fieldset>
+                <legend className={labelClass}>Type</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  {(Object.keys(TYPE_LABEL) as ReminderType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      aria-pressed={type === t}
+                      onClick={() => setType(t)}
+                      className={
+                        'min-h-14 rounded-control px-3 text-caregiver-body font-bold transition-colors ' +
+                        (type === t
+                          ? 'bg-primary text-ink-inverse'
+                          : 'border-2 border-ink-muted/60 bg-surface-card text-ink hover:bg-surface-muted')
+                      }
+                    >
+                      {TYPE_LABEL[t]}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
 
-              <input
-                type="time"
-                value={timeOfDay}
-                onChange={(e) => setTimeOfDay(e.target.value)}
-                className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-
-              <div className="flex gap-2">
-                {DAY_LETTERS.map((letter, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => toggleDay(i)}
-                    aria-pressed={days[i]}
-                    style={{ height: 40, width: 40 }}
-                    className={
-                      'rounded-full text-caregiver-body font-semibold transition-colors duration-150 ' +
-                      (days[i]
-                        ? 'bg-primary text-ink-inverse'
-                        : 'bg-surface-muted text-ink-muted hover:bg-surface-muted')
-                    }
-                  >
-                    {letter}
-                  </button>
-                ))}
+              <div>
+                <label htmlFor="reminder-label" className={labelClass}>
+                  What to remind
+                </label>
+                <input
+                  id="reminder-label"
+                  type="text"
+                  value={label}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Morning red pill"
+                  className={fieldClass}
+                />
               </div>
 
-              <BigButton label="Save reminder" variant="primary" onClick={() => void saveReminder()} />
+              <div>
+                <label htmlFor="reminder-time" className={labelClass}>
+                  Time
+                </label>
+                <input
+                  id="reminder-time"
+                  type="time"
+                  value={timeOfDay}
+                  onChange={(e) => setTimeOfDay(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+
+              <fieldset>
+                <legend className={labelClass}>Days</legend>
+                <div className="grid grid-cols-4 gap-2 sm:grid-cols-7">
+                  {DAY_NAMES.map((day, i) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      aria-pressed={days[i]}
+                      aria-label={DAY_FULL[i]}
+                      className={
+                        'min-h-12 rounded-control text-patient-sm font-bold transition-colors duration-150 ' +
+                        (days[i]
+                          ? 'bg-primary text-ink-inverse'
+                          : 'border-2 border-ink-muted/60 bg-surface-card text-ink hover:bg-surface-muted')
+                      }
+                    >
+                      {day}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <BigButton
+                label={editingId ? 'Save changes' : 'Save reminder'}
+                variant="primary"
+                disabled={!label.trim()}
+                onClick={() => void saveReminder()}
+              />
+              <p role="status" className="empty:hidden text-caregiver-body font-bold text-ink">
+                {savedLabel}
+              </p>
+              {editingId ? (
+                <button type="button" onClick={resetForm} className={`${textActionClass} self-center`}>
+                  Cancel editing
+                </button>
+              ) : null}
             </section>
 
-            <section className="flex flex-col gap-3">
-              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+            <section aria-labelledby="quick-setup-heading" className="flex flex-col gap-3">
+              <h2 id="quick-setup-heading" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
                 Quick setup
               </h2>
-              <BigButton
-                label="Add morning medication reminder at 8:00 AM"
-                variant="secondary"
-                onClick={() => void quickAddMedication()}
-              />
-              <BigButton
-                label="Add hourly hydration reminders"
-                variant="secondary"
-                onClick={() => void quickAddHydration()}
-              />
+              <button type="button" onClick={() => void quickAddMedication()} className={`${buttonClass.secondary} min-h-14 text-left`}>
+                Add morning medication reminder at 8:00 AM
+              </button>
+              <button type="button" onClick={() => void quickAddHydration()} className={`${buttonClass.secondary} min-h-14 text-left`}>
+                Add hourly hydration reminders
+              </button>
             </section>
 
-            <section className="flex flex-col gap-2">
-              <h2 className="font-serif-display text-caregiver-heading font-semibold text-ink">
+            <section aria-labelledby="all-reminders-heading" className="flex flex-col gap-3">
+              <h2 id="all-reminders-heading" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
                 All reminders
               </h2>
-              <ul className="flex flex-col gap-2">
-                {activeSchedules.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex items-center justify-between rounded-card border border-line200 bg-surface-card p-3"
-                  >
-                    <p className="text-caregiver-body text-ink">
-                      {TYPE_ICON[s.reminderType]} {s.timeOfDay} · {s.label}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        aria-label={`Edit ${s.label}`}
-                        onClick={() => editReminder(s)}
-                        style={{ minHeight: 40, minWidth: 40 }}
-                      >
-                        <Pencil size={20} aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Delete ${s.label}`}
-                        onClick={() => void deleteReminder(s)}
-                        style={{ minHeight: 40, minWidth: 40 }}
-                      >
-                        <Trash2 size={20} aria-hidden="true" />
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+              {activeSchedules.length === 0 ? (
+                <p className="text-caregiver-body text-ink-muted">No reminders yet.</p>
+              ) : (
+                <ul className="divide-y divide-line200 overflow-hidden rounded-card border border-line200 bg-surface-card">
+                  {activeSchedules.map((s) => (
+                    <li key={s.id} className="flex flex-col gap-1 px-5 py-4">
+                      <p className="text-caregiver-body text-ink">
+                        <span className="font-bold tabular-nums">{s.timeOfDay}</span>
+                        <span className="text-ink-muted"> {TYPE_LABEL[s.reminderType]}</span>
+                      </p>
+                      <p className="text-caregiver-body font-bold text-ink">{s.label}</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          aria-label={`Edit ${s.label}`}
+                          onClick={() => editReminder(s)}
+                          className={`${textActionClass} pr-3`}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Delete ${s.label}`}
+                          onClick={() => void deleteReminder(s)}
+                          className={`${textActionClass} px-3 text-ink-muted decoration-ink-muted/40 hover:text-danger`}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </section>
           </>
         ) : null}

@@ -1,21 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuid } from 'uuid';
-import {
-  Pencil,
-  Trash2,
-  Plus,
-  User,
-  CalendarClock,
-  BookOpen,
-  Pill,
-  AlertTriangle,
-  Check,
-  X,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 import BigButton from '@/components/ui/BigButton';
+import { useEscapeKey } from '@/hooks/useEscapeKey';
+import PageHeader from '@/components/ui/PageHeader';
+import { buttonClass, fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { authedFetch } from '@/lib/api/client';
 import { usePatientStore } from '@/stores/patientStore';
 import { useMemoryBankStore } from '@/stores/memoryBankStore';
@@ -24,47 +14,41 @@ import type { MemoryBankCategory } from '@/lib/supabase/types';
 import type { ParsedMemoryBankEntry } from '@/lib/ai/onboarding-parser';
 
 /**
- * One visual identity per category — an icon plus an accent colour, used
- * consistently in the section headings, the add/edit dialog, and the
- * per-entry cards. Previously the add/edit dialog just said "Add entry" no
- * matter which of the four "+ Add" links opened it, so a caregiver filling
- * in several entries back-to-back had no in-dialog confirmation of which
- * bucket they were in. Colour is never the only signal — every badge is
- * always paired with the category name in text — matching the caregiver
- * dashboard rule in docs/07_AGENT_PROMPTS.md: "don't rely on colour alone
- * for status."
+ * Per-category wording, used consistently in the section headings, the
+ * add/edit dialog title and its field labels. The dialog always names the
+ * category it is adding to ("Add Schedule", not just "Add entry"), so a
+ * caregiver filling in several entries back-to-back always knows which
+ * bucket they are in. Words only: an earlier version paired each category
+ * with an icon and accent colour, which added four things to learn and
+ * nothing the heading did not already say.
  */
 const CATEGORY_META: Record<
   MemoryBankCategory,
-  { heading: string; singular: string; titleLabel: string; Icon: LucideIcon; badgeClass: string }
+  { heading: string; singular: string; titleLabel: string; hint: string }
 > = {
   person: {
     heading: 'People',
     singular: 'Person',
     titleLabel: 'Name',
-    Icon: User,
-    badgeClass: 'bg-primary/10 text-primary',
+    hint: 'Family, friends and neighbours they may ask about.',
   },
   schedule: {
     heading: 'Schedule',
     singular: 'Schedule',
     titleLabel: 'Title',
-    Icon: CalendarClock,
-    badgeClass: 'bg-muga/15 text-muga-dark',
+    hint: 'Regular visits, outings and routines.',
   },
   life_fact: {
     heading: 'Life Facts',
     singular: 'Life Fact',
     titleLabel: 'Title',
-    Icon: BookOpen,
-    badgeClass: 'bg-navy/10 text-navy',
+    hint: 'Home, work, favourite things and stories.',
   },
   medication: {
     heading: 'Medication',
     singular: 'Medication',
     titleLabel: 'Title',
-    Icon: Pill,
-    badgeClass: 'bg-warning/15 text-warning',
+    hint: 'What they take and when.',
   },
 };
 
@@ -297,64 +281,70 @@ export default function MemoryBankPage() {
     setConfirmingId(null);
   };
 
+  // Stable identities so useEscapeKey's listener isn't rebound every render.
+  const closeForm = useCallback(() => setForm(null), []);
+  const closeQuickAdd = useCallback(() => setQuickAddOpen(false), []);
+  const closeReview = useCallback(() => setReviewEntries(null), []);
+  const closeConfirm = useCallback(() => setConfirmingId(null), []);
+
   const hasAnyEntries = entries.length > 0;
   const duplicateWarning = form ? findDuplicateWarning(form, entries) : null;
   const formMeta = form ? CATEGORY_META[form.category] : null;
 
   return (
-    <main className="mx-auto max-w-dashboard px-4 py-6 md:px-8 md:py-10">
-      <header className="mb-8 border-b-2 border-muga/30 pb-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-muga-dark">Caregiver</p>
-        <h1 className="font-serif-display text-caregiver-heading font-semibold text-navy">
-          Memory Bank
-        </h1>
-        <p className="mt-2 text-caregiver-body text-ink-muted">
-          Facts your loved one can ask the AI companion about. It only answers from what you add here.
+    <main className="mx-auto w-full max-w-dashboard px-5 py-8 md:px-10 md:py-12">
+      <PageHeader
+        title={currentPatient ? `Memory Bank for ${currentPatient.displayName}` : 'Memory Bank'}
+        description="Facts your loved one can ask the companion about. It only answers from what you add here."
+        action={
+          <button
+            type="button"
+            aria-label="Quick add"
+            onClick={() => setQuickAddOpen(true)}
+            className={`${buttonClass.secondary} w-full md:w-auto`}
+          >
+            Quick add
+          </button>
+        }
+      />
+
+      {extractError ? (
+        <p role="alert" className="-mt-4 mb-6 text-caregiver-body font-bold text-danger">
+          Could not extract entries. Try again.
         </p>
-        <button
-          type="button"
-          aria-label="Quick add"
-          onClick={() => setQuickAddOpen(true)}
-          className="mt-3 text-sm font-semibold text-primary hover:text-primary-dark"
-        >
-          Quick add
-        </button>
-        {extractError ? (
-          <p className="mt-2 text-patient-sm text-danger">Could not extract entries. Try again.</p>
-        ) : null}
-      </header>
+      ) : null}
 
       {banner ? (
         <div
           role="status"
           aria-live="polite"
-          className="mb-6 flex items-center justify-between gap-3 rounded-card border border-success/40 bg-success/10 px-4 py-3 text-caregiver-body text-ink"
+          className="mb-6 flex items-center justify-between gap-4 rounded-card border border-success/50 bg-success/5 py-2 pl-5 pr-2 text-caregiver-body text-ink"
         >
-          <span className="flex items-center gap-2">
-            <Check size={20} className="shrink-0 text-success" aria-hidden="true" />
+          <span className="flex items-center gap-3">
+            <span aria-hidden="true" className="h-2.5 w-2.5 shrink-0 rounded-full bg-success" />
             {banner}
           </span>
           <button
             type="button"
             aria-label="Dismiss confirmation"
             onClick={() => setBanner(null)}
-            style={{ minHeight: 44, minWidth: 44 }}
-            className="flex shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted"
+            className={`${textActionClass} shrink-0 px-3`}
           >
-            <X size={18} aria-hidden="true" />
+            Dismiss
           </button>
         </div>
       ) : null}
 
       {!hasAnyEntries ? (
-        <div className="flex flex-col items-center gap-6 rounded-card border border-line200 bg-white py-12 text-center">
-          <p className="text-caregiver-body text-ink-muted">
+        <section className="rounded-card border border-line200 bg-surface-card p-6 md:p-8">
+          <h2 className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">Start the Memory Bank</h2>
+          <p className="mt-2 max-w-[60ch] text-caregiver-body text-ink-muted">
             Add the people and facts your loved one might ask about.
           </p>
-          {/* Four explicit, icon-coded choices instead of a single "Add Person" default —
-           * a caregiver whose first memory is a medication or a weekly visit schedule
-           * shouldn't have to add an unrelated person first just to unlock that option. */}
-          <div role="group" aria-label="Choose what to add" className="grid w-full max-w-md grid-cols-1 gap-3 px-6 sm:grid-cols-2">
+          {/* Four explicit choices instead of a single "Add Person" default: a
+           * caregiver whose first memory is a medication or a weekly visit
+           * shouldn't have to add an unrelated person first. */}
+          <div role="group" aria-label="Choose what to add" className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {SECTIONS.map((category) => {
               const meta = CATEGORY_META[category];
               return (
@@ -362,104 +352,81 @@ export default function MemoryBankPage() {
                   key={category}
                   type="button"
                   onClick={() => startAdd(category)}
-                  style={{ minHeight: 44 }}
-                  className="flex items-center gap-3 rounded-card border border-line200 bg-white p-4 text-left hover:border-primary hover:bg-primary/5"
+                  aria-label={`Add ${meta.singular}`}
+                  aria-describedby={`mb-hint-${category}`}
+                  className="flex min-h-touch flex-col justify-center rounded-tile border-2 border-ink-muted/60 bg-surface-card px-5 py-3 text-left transition-colors hover:border-ink-muted hover:bg-surface-muted/60"
                 >
-                  <span
-                    aria-hidden="true"
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${meta.badgeClass}`}
-                  >
-                    <meta.Icon size={20} />
+                  <span className="text-caregiver-body font-bold text-ink">Add {meta.singular}</span>
+                  <span id={`mb-hint-${category}`} className="text-patient-sm text-ink-muted">
+                    {meta.hint}
                   </span>
-                  <span className="font-semibold text-navy">Add {meta.singular}</span>
                 </button>
               );
             })}
           </div>
-        </div>
+        </section>
       ) : (
-        <div className="flex flex-col gap-10">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
           {SECTIONS.map((category) => {
             const meta = CATEGORY_META[category];
             const sectionEntries = entries.filter((e) => e.category === category);
             return (
-              <section key={category} data-testid={`memory-bank-section-${category}`}>
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="flex items-center gap-2 font-serif-display text-lg font-semibold text-navy">
-                    <span
-                      aria-hidden="true"
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${meta.badgeClass}`}
-                    >
-                      <meta.Icon size={16} />
-                    </span>
-                    {meta.heading}
-                  </h2>
-                  <button
-                    type="button"
-                    onClick={() => startAdd(category)}
-                    className="flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-dark"
-                  >
-                    <Plus size={16} aria-hidden="true" />
+              <section
+                key={category}
+                data-testid={`memory-bank-section-${category}`}
+                className="rounded-card border border-line200 bg-surface-card"
+              >
+                <div className="flex items-start justify-between gap-4 px-5 pt-5 pb-3">
+                  <div>
+                    <h2 className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink">
+                      {meta.heading}
+                    </h2>
+                    <p className="mt-1 text-patient-sm text-ink-muted">{meta.hint}</p>
+                  </div>
+                  <button type="button" onClick={() => startAdd(category)} className={`${buttonClass.secondary} shrink-0 px-4`}>
                     Add
                   </button>
                 </div>
 
                 {sectionEntries.length === 0 ? (
-                  <p className="text-patient-sm text-ink-muted">No entries yet.</p>
+                  <p className="px-5 pb-5 text-caregiver-body text-ink-muted">No entries yet.</p>
                 ) : (
-                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="divide-y divide-line200 border-t border-line200">
                     {sectionEntries.map((entry) => (
-                      <li
-                        key={entry.id}
-                        className="flex flex-col gap-2 rounded-card border border-line200 bg-white p-4"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-start gap-3">
-                            {entry.category === 'person' ? (
-                              entry.photoUrl ? (
-                                <img
-                                  src={entry.photoUrl}
-                                  alt=""
-                                  className="h-12 w-12 shrink-0 rounded-full border border-line200 object-cover"
-                                />
-                              ) : (
-                                <span
-                                  aria-hidden="true"
-                                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${meta.badgeClass}`}
-                                >
-                                  <User size={20} />
-                                </span>
-                              )
-                            ) : null}
-                            <div>
-                              <p className="font-bold text-navy">{entry.title}</p>
-                              {entry.relationship ? (
-                                <p className="text-patient-sm text-ink-muted">{entry.relationship}</p>
-                              ) : null}
-                            </div>
-                          </div>
-                          <div className="flex shrink-0 gap-1">
+                      <li key={entry.id} className="flex gap-4 px-5 py-4">
+                        {entry.category === 'person' && entry.photoUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={entry.photoUrl}
+                            alt=""
+                            className="h-14 w-14 shrink-0 rounded-full border border-line200 object-cover"
+                          />
+                        ) : null}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-caregiver-body font-bold text-ink">{entry.title}</p>
+                          {entry.relationship ? (
+                            <p className="text-patient-sm text-ink-muted">{entry.relationship}</p>
+                          ) : null}
+                          <p className="mt-1 text-caregiver-body text-ink">{entry.detail}</p>
+                          <div className="mt-1 flex gap-2">
                             <button
                               type="button"
                               aria-label={`Edit ${entry.title}`}
                               onClick={() => startEdit(entry)}
-                              style={{ minHeight: 44, minWidth: 44 }}
-                              className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-primary"
+                              className={`${textActionClass} pr-3`}
                             >
-                              <Pencil size={18} aria-hidden="true" />
+                              Edit
                             </button>
                             <button
                               type="button"
                               aria-label={`Delete ${entry.title}`}
                               onClick={() => setConfirmingId(entry.id)}
-                              style={{ minHeight: 44, minWidth: 44 }}
-                              className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-danger"
+                              className={`${textActionClass} px-3 text-ink-muted decoration-ink-muted/40 hover:text-danger`}
                             >
-                              <Trash2 size={18} aria-hidden="true" />
+                              Delete
                             </button>
                           </div>
                         </div>
-                        <p className="text-caregiver-body text-ink-muted">{entry.detail}</p>
                       </li>
                     ))}
                   </ul>
@@ -471,66 +438,57 @@ export default function MemoryBankPage() {
       )}
 
       {form ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-        >
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-card bg-white p-6 shadow-lg">
-            <h3 className="flex items-center gap-2 font-serif-display text-lg font-semibold text-navy">
-              {formMeta ? (
-                <span
-                  aria-hidden="true"
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${formMeta.badgeClass}`}
-                >
-                  <formMeta.Icon size={18} />
-                </span>
-              ) : null}
-              {form.id ? 'Edit' : 'Add'} {formMeta?.singular}
-            </h3>
+        <Sheet labelledBy="mb-form-title" onClose={closeForm}>
+          <h2 id="mb-form-title" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+            {form.id ? 'Edit' : 'Add'} {formMeta?.singular}
+          </h2>
 
-            <label htmlFor="mb-title" className="text-sm font-semibold text-navy">
+          <div>
+            <label htmlFor="mb-title" className={labelClass}>
               {formMeta?.titleLabel}
             </label>
             <input
               id="mb-title"
               value={form.title}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
-              className="h-14 rounded-card border border-line200 px-4 text-caregiver-body text-ink"
+              className={fieldClass}
             />
+          </div>
 
-            {form.category === 'person' ? (
-              <>
-                <label htmlFor="mb-relationship" className="text-sm font-semibold text-navy">
+          {form.category === 'person' ? (
+            <>
+              <div>
+                <label htmlFor="mb-relationship" className={labelClass}>
                   Relationship
                 </label>
                 <input
                   id="mb-relationship"
                   value={form.relationship}
                   onChange={(e) => setForm({ ...form, relationship: e.target.value })}
-                  className="h-14 rounded-card border border-line200 px-4 text-caregiver-body text-ink"
+                  className={fieldClass}
                 />
+              </div>
 
-                <label htmlFor="mb-photo" className="text-sm font-semibold text-navy">
+              <div>
+                <label htmlFor="mb-photo" className={labelClass}>
                   Photo
                 </label>
                 {form.photoUrl ? (
-                  <div className="flex items-center gap-3">
+                  <div className="mb-3 flex items-center gap-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={form.photoUrl}
                       alt={form.title ? `Photo of ${form.title}` : 'Selected photo preview'}
                       className="h-20 w-20 rounded-full border border-line200 object-cover"
                     />
-                    <button
-                      type="button"
-                      onClick={removePhoto}
-                      className="text-sm font-semibold text-danger hover:underline"
-                    >
+                    <button type="button" onClick={removePhoto} className={textActionClass}>
                       Remove photo
                     </button>
                   </div>
                 ) : (
-                  <p className="text-patient-sm text-ink-muted">No photo selected yet. Optional, but it helps your loved one recognise a face.</p>
+                  <p className="mb-3 text-patient-sm text-ink-muted">
+                    Optional, but a photo helps your loved one recognise a face.
+                  </p>
                 )}
                 <input
                   key={photoInputKey}
@@ -538,17 +496,19 @@ export default function MemoryBankPage() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => onPhotoChange(e.target.files?.[0])}
-                  className="text-caregiver-body text-ink"
+                  className="w-full text-caregiver-body text-ink file:mr-4 file:min-h-12 file:rounded-control file:border-2 file:border-ink-muted file:bg-surface-card file:px-4 file:font-bold file:text-ink"
                 />
                 {photoError ? (
-                  <p role="alert" className="text-patient-sm text-danger">
+                  <p role="alert" className="mt-2 text-patient-sm font-bold text-danger">
                     {photoError}
                   </p>
                 ) : null}
-              </>
-            ) : null}
+              </div>
+            </>
+          ) : null}
 
-            <label htmlFor="mb-detail" className="text-sm font-semibold text-navy">
+          <div>
+            <label htmlFor="mb-detail" className={labelClass}>
               Detail
             </label>
             <textarea
@@ -556,125 +516,168 @@ export default function MemoryBankPage() {
               value={form.detail}
               onChange={(e) => setForm({ ...form, detail: e.target.value })}
               rows={3}
-              className="rounded-card border border-line200 px-4 py-3 text-caregiver-body text-ink"
+              className={fieldClass}
             />
-
-            {duplicateWarning ? (
-              <p
-                role="status"
-                aria-live="polite"
-                className="flex items-start gap-2 rounded-card border border-warning/40 bg-warning/10 px-3 py-2 text-patient-sm text-ink"
-              >
-                <AlertTriangle size={18} className="mt-0.5 shrink-0 text-warning" aria-hidden="true" />
-                {duplicateWarning}
-              </p>
-            ) : null}
-
-            <div className="mt-2 flex gap-3">
-              <BigButton label="Cancel" variant="secondary" onClick={() => setForm(null)} />
-              <BigButton
-                label="Save"
-                variant="primary"
-                disabled={!form.title.trim() || !form.detail.trim()}
-                onClick={() => void save()}
-              />
-            </div>
           </div>
-        </div>
+
+          {duplicateWarning ? (
+            <p
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-3 rounded-tile border border-warning/50 bg-warning/5 px-4 py-3 text-patient-sm text-ink"
+            >
+              <span aria-hidden="true" className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-warning" />
+              {duplicateWarning}
+            </p>
+          ) : null}
+
+          <SheetActions>
+            <BigButton label="Cancel" variant="secondary" onClick={() => setForm(null)} />
+            <BigButton
+              label="Save"
+              variant="primary"
+              disabled={!form.title.trim() || !form.detail.trim()}
+              onClick={() => void save()}
+            />
+          </SheetActions>
+        </Sheet>
       ) : null}
 
       {quickAddOpen ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-        >
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-card bg-white p-6 shadow-lg">
-            <h3 className="font-serif-display text-lg font-semibold text-navy">Quick add</h3>
-            <label htmlFor="quick-add-text" className="text-sm font-semibold text-navy">
+        <Sheet labelledBy="quick-add-title" onClose={closeQuickAdd}>
+          <h2 id="quick-add-title" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+            Quick add
+          </h2>
+          <div>
+            <label htmlFor="quick-add-text" className={labelClass}>
               Tell us about your family. Write naturally
             </label>
+            <p className="mb-3 text-patient-sm text-ink-muted">
+              You will be able to check and edit each entry before anything is saved.
+            </p>
             <textarea
               id="quick-add-text"
               value={quickText}
               onChange={(e) => setQuickText(e.target.value)}
               rows={5}
-              className="rounded-card border border-line200 px-4 py-3 text-caregiver-body text-ink"
+              className={fieldClass}
             />
-            <div className="flex gap-3">
-              <BigButton label="Cancel" variant="secondary" onClick={() => setQuickAddOpen(false)} />
-              <BigButton
-                label={extracting ? 'Extracting…' : 'Extract'}
-                variant="primary"
-                disabled={extracting || !quickText.trim()}
-                onClick={() => void extractText()}
-              />
-            </div>
           </div>
-        </div>
+          <SheetActions>
+            <BigButton label="Cancel" variant="secondary" onClick={() => setQuickAddOpen(false)} />
+            <BigButton
+              label={extracting ? 'Extracting…' : 'Extract'}
+              variant="primary"
+              disabled={extracting || !quickText.trim()}
+              onClick={() => void extractText()}
+            />
+          </SheetActions>
+        </Sheet>
       ) : null}
 
       {reviewEntries ? (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-        >
-          <div className="flex max-h-[90vh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-card bg-white p-6 shadow-lg">
-            <h3 className="font-serif-display text-lg font-semibold text-navy">Review extracted entries</h3>
-            {reviewEntries.length === 0 ? (
-              <p className="text-caregiver-body text-ink-muted">Nothing was extracted from that text.</p>
-            ) : (
-              reviewEntries.map((entry, i) => (
-                <div key={`${entry.title}-${i}`} className="flex flex-col gap-2 rounded-card border border-line200 p-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <input
-                      value={entry.title}
-                      onChange={(e) => updateReviewEntry(i, { title: e.target.value })}
-                      className="h-10 flex-1 rounded-card border border-line200 px-3 font-bold text-navy"
-                    />
+        <Sheet labelledBy="review-title" wide onClose={closeReview}>
+          <h2 id="review-title" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+            Review extracted entries
+          </h2>
+          {reviewEntries.length === 0 ? (
+            <p className="text-caregiver-body text-ink-muted">Nothing was extracted from that text.</p>
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {reviewEntries.map((entry, i) => (
+                <li key={`${entry.title}-${i}`} className="flex flex-col gap-2 rounded-tile border border-line200 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-patient-sm font-bold text-ink-muted">
+                      {CATEGORY_META[entry.category].singular}
+                    </span>
                     <button
                       type="button"
                       aria-label={`Remove ${entry.title}`}
                       onClick={() => removeReviewEntry(entry.title)}
-                      style={{ minHeight: 44, minWidth: 44 }}
-                      className="flex items-center justify-center rounded-full text-ink-muted hover:bg-surface-muted hover:text-danger"
+                      className={`${textActionClass} text-ink-muted decoration-ink-muted/40`}
                     >
-                      <Trash2 size={18} aria-hidden="true" />
+                      Remove
                     </button>
                   </div>
+                  <input
+                    aria-label="Entry title"
+                    value={entry.title}
+                    onChange={(e) => updateReviewEntry(i, { title: e.target.value })}
+                    className={`${fieldClass} font-bold`}
+                  />
                   <textarea
+                    aria-label="Entry text"
                     value={entry.detail}
                     onChange={(e) => updateReviewEntry(i, { detail: e.target.value })}
                     rows={2}
-                    className="rounded-card border border-line200 px-3 py-2 text-caregiver-body text-ink"
+                    className={fieldClass}
                   />
-                </div>
-              ))
-            )}
-            <div className="flex gap-3">
-              <BigButton label="Cancel" variant="secondary" onClick={() => setReviewEntries(null)} />
-              <BigButton label="Confirm and save" variant="primary" onClick={() => void confirmReview()} />
-            </div>
-          </div>
-        </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <SheetActions>
+            <BigButton label="Cancel" variant="secondary" onClick={() => setReviewEntries(null)} />
+            <BigButton label="Confirm and save" variant="primary" onClick={() => void confirmReview()} />
+          </SheetActions>
+        </Sheet>
       ) : null}
 
       {confirmingId ? (
-        <div
-          role="alertdialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
-        >
-          <div className="mx-4 flex flex-col gap-4 rounded-card bg-white p-6 shadow-lg">
-            <p className="text-caregiver-body text-ink">Remove this entry?</p>
-            <div className="flex gap-3">
-              <BigButton label="Cancel" variant="secondary" onClick={() => setConfirmingId(null)} />
-              <BigButton label="Remove" variant="primary" onClick={() => void confirmDelete()} />
-            </div>
-          </div>
-        </div>
+        <Sheet labelledBy="delete-entry-title" role="alertdialog" onClose={closeConfirm}>
+          <h2 id="delete-entry-title" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+            Remove this entry?
+          </h2>
+          <p className="text-caregiver-body text-ink-muted">
+            The companion will stop using it in answers.
+          </p>
+          <SheetActions>
+            <BigButton label="Cancel" variant="secondary" onClick={() => setConfirmingId(null)} />
+            <BigButton label="Remove" variant="primary" onClick={() => void confirmDelete()} />
+          </SheetActions>
+        </Sheet>
       ) : null}
     </main>
   );
+}
+
+/** Modal surface: a bottom sheet on phones (thumb-reachable actions), a
+ * centred dialog from `sm` up. */
+function Sheet({
+  labelledBy,
+  children,
+  onClose,
+  wide = false,
+  role = 'dialog',
+}: {
+  labelledBy: string;
+  children: React.ReactNode;
+  /** Escape and a tap on the dimmed backdrop both call this. */
+  onClose: () => void;
+  wide?: boolean;
+  role?: 'dialog' | 'alertdialog';
+}) {
+  useEscapeKey(true, onClose);
+  return (
+    <div
+      role={role}
+      aria-modal="true"
+      aria-labelledby={labelledBy}
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 sm:items-center sm:p-4"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className={`scrollbar-none flex max-h-[92dvh] w-full flex-col gap-5 overflow-y-auto overscroll-contain rounded-t-card bg-surface-card p-6 shadow-xl sm:rounded-card ${
+          wide ? 'sm:max-w-xl' : 'sm:max-w-md'
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function SheetActions({ children }: { children: React.ReactNode }) {
+  return <div className="mt-1 flex flex-col-reverse gap-3 sm:flex-row">{children}</div>;
 }

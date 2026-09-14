@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { getDevicePatients } from '@/lib/auth/localSession';
+import { buildQueueItem } from '@/lib/db/syncQueue';
+import type { UILanguage } from '@/lib/i18n/languages';
 import { useRouter } from 'next/navigation';
-import BigButton from '@/components/ui/BigButton';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
+import PinDots from '@/components/ui/PinDots';
+import PageHeader from '@/components/ui/PageHeader';
+import Panel, { buttonClass } from '@/components/ui/Panel';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { db, SmritiDB } from '@/lib/db/schema';
 import { useCaregiverStore } from '@/stores/caregiverStore';
@@ -18,7 +24,7 @@ const SETTINGS_FAQ = [
     id: 'patient-language',
     question: 'Change patient language?',
     answer:
-      'Use the Language card above. It changes what the patient sees and hears the next time they open the app — the patient never sees a language control themselves.',
+      'Use Patient language on this page. It changes what the patient sees and hears the next time they open the app. The patient never sees a language control themselves.',
   },
   {
     id: 'forgot-pin',
@@ -36,7 +42,7 @@ const SETTINGS_FAQ = [
     id: 'family-share',
     question: 'Share updates with family?',
     answer:
-      'Open a patient, go to the Family tab, and create a link. It is read-only, expires after 30 days, and can be revoked any time — no login needed on their end.',
+      'Open a patient, go to the Family tab, and create a link. It is read-only, expires after 30 days, and can be revoked any time. No login is needed on their end.',
   },
 ];
 
@@ -60,6 +66,38 @@ export default function CaregiverSettingsPage() {
   const [confirmPin, setConfirmPin] = useState('');
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+
+  const currentPatient = usePatientStore((s) => s.currentPatient);
+  const [devicePatientSummary, setDevicePatientSummary] = useState('Checking…');
+
+  useEffect(() => {
+    let cancelled = false;
+    void getDevicePatients().then((patients) => {
+      if (cancelled) return;
+      setDevicePatientSummary(
+        patients.length === 0
+          ? 'Nobody is chosen for this phone yet.'
+          : patients.length === 1
+            ? `${patients[0].displayName} uses this phone.`
+            : `Shared by ${patients.map((p) => p.displayName).join(' and ')}.`,
+      );
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** The language belongs to the patient: on a shared phone it switches with
+   * whoever is playing, so a change here is saved on them too. */
+  const saveLanguageForPatient = async (code: UILanguage) => {
+    if (!currentPatient) return;
+    const updated = { ...currentPatient, primaryLanguage: code, updatedAt: new Date().toISOString() };
+    await db.transaction('rw', db.patients, db.syncQueue, async () => {
+      await db.patients.put(updated);
+      await db.syncQueue.put(buildQueueItem('patients', updated.id, 'update', { ...updated }));
+    });
+    usePatientStore.getState().setCurrentPatient(updated);
+  };
 
   const [dangerStage, setDangerStage] = useState<DangerStage>('closed');
   const [deletePin, setDeletePin] = useState('');
@@ -223,102 +261,135 @@ export default function CaregiverSettingsPage() {
     confirm: 'Confirm new PIN',
   }[stage];
 
-  return (
-    <main className="mx-auto max-w-dashboard px-4 py-6 md:px-8 md:py-10">
-      <header className="mb-8 border-b-2 border-muga/30 pb-5">
-        <p className="text-sm font-semibold uppercase tracking-wide text-muga-dark">Caregiver</p>
-        <h1 className="font-serif-display text-caregiver-heading font-semibold text-navy">
-          Settings
-        </h1>
-      </header>
+  const stageDigits = stage === 'current' ? currentPin : stage === 'new' ? newPin : confirmPin;
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        <section className="overflow-hidden rounded-card border border-line200 bg-white">
-          <div className="flex flex-col gap-3 p-6">
-            <h2 className="font-serif-display text-lg font-semibold text-navy">Language</h2>
-            <LanguagePicker />
-          </div>
-        </section>
+  return (
+    <main className="mx-auto w-full max-w-dashboard px-5 py-8 md:px-10 md:py-12">
+      <PageHeader title="Settings" description="Language, PIN and data for this device." />
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+        <Panel
+          title={currentPatient ? `Language for ${currentPatient.displayName}` : 'Patient language'}
+          description="What they see and hear in SMRITI."
+        >
+          <LanguagePicker onSelect={(code) => void saveLanguageForPatient(code)} />
+        </Panel>
+
+        <Panel
+          title="People on this phone"
+          description="Choose who plays SMRITI here. A phone shared by two people asks who is playing when opened."
+        >
+          <p className="text-caregiver-body text-ink">{devicePatientSummary}</p>
+          <Link href="/caregiver/device" className={`${buttonClass.secondary} mt-4 w-full sm:w-auto`}>
+            Manage people on this phone
+          </Link>
+        </Panel>
 
         {dangerStage === 'closed' ? (
-          <section className="overflow-hidden rounded-card border border-line200 bg-white">
-            <div className="flex flex-col gap-3 p-6">
-              <h2 className="font-serif-display text-lg font-semibold text-navy">Change PIN</h2>
-              <p className="text-caregiver-body text-ink-muted">{stageLabel}</p>
+          <Panel title="Change PIN" description="The 4-digit PIN opens the caregiver area from the patient's screen.">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-caregiver-body font-bold text-ink">{stageLabel}</p>
+                <PinDots filled={stageDigits.length} length={PIN_LENGTH} />
+              </div>
               <PinPad onDigit={onDigit} onBackspace={onBackspace} />
-              {error ? <p className="text-caregiver-body text-warning">{error}</p> : null}
-              {saved ? <p className="text-caregiver-body font-bold text-success">PIN updated</p> : null}
-              <BigButton label="Cancel" variant="secondary" onClick={resetPinFlow} />
+              <div role="status" className="empty:hidden">
+                {error ? <p className="text-caregiver-body font-bold text-danger">{error}</p> : null}
+                {saved ? <p className="text-caregiver-body font-bold text-ink">PIN updated</p> : null}
+              </div>
+              <button type="button" onClick={resetPinFlow} className={buttonClass.secondary}>
+                Cancel
+              </button>
             </div>
-          </section>
+          </Panel>
         ) : null}
 
-        <section className="overflow-hidden rounded-card border border-line200 bg-white md:col-span-2">
-          <div className="flex flex-col gap-2 p-6 text-caregiver-body text-ink-muted">
-            <h2 className="font-serif-display text-lg font-semibold text-navy">About SMRITI</h2>
-            <p>Version 1.0.0-hackathon</p>
-            <p>Built for Smart India Hackathon 2026 (SIH26003)</p>
-            <p>Supported by the Ministry of Development of North Eastern Region (MDoNER)</p>
-            <p>{t('disclaimer')}</p>
-          </div>
-        </section>
-
-        <div className="md:col-span-2">
+        <div className="lg:col-span-2">
           <FaqTabsCard title="Help & FAQ" items={SETTINGS_FAQ} />
         </div>
 
-        <section className="overflow-hidden rounded-card border-2 border-danger/40 bg-white md:col-span-2">
-          <div className="flex flex-col gap-3 p-6">
-            <h2 className="font-serif-display text-lg font-semibold text-danger">Danger Zone</h2>
+        <Panel title="Account">
+          <p className="text-caregiver-body text-ink-muted">
+            Log out of the caregiver area on this device. Game progress stays saved and syncs after the next login.
+          </p>
+          <button type="button" onClick={logOut} className={`${buttonClass.secondary} mt-4`}>
+            Log out
+          </button>
+        </Panel>
 
-            {dangerStage === 'closed' ? (
-              <>
-                <p className="text-caregiver-body text-ink-muted">
-                  Permanently erases everything on this device: your profile and every patient&apos;s
-                  data. This cannot be undone, and you will need to set up SMRITI again from scratch
-                  afterward.
-                </p>
-                <BigButton
-                  label="Delete all data"
-                  variant="secondary"
-                  onClick={startDeleteAllData}
-                />
-              </>
-            ) : null}
+        <Panel title="About SMRITI">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-caregiver-body">
+            <dt className="text-ink-muted">Version</dt>
+            <dd className="text-ink">1.0.0-hackathon</dd>
+            <dt className="text-ink-muted">Built for</dt>
+            <dd className="text-ink">Smart India Hackathon 2026 (SIH26003)</dd>
+            <dt className="text-ink-muted">Supported by</dt>
+            <dd className="text-ink">Ministry of Development of North Eastern Region (MDoNER)</dd>
+          </dl>
+          <p className="mt-4 text-patient-sm text-ink-muted">{t('disclaimer')}</p>
+        </Panel>
 
-            {dangerStage === 'confirmDelete' ? (
-              <>
-                <p className="text-caregiver-body font-bold text-danger">
-                  Are you sure? This permanently deletes this device&apos;s caregiver profile and every
-                  patient&apos;s data, including game history. It cannot be undone.
-                </p>
-                <BigButton label="Cancel" variant="secondary" onClick={cancelDeleteAllData} />
-                <BigButton
-                  label="Yes, delete everything"
-                  variant="secondary"
+        <section
+          aria-labelledby="delete-data-heading"
+          className="rounded-card border-2 border-danger/40 bg-surface-card p-5 lg:col-span-2"
+        >
+          <h2 id="delete-data-heading" className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink">
+            Delete all data on this device
+          </h2>
+
+          {dangerStage === 'closed' ? (
+            <div className="mt-2 flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:gap-8">
+              <p className="max-w-[65ch] text-caregiver-body text-ink-muted">
+                Permanently erases everything on this device: your profile and every patient&apos;s data. This cannot
+                be undone, and you will need to set up SMRITI again from scratch afterward.
+              </p>
+              <button
+                type="button"
+                onClick={startDeleteAllData}
+                className={`${buttonClass.secondary} shrink-0 border-danger text-danger hover:bg-danger/5`}
+              >
+                Delete all data
+              </button>
+            </div>
+          ) : null}
+
+          {dangerStage === 'confirmDelete' ? (
+            <div className="mt-2 flex flex-col gap-4">
+              <p role="alert" className="max-w-[65ch] text-caregiver-body font-bold text-ink">
+                Are you sure? This permanently deletes this device&apos;s caregiver profile and every patient&apos;s
+                data, including game history. It cannot be undone.
+              </p>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button type="button" onClick={cancelDeleteAllData} className={buttonClass.secondary}>
+                  Cancel
+                </button>
+                <button
+                  type="button"
                   onClick={proceedToDeletePin}
-                />
-              </>
-            ) : null}
+                  className={`${buttonClass.primary} bg-danger hover:bg-danger`}
+                >
+                  Yes, delete everything
+                </button>
+              </div>
+            </div>
+          ) : null}
 
-            {dangerStage === 'confirmDeletePin' ? (
-              <>
-                <p className="text-caregiver-body text-ink-muted">
-                  Enter your PIN to confirm deletion
-                </p>
-                <PinPad onDigit={onDeletePinDigit} onBackspace={onDeletePinBackspace} disabled={deleting} />
-                {deleteError ? (
-                  <p className="text-caregiver-body text-warning">{deleteError}</p>
-                ) : null}
-                <BigButton label="Cancel" variant="secondary" onClick={cancelDeleteAllData} disabled={deleting} />
-              </>
-            ) : null}
-          </div>
+          {dangerStage === 'confirmDeletePin' ? (
+            <div className="mt-2 flex max-w-sm flex-col gap-4">
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-caregiver-body font-bold text-ink">Enter your PIN to confirm deletion</p>
+                <PinDots filled={deletePin.length} length={PIN_LENGTH} />
+              </div>
+              <PinPad onDigit={onDeletePinDigit} onBackspace={onDeletePinBackspace} disabled={deleting} />
+              <div role="status" className="empty:hidden">
+                {deleteError ? <p className="text-caregiver-body font-bold text-danger">{deleteError}</p> : null}
+              </div>
+              <button type="button" onClick={cancelDeleteAllData} disabled={deleting} className={buttonClass.secondary}>
+                Cancel
+              </button>
+            </div>
+          ) : null}
         </section>
-      </div>
-
-      <div className="mt-6">
-        <BigButton label="Log out" variant="secondary" onClick={logOut} />
       </div>
     </main>
   );

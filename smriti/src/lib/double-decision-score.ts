@@ -37,6 +37,7 @@ export function calculateDoubleDecisionScore(pointsTotal: number, totalTrials: n
   return Math.round(pointsTotal / totalTrials);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented reference-project signature
 export function isDoubleDecisionLeaderboardEligible(_args: { accuracy: number; totalTrials: number }): boolean {
   return false;
 }

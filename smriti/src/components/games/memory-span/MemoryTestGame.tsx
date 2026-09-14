@@ -419,7 +419,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                    <div className="space-y-2">
                       {results.correctWords.length > 0 ? (
                         results.correctWords.map((word, index) => (
                           <div

@@ -1,8 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useSyncExternalStore } from 'react';
+import { useRouter } from 'next/navigation';
+import { Square } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
+import Icon from '@/components/Icon';
+import PatientNav from '@/components/layout/PatientNav';
+import { fieldClass } from '@/components/ui/Panel';
 import { narrate } from '@/lib/audio/narrate';
 import { FALLBACK_TEXT } from '@/lib/ai/llm-client';
 import { cacheAnswer, findCachedAnswer } from '@/lib/ai/companion-cache';
@@ -18,7 +23,7 @@ interface AnswerState {
   fromCache: boolean;
 }
 
-const MIC_SIZE_PX = 96;
+const MIC_SIZE_PX = 128;
 
 /** Bounds the whole /api/ai/transcribe round trip client-side — covers the
  * server's own worst case (20s Bhashini timeout + 15s Groq Whisper timeout)
@@ -58,6 +63,8 @@ function acquireViaSpeechRecognition(): Promise<string | null> {
   });
 }
 
+const subscribeNever = () => () => {};
+
 interface SpeechRecognitionLike {
   start(): void;
   onresult: ((event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
@@ -66,6 +73,7 @@ interface SpeechRecognitionLike {
 }
 
 export default function CompanionPage() {
+  const router = useRouter();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const { isOnline } = useOfflineStatus();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -75,7 +83,16 @@ export default function CompanionPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
-  const mediaRecorderSupported = typeof window !== 'undefined' && typeof window.MediaRecorder !== 'undefined';
+  // Read through useSyncExternalStore rather than a `typeof window` branch:
+  // the branch rendered the typed-question form on the server and the mic on
+  // the client, a hydration mismatch that threw on every load. The server
+  // assumes support (every current mobile browser has MediaRecorder), so the
+  // rare unsupported device is the only one that swaps after hydration.
+  const mediaRecorderSupported = useSyncExternalStore(
+    subscribeNever,
+    () => typeof window.MediaRecorder !== 'undefined',
+    () => true,
+  );
 
   // Shared by speakAnswer (TTS) and acquireTranscript (ASR) — both need to
   // know which language this patient's device is in.
@@ -230,65 +247,84 @@ export default function CompanionPage() {
     void handleTranscript(textInput.trim());
   };
 
+  const prompt =
+    phase === 'recording' ? 'Listening…' : phase === 'thinking' ? 'Thinking…' : phase === 'idle' ? 'Ask me something' : null;
+
   return (
-    <main className="mx-auto flex min-h-dvh w-full max-w-patient flex-col items-center gap-6 bg-canvas px-4 py-10">
-      <h1 className="text-center font-serif-display text-patient-heading font-semibold leading-[1.05] tracking-[-0.02em] text-navy">Ask Smriti</h1>
+    <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-canvas">
+      <PatientNav title="Ask Smriti" onBack={() => router.push('/app')} />
 
-      {mediaRecorderSupported ? (
-        <button
-          type="button"
-          aria-label={phase === 'recording' ? 'Stop asking' : 'Ask a question'}
-          onClick={onMicClick}
-          disabled={phase === 'thinking'}
-          style={{ height: MIC_SIZE_PX, width: MIC_SIZE_PX }}
-          className={
-            'flex items-center justify-center rounded-full bg-primary text-ink-inverse shadow-md ' +
-            'transition-transform active:scale-95 disabled:opacity-60 ' +
-            (phase === 'recording' ? 'motion-safe:animate-pulse' : '')
-          }
-        >
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <rect x="9" y="2" width="6" height="12" rx="3" />
-            <path d="M5 10a7 7 0 0 0 14 0" />
-            <path d="M12 19v3" />
-          </svg>
-        </button>
-      ) : (
-        <div className="flex w-full flex-col gap-3">
-          <label htmlFor="companion-text-question" className="text-patient-body text-ink">
-            Type your question
-          </label>
-          <input
-            id="companion-text-question"
-            value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') onTextSubmit();
-            }}
-            style={{ minHeight: 56 }}
-            className="rounded-card border border-line200 px-4 text-patient-body text-ink"
-          />
-          <BigButton label="Ask" variant="primary" onClick={onTextSubmit} />
-        </div>
-      )}
+      <main className="flex flex-1 flex-col gap-8 px-5 py-8">
+        {prompt ? (
+          <p aria-live="polite" className="font-serif-display text-[2.25rem] font-medium leading-[1.15] text-ink">
+            {prompt}
+          </p>
+        ) : null}
 
-      {phase === 'idle' ? <p className="text-patient-body text-ink-muted">Ask me something</p> : null}
-      {phase === 'recording' ? <p className="text-patient-body text-ink-muted">Listening…</p> : null}
-      {phase === 'thinking' ? <p className="text-patient-body text-ink-muted">Thinking…</p> : null}
-      {(phase === 'answered' || phase === 'fallback') && transcript ? (
-        <p className="text-patient-sm text-ink-muted">{transcript}</p>
-      ) : null}
+        {mediaRecorderSupported ? (
+          <button
+            type="button"
+            aria-label={phase === 'recording' ? 'Stop asking' : 'Ask a question'}
+            onClick={onMicClick}
+            disabled={phase === 'thinking' || phase === 'answered' || phase === 'fallback'}
+            className="flex flex-col items-center gap-4 self-center rounded-card p-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
+          >
+            <span
+              aria-hidden="true"
+              style={{ height: MIC_SIZE_PX, width: MIC_SIZE_PX }}
+              className={
+                'relative flex items-center justify-center rounded-full text-ink-inverse transition-[transform,background-color] duration-150 active:scale-95 motion-reduce:active:scale-100 ' +
+                (phase === 'recording' ? 'bg-primary-dark motion-safe:animate-pulse-ring' : 'bg-primary')
+              }
+            >
+              {phase === 'recording' ? (
+                <Icon icon={Square} size={48} />
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src="/images/ask-smriti.png" alt="" className="h-16 w-16" />
+              )}
+            </span>
+            <span aria-hidden="true" className="text-patient-body font-bold text-ink">
+              {phase === 'recording' ? 'Tap when you finish' : 'Tap and speak'}
+            </span>
+          </button>
+        ) : (
+          <div className="flex w-full flex-col gap-3">
+            <label htmlFor="companion-text-question" className="text-patient-body font-bold text-ink">
+              Type your question
+            </label>
+            <input
+              id="companion-text-question"
+              value={textInput}
+              onChange={(e) => setTextInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onTextSubmit();
+              }}
+              style={{ minHeight: 64 }}
+              className={`${fieldClass} text-patient-body`}
+            />
+            <BigButton label="Ask" variant="primary" onClick={onTextSubmit} />
+          </div>
+        )}
 
-      {answer ? (
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-patient-body text-ink">{answer.text}</p>
-          <p className="text-patient-sm text-ink-muted">{answer.fromCache ? 'from earlier' : 'AI-generated answer'}</p>
-        </div>
-      ) : null}
+        {(phase === 'answered' || phase === 'fallback') && transcript ? (
+          <div>
+            <p className="text-patient-sm font-bold text-ink-muted">You asked</p>
+            <p className="mt-1 text-patient-body text-ink">{transcript}</p>
+          </div>
+        ) : null}
 
-      {phase === 'answered' || phase === 'fallback' ? (
-        <BigButton label="Ask again" variant="secondary" onClick={reset} />
-      ) : null}
-    </main>
+        {answer ? (
+          <div className="rounded-card border border-line200 bg-surface-card p-5">
+            <p className="text-patient-body text-ink">{answer.text}</p>
+            <p className="mt-3 text-patient-sm text-ink-muted">{answer.fromCache ? 'from earlier' : 'AI-generated answer'}</p>
+          </div>
+        ) : null}
+
+        {phase === 'answered' || phase === 'fallback' ? (
+          <BigButton label="Ask again" variant="primary" onClick={reset} />
+        ) : null}
+      </main>
+    </div>
   );
 }

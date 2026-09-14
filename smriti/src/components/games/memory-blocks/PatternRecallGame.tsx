@@ -326,7 +326,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                 )}
 
                 {showResults && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-surface/95 backdrop-blur-sm rounded-tile overflow-y-auto">
+                    <div className="absolute inset-0 flex items-center justify-center bg-surface/95 backdrop-blur-sm rounded-tile overflow-y-auto scrollbar-none">
                         <div className="bg-surface-card p-6 rounded-card shadow-md space-y-4 text-center w-11/12 max-w-sm my-4">
                             <h3 className="font-serif-display text-patient-heading text-ink mb-4">
                                 {t('gameOver')}

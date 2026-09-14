@@ -32,10 +32,8 @@ export function recordProgressSnapshot(_key: string, value: number): ProgressSna
   return [{ recordedAt: new Date().toISOString(), primaryValue: value }];
 }
 
-export function getProgressInsights(
-  history: ProgressSnapshot[],
-  _direction: 'higher' | 'lower',
-): {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented reference-project call shape
+export function getProgressInsights(history: ProgressSnapshot[], _direction: 'higher' | 'lower'): {
   sessions: number;
   previous: ProgressSnapshot | null;
   deltaFromPrevious: number | null;

@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import CaregiverNav from '@/components/layout/CaregiverNav';
-import CaregiverTopNav from '@/components/layout/CaregiverTopNav';
+import CaregiverRail from '@/components/layout/CaregiverRail';
 import Skeleton from '@/components/ui/Skeleton';
 import BigButton from '@/components/ui/BigButton';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { restoreLocalSession, pullAndStoreServerProfile } from '@/lib/auth/localSession';
+import { restoreLocalSession, pullAndStoreServerProfile, needsDevicePatientChoice } from '@/lib/auth/localSession';
 
 type GateState = 'checking' | 'ready' | 'offline';
 
@@ -68,6 +68,14 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
           router.replace('/caregiver/dashboard');
           return;
         }
+        // An account with several patients, signed in on a phone that isn't
+        // linked to any of them yet (e.g. a patient's own new phone): choose
+        // who uses it before anything else, so nobody plays under the wrong name.
+        if (pathname !== '/caregiver/device' && (await needsDevicePatientChoice())) {
+          if (cancelled) return;
+          router.replace('/caregiver/device?setup=1');
+          return;
+        }
         setState('ready');
         return;
       }
@@ -90,6 +98,11 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
       if (cancelled) return;
 
       if (status === 'found') {
+        if (pathname !== '/caregiver/device' && (await needsDevicePatientChoice())) {
+          if (cancelled) return;
+          router.replace('/caregiver/device?setup=1');
+          return;
+        }
         setState('ready');
         return;
       }
@@ -105,6 +118,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
     return () => {
       cancelled = true;
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- pathname is read once at the gate, not re-gated on every navigation
   }, [isLoginRoute, isOnboardingRoute, router, retryToken]);
 
   if (isLoginRoute) {
@@ -113,33 +127,46 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
 
   if (state === 'offline') {
     return (
-      <section className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="font-serif-display text-caregiver-heading font-semibold text-ink">
-          Could not reach your account
-        </p>
-        <p className="max-w-sm text-caregiver-body text-ink-muted">
-          This device is not connected right now, so your saved details could not be checked. Your
-          information is safe. Try again once you have a connection.
-        </p>
-        <BigButton label="Try again" variant="primary" onClick={() => setRetryToken((t) => t + 1)} />
+      <section className="flex min-h-dvh flex-col justify-center bg-surface px-6 py-10">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/error.png" alt="" className="h-16 w-16" />
+          <h1 className="font-serif-display text-[2rem] font-medium leading-tight text-ink">
+            Could not reach your account
+          </h1>
+          <p className="text-caregiver-body text-ink-muted">
+            This device is not connected right now, so your saved details could not be checked. Your
+            information is safe. Try again once you have a connection.
+          </p>
+          <BigButton label="Try again" variant="primary" onClick={() => setRetryToken((t) => t + 1)} />
+        </div>
       </section>
     );
   }
 
   if (state === 'checking') {
     return (
-      <section className="flex min-h-dvh flex-col gap-4 p-6" aria-busy="true">
-        <Skeleton height={32} width="60%" />
-        <Skeleton height={200} />
-        <Skeleton height={200} />
+      <section className="mx-auto flex min-h-dvh w-full max-w-dashboard flex-col gap-4 px-5 py-8 md:px-10" aria-busy="true">
+        <Skeleton height={40} width="40%" />
+        <Skeleton height={24} width="60%" />
+        <Skeleton height={160} className="mt-6" />
+        <Skeleton height={160} />
       </section>
     );
   }
 
   return (
-    <section data-caregiver-shell className="min-h-dvh bg-canvas pb-(--caregiver-nav-h) md:pb-0">
-      <CaregiverTopNav />
-      {children}
+    <section data-caregiver-shell className="min-h-dvh bg-canvas pb-(--caregiver-nav-h) md:flex md:pb-0">
+      <a
+        href="#caregiver-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-control focus:bg-surface-card focus:px-4 focus:py-3 focus:font-bold focus:text-ink"
+      >
+        Skip to content
+      </a>
+      <CaregiverRail />
+      <div id="caregiver-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        {children}
+      </div>
       <CaregiverNav />
     </section>
   );

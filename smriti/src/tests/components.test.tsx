@@ -326,7 +326,7 @@ describe('CaregiverNav', () => {
   it('renders the caregiver destinations', () => {
     render(<CaregiverNav />);
     const names = screen.getAllByRole('link').map((link) => link.textContent);
-    // Full labels, matching CaregiverTopNav's desktop wording — no shortened
+    // Full labels, matching CaregiverRail's desktop wording — no shortened
     // "Memory", no "Dashboard" (the page itself is titled "Overview").
     expect(names).toEqual(['Overview', 'Patients', 'Memory Bank', 'Settings', 'Patient View']);
   });
@@ -364,5 +364,26 @@ describe('CaregiverNav', () => {
     // Full inset (34px on iPhone) under a 64px bar read as a tall blank strip.
     expect(css).toMatch(/--caregiver-nav-pad:\s*max\(calc\(env\(safe-area-inset-bottom\) - 14px\), 4px\)/);
     expect(css).toMatch(/--caregiver-nav-h:\s*calc\(56px \+ var\(--caregiver-nav-pad\)\)/);
+  });
+});
+
+describe('Icon', () => {
+  it('defaults to a 2.5 stroke and stays decorative', async () => {
+    const { default: Icon } = await import('@/components/Icon');
+    const { Heart } = await import('lucide-react');
+    const { container } = render(<Icon icon={Heart} size={24} />);
+    const svg = container.querySelector('svg')!;
+    expect(svg.getAttribute('stroke-width')).toBe('2.5');
+    expect(svg.getAttribute('aria-hidden')).toBe('true');
+    expect(svg.getAttribute('width')).toBe('24');
+  });
+
+  it('lets a caller override the stroke and label a standalone icon', async () => {
+    const { default: Icon } = await import('@/components/Icon');
+    const { Settings } = await import('lucide-react');
+    render(<Icon icon={Settings} strokeWidth={2} aria-label="Settings" />);
+    const svg = screen.getByRole('img', { name: 'Settings' });
+    expect(svg.getAttribute('stroke-width')).toBe('2');
+    expect(svg.getAttribute('aria-hidden')).toBeNull();
   });
 });

@@ -63,12 +63,14 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
   if (!messages || messages.length === 0) return null;
 
   return (
-    <section
-      aria-label="Messages from family"
-      className="flex flex-col gap-3 rounded-tile border border-line200 bg-surface-card p-4"
-    >
-      <h2 className="flex items-center gap-2 font-serif-display text-patient-heading text-ink">
-        <span aria-hidden="true">💌</span> Messages from Family
+    <section aria-labelledby="family-messages-heading" className="flex flex-col gap-3">
+      <h2
+        id="family-messages-heading"
+        className="flex items-center gap-2.5 font-serif-display text-[1.75rem] font-medium leading-tight text-ink"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/family-message.png" alt="" className="h-8 w-8" />
+        Messages from family
       </h2>
 
       <ul className="flex flex-col gap-3">
@@ -76,12 +78,12 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
           <li
             key={message.id}
             data-testid="family-message"
-            className="flex flex-col gap-2 rounded-tile bg-surface-muted p-4"
+            className="flex flex-col gap-3 rounded-card border border-line200 bg-surface-card p-5"
           >
             {message.senderName ? (
-              <p className="text-patient-sm font-semibold text-ink">
-                {message.senderName}
-                {message.senderRelation ? ` (${message.senderRelation})` : ''}
+              <p className="text-patient-sm font-bold text-ink-muted">
+                From {message.senderName}
+                {message.senderRelation ? `, your ${message.senderRelation.toLowerCase()}` : ''}
               </p>
             ) : null}
 
@@ -92,15 +94,17 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
                 width={320}
                 height={200}
                 unoptimized
-                className="h-auto w-full max-w-xs rounded-tile object-cover"
+                className="h-auto w-full rounded-tile object-cover"
               />
             ) : null}
 
             <p className="text-patient-body text-ink">{message.text}</p>
 
             {message.seenAt ? (
-              <p className="text-patient-sm text-ink-muted" role="status">
-                Seen ✓
+              <p className="flex items-center gap-2 text-patient-sm text-ink-muted" role="status">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/done-acknowledged.png" alt="" className="h-5 w-5" />
+                Seen
               </p>
             ) : (
               <BigButton label="Seen" variant="success" onClick={() => void onAcknowledge(message.id)} />

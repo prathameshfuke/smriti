@@ -138,6 +138,12 @@ interface SettingsState {
   pinAttempts: number;
   /** Absolute ms timestamp the lockout ends, or null when not locked out. */
   pinCooldownUntil: number | null;
+  /** On a phone shared by several patients: who is playing right now. */
+  activePatientId: string | null;
+  /** Last tap anywhere in the app, for the shared-phone idle re-ask. */
+  lastActivityAt: number | null;
+  setActivePatient: (patientId: string | null) => void;
+  touchActivity: () => void;
   setLanguage: (language: UILanguage) => void;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
@@ -170,7 +176,11 @@ export const useSettingsStore = create<SettingsState>()(
       caregiverSessionVerifiedAt: null,
       pinAttempts: 0,
       pinCooldownUntil: null,
+      activePatientId: null,
+      lastActivityAt: null,
 
+      setActivePatient: (activePatientId) => set({ activePatientId, lastActivityAt: Date.now() }),
+      touchActivity: () => set({ lastActivityAt: Date.now() }),
       setLanguage: (language) => set({ language }),
       setPin: async (pin) => {
         set({ caregiverPinHash: await hashPin(pin) });

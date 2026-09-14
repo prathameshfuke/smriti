@@ -1,9 +1,12 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import appIcon from '@/appicon.png';
 import { useRouter, useSearchParams } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
 import PinPad from '@/components/ui/PinPad';
+import PinDots from '@/components/ui/PinDots';
+import { fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { pullAndStoreServerProfile } from '@/lib/auth/localSession';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -154,76 +157,54 @@ function CaregiverLoginPageInner() {
 
   if (status === 'setup-pin') {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-patient flex-col justify-center gap-4 px-4 py-6">
-        <div className="text-center">
-          <h1 className="font-serif-display text-caregiver-heading font-semibold text-ink">
-            Set Up Quick Access
-          </h1>
-          <p className="mt-2 text-caregiver-body text-ink-muted">
-            {pinStage === 'new'
-              ? 'Create a 4-digit PIN for a fast way back into the caregiver area on this device'
-              : 'Confirm PIN'}
-          </p>
-        </div>
-
-        <div className="flex justify-center gap-3" aria-hidden="true">
-          {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-            <span
-              key={i}
-              className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
-                i < (pinStage === 'new' ? newPin.length : confirmPin.length)
-                  ? 'border-primary bg-primary'
-                  : 'border-line200'
-              }`}
-            />
-          ))}
-        </div>
-
+      <AuthShell
+        title="Set Up Quick Access"
+        description={
+          pinStage === 'new'
+            ? 'Create a 4-digit PIN for a fast way back into the caregiver area on this device'
+            : 'Confirm PIN'
+        }
+      >
+        <PinDots filled={pinStage === 'new' ? newPin.length : confirmPin.length} length={PIN_LENGTH} />
         <PinPad onDigit={onPinDigit} onBackspace={onPinBackspace} />
-
-        {pinError ? <p className="text-center text-caregiver-body text-warning">{pinError}</p> : null}
-
-        <button
-          type="button"
-          onClick={skipPinSetup}
-          className="text-center text-caregiver-body text-ink-muted underline"
-        >
+        {pinError ? (
+          <p role="alert" className="text-caregiver-body font-bold text-danger">
+            {pinError}
+          </p>
+        ) : null}
+        <button type="button" onClick={skipPinSetup} className={`${textActionClass} self-start`}>
           Skip for now
         </button>
-      </main>
+      </AuthShell>
     );
   }
 
-  return (
-    <main className="mx-auto flex min-h-dvh max-w-patient flex-col justify-center gap-6 px-4 py-6">
-      <div className="text-center">
-        <h1 className="font-serif-display text-caregiver-heading font-semibold text-ink">
-          Caregiver Login
-        </h1>
-        <p className="mt-2 text-caregiver-body text-ink-muted">
-          {status === 'sent' || status === 'verifying'
-            ? 'Enter the 6-digit code we emailed you'
-            : 'Enter your email to receive a login code'}
-        </p>
-      </div>
+  const awaitingCode = status === 'sent' || status === 'verifying';
 
-      {status === 'sent' || status === 'verifying' ? (
-        <div className="flex flex-col gap-4">
-          <label htmlFor="caregiver-code" className="sr-only">
-            6-digit code
-          </label>
-          <input
-            id="caregiver-code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={OTP_LENGTH}
-            required
-            value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            placeholder="123456"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-center text-caregiver-heading tracking-[0.3em] text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+  return (
+    <AuthShell
+      title="Caregiver Login"
+      description={awaitingCode ? `Enter the 6-digit code we emailed to ${email || 'you'}.` : 'Enter your email to receive a login code'}
+    >
+      {awaitingCode ? (
+        <>
+          <div>
+            <label htmlFor="caregiver-code" className={labelClass}>
+              6-digit code
+            </label>
+            <input
+              id="caregiver-code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={OTP_LENGTH}
+              required
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              placeholder="123456"
+              className={`${fieldClass} min-h-16 text-center text-caregiver-heading tracking-[0.3em]`}
+            />
+          </div>
 
           <BigButton
             label={status === 'verifying' ? 'Verifying…' : 'Verify code'}
@@ -239,25 +220,28 @@ function CaregiverLoginPageInner() {
               setCode('');
               setErrorMessage('');
             }}
-            className="text-center text-caregiver-body text-ink-muted underline"
+            className={`${textActionClass} self-start`}
           >
             Use a different email
           </button>
-        </div>
+        </>
       ) : (
-        <div className="flex flex-col gap-4">
-          <label htmlFor="caregiver-email" className="sr-only">
-            Email
-          </label>
-          <input
-            id="caregiver-email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@example.com"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
+        <>
+          <div>
+            <label htmlFor="caregiver-email" className={labelClass}>
+              Email
+            </label>
+            <input
+              id="caregiver-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              className={fieldClass}
+            />
+          </div>
 
           <BigButton
             label={status === 'sending' ? 'Sending…' : 'Send login code'}
@@ -266,10 +250,10 @@ function CaregiverLoginPageInner() {
             onClick={sendCode}
           />
 
-          <div className="flex items-center gap-3" aria-hidden="true">
-            <span className="h-px flex-1 bg-surface-muted" />
+          <div className="flex items-center gap-4" aria-hidden="true">
+            <span className="h-px flex-1 bg-line200" />
             <span className="text-caregiver-body text-ink-muted">or</span>
-            <span className="h-px flex-1 bg-surface-muted" />
+            <span className="h-px flex-1 bg-line200" />
           </div>
 
           <BigButton
@@ -278,12 +262,33 @@ function CaregiverLoginPageInner() {
             disabled={status === 'sending'}
             onClick={signInWithGoogle}
           />
-        </div>
+        </>
       )}
 
       {errorMessage ? (
-        <p className="text-center text-caregiver-body text-warning">{errorMessage}</p>
+        <p role="alert" className="text-caregiver-body font-bold text-danger">
+          {errorMessage}
+        </p>
       ) : null}
+    </AuthShell>
+  );
+}
+
+/** Shared frame for the sign-in steps: brand at the top, one left-aligned
+ * column in the middle, never more than one decision on screen. */
+function AuthShell({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
+  return (
+    <main className="flex min-h-dvh flex-col bg-surface px-5 py-8">
+      <p className="flex items-center gap-2.5 font-serif-display text-[1.375rem] font-medium text-ink">
+        {/* eslint-disable-next-line @next/next/no-img-element -- 28px static brand mark, nothing to optimise */}
+        <img src={appIcon.src} alt="" width={28} height={28} className="h-7 w-7" />
+        SMRITI
+      </p>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
+        <h1 className="font-serif-display text-[2.25rem] font-medium leading-[1.1] text-ink">{title}</h1>
+        <p className="mt-3 text-caregiver-body text-ink-muted">{description}</p>
+        <div className="mt-8 flex flex-col gap-5">{children}</div>
+      </div>
     </main>
   );
 }

@@ -63,7 +63,7 @@ describe('Caregiver dashboard', () => {
     const { default: DashboardPage } = await import('@/app/caregiver/dashboard/page');
     render(<DashboardPage />);
 
-    expect(await screen.findByText(/need immediate attention/i)).toBeInTheDocument();
+    expect(await screen.findByText(/needs? immediate attention/i)).toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -81,7 +81,7 @@ describe('Caregiver dashboard', () => {
     render(<DashboardPage />);
 
     await screen.findByText('Aai');
-    expect(screen.queryByText(/need immediate attention/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/needs? immediate attention/i)).not.toBeInTheDocument();
     vi.unstubAllGlobals();
   });
 
@@ -258,7 +258,7 @@ describe('Patient detail page', () => {
     await db.reminderAcks.clear();
   });
 
-  it('history tab renders a calendar with the correct number of day cells for the current month', async () => {
+  it('cognitive tab renders the activity calendar with the correct number of day cells for the current month', async () => {
     vi.stubGlobal(
       'fetch',
       fetchByUrl({
@@ -270,7 +270,6 @@ describe('Patient detail page', () => {
     render(<PatientDetailPage params={Promise.resolve({ id: 'p1' })} />);
 
     await screen.findByTestId('score-graph');
-    fireEvent.click(screen.getByRole('button', { name: /history/i }));
 
     const now = new Date();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -424,8 +423,7 @@ describe('Patient detail page', () => {
       const region = await screen.findByRole('img', { name: /line chart of blended daily accuracy/i });
       expect(within(region).getByText(today)).toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('button', { name: /history/i }));
-      // Not pinned to a specific day cell: `summaryDate` is written app-wide
+        // Not pinned to a specific day cell: `summaryDate` is written app-wide
       // as a UTC calendar day (every game page calls
       // `new Date().toISOString().slice(0, 10)`), while the calendar grid
       // numbers its cells off local Date methods — a pre-existing,

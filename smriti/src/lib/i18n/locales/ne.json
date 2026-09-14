@@ -1,5 +1,11 @@
 {
   "home": {
+    "whoIsPlaying": "को खेल्दै हुनुहुन्छ?",
+    "tapYourName": "आफ्नो नाममा थिच्नुहोस्।",
+    "notYou": "तपाईं {name} होइन?",
+    "chooseWhoTitle": "यो फोन कसले चलाउने, छान्नुहोस्",
+    "chooseWhoBody": "हेरचाह गर्ने व्यक्तिले यो फोनमा को खेल्ने भनेर छान्नुपर्छ।",
+    "caregiver": "हेरचाहकर्ता",
     "greeting": "नमस्ते",
     "startSession": "खेल्न सुरु गर्नुहोस्",
     "reminders": "मेरा रिमाइन्डरहरू",
@@ -42,6 +48,7 @@
     "memorySpan": { "name": "स्मृति विस्तार" },
     "fishTrace": { "name": "माछा पछ्याउने" },
     "doubleDecision": { "name": "दोहोरो निर्णय" },
+    "reminiscenceQuiz": { "name": "परिवार र जीवन क्विज" },
     "correct": "सही!",
     "tryAgain": "फेरि प्रयास गर्नुहोस्",
     "sessionComplete": "शाबाश! तपाईंले आजको सत्र पूरा गर्नुभयो।",

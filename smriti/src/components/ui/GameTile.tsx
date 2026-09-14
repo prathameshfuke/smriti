@@ -17,15 +17,19 @@ export interface GameTileProps {
 }
 
 const TILE_CLASS =
-  'flex flex-col items-center justify-center gap-2 rounded-tile border border-line200 ' +
-  'bg-white p-6 text-center text-patient-body font-semibold text-ink ' +
-  'transition-all duration-100 active:scale-[0.97] motion-reduce:active:scale-100 ' +
-  'hover:shadow-md hover:border-primary/40 focus-visible:outline focus-visible:outline-4 ' +
-  'focus-visible:outline-offset-2 focus-visible:outline-primary';
+  'flex w-full items-center gap-4 rounded-tile border border-line200 bg-surface-card px-4 py-3 ' +
+  'text-left text-patient-body font-bold text-ink ' +
+  'transition-[transform,border-color,background-color] duration-150 active:scale-[0.98] ' +
+  'motion-reduce:active:scale-100 hover:border-ink-muted hover:bg-surface-muted/40 ' +
+  'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark';
 
 /**
- * Home-screen entry point for one game. Reaching a game must take at most
- * three taps, so tiles are the first thing on the patient home screen.
+ * Home-screen entry point for one game, laid out as a full-width row: the
+ * picture on the left, the name beside it, difficulty on the far right.
+ * A single column reads top to bottom with no zig-zag between grid cells,
+ * the name has room at 22px without wrapping, and every row is the same
+ * shape so a patient learns it once. Reaching a game is still one tap from
+ * the home screen.
  */
 export default function GameTile({
   gameName,
@@ -41,22 +45,30 @@ export default function GameTile({
         // Plain img: assets are pre-cached by the service worker, and the
         // optimizer is unavailable offline.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={illustrationSrc} alt="" role="presentation" className="h-24 w-24 object-contain" />
+        <img
+          src={illustrationSrc}
+          alt=""
+          role="presentation"
+          className="h-14 w-14 shrink-0 rounded-control object-contain"
+        />
       ) : icon ? (
-        <span aria-hidden="true" className="text-primary">
+        <span
+          aria-hidden="true"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-control bg-surface-muted text-primary"
+        >
           {icon}
         </span>
       ) : null}
-      <span>{gameName}</span>
+      <span className="min-w-0 flex-1 leading-snug">{gameName}</span>
       {difficultyLevel ? (
-        <span className="flex gap-1" aria-hidden="true">
+        <span className="flex shrink-0 gap-1.5" aria-hidden="true">
           {[1, 2, 3].map((level) => (
             <span
               key={level}
               data-difficulty-dot={level <= difficultyLevel ? 'on' : 'off'}
               className={
-                'h-3 w-3 rounded-full ' +
-                (level <= difficultyLevel ? 'bg-primary' : 'bg-surface-muted')
+                'h-2.5 w-2.5 rounded-full ' +
+                (level <= difficultyLevel ? 'bg-primary' : 'border border-ink-muted/50 bg-transparent')
               }
             />
           ))}

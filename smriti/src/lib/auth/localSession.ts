@@ -1,5 +1,7 @@
 import { db, type LocalPatient } from '@/lib/db/schema';
-import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
+import { getTrustedPatientIds } from '@/lib/auth/deviceTrust';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { isUILanguage } from '@/lib/i18n/languages';
 import { pullCaregiverProfile, type ProfilePullResult } from '@/lib/db/serverProfile';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { useCaregiverStore } from '@/stores/caregiverStore';
@@ -59,17 +61,13 @@ export async function restoreLocalSession(): Promise<boolean> {
   await usePatientStore.getState().loadPatients(localCaregiver.id);
 
   if (!usePatientStore.getState().currentPatient) {
-    const token = await getDeviceTrustToken();
-    let active: LocalPatient | null = null;
-    if (token) {
-      const trusted = await db.patients.get(token.patientId);
-      if (trusted && trusted.caregiverId === localCaregiver.id && trusted.isActive) {
-        active = trusted;
-      }
-    }
-    if (!active) {
-      active = usePatientStore.getState().allPatients[0] ?? null;
-    }
+    // The same rule as the patient home: this phone's own patients only.
+    // One linked (or a lone unlinked) patient is selected; on a shared phone
+    // the last person chosen; otherwise nobody, and the home screen asks.
+    const devicePatients = await getDevicePatients();
+    const remembered = useSettingsStore.getState().activePatientId;
+    const active =
+      devicePatients.find((p) => p.id === remembered) ?? (devicePatients.length === 1 ? devicePatients[0] : null);
     usePatientStore.getState().setCurrentPatient(active);
   }
 
@@ -102,7 +100,14 @@ export async function pullAndStoreServerProfile(
   });
   useCaregiverStore.getState().setCurrentCaregiver(pulled.caregiver);
   await usePatientStore.getState().loadPatients(pulled.caregiver.id);
-  const active = pulled.patients.find((p) => p.isActive) ?? null;
+  // The phone's own patient, never simply the account's first: signing in on
+  // Hari's new phone used to select Maya because she was listed first. With
+  // several patients and no link yet, nobody is selected until the caregiver
+  // chooses on "Who uses this phone?".
+  const devicePatients = await getDevicePatients();
+  const remembered = useSettingsStore.getState().activePatientId;
+  const active =
+    devicePatients.find((p) => p.id === remembered) ?? (devicePatients.length === 1 ? devicePatients[0] : null);
   usePatientStore.getState().setCurrentPatient(active);
 
   return 'found';
@@ -126,3 +131,58 @@ export async function checkLiveCaregiverSession(): Promise<LiveCaregiverSessionS
   const { data } = await createBrowserClient().auth.getSession();
   return data.session ? 'valid' : 'invalid';
 }
+
+/**
+ * The patients who use this phone: those it holds a trust token for, among
+ * this caregiver's active local patients. A phone set up before shared
+ * phones existed (or one whose trust step failed offline) has no tokens;
+ * with exactly one local patient that patient is still the phone's patient.
+ * With several and no tokens, nobody is assumed: the caregiver has to choose
+ * on the "People on this phone" page, so a caregiver's account list never
+ * appears on a patient's own phone by accident.
+ */
+export async function getDevicePatients(): Promise<LocalPatient[]> {
+  const caregiver = await db.caregivers.toCollection().first();
+  if (!caregiver) return [];
+  const local = await db.patients
+    .where('caregiverId')
+    .equals(caregiver.id)
+    .filter((p) => p.isActive)
+    .toArray();
+  const trusted = new Set(await getTrustedPatientIds());
+  const linked = local.filter((p) => trusted.has(p.id));
+  // No link to any of THIS caregiver's patients (tokens from a previous
+  // caregiver on the phone are ignored): a lone patient still counts.
+  if (linked.length === 0) return local.length === 1 ? local : [];
+  return linked.sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/**
+ * Whether the caregiver still has to choose who uses this phone: several
+ * active patients, none of them linked here. Links left behind by a previous
+ * caregiver on this phone don't count, since they belong to other patients.
+ */
+export async function needsDevicePatientChoice(): Promise<boolean> {
+  const caregiver = await db.caregivers.toCollection().first();
+  if (!caregiver) return false;
+  const localCount = await db.patients
+    .where('caregiverId')
+    .equals(caregiver.id)
+    .filter((p) => p.isActive)
+    .count();
+  return localCount > 1 && (await getDevicePatients()).length === 0;
+}
+
+/**
+ * Makes `patient` the one playing: games, reminders and messages follow
+ * them, and the app switches to their language.
+ */
+export function selectActivePatient(patient: LocalPatient): void {
+  usePatientStore.getState().setCurrentPatient(patient);
+  const settings = useSettingsStore.getState();
+  settings.setActivePatient(patient.id);
+  if (isUILanguage(patient.primaryLanguage) && settings.language !== patient.primaryLanguage) {
+    settings.setLanguage(patient.primaryLanguage);
+  }
+}
+

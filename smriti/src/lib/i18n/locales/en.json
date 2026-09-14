@@ -1,5 +1,11 @@
 {
   "home": {
+    "whoIsPlaying": "Who is playing?",
+    "tapYourName": "Tap your name.",
+    "notYou": "Not {name}?",
+    "chooseWhoTitle": "Choose who uses this phone",
+    "chooseWhoBody": "A caregiver needs to pick the person, or people, who will play on this phone.",
+    "caregiver": "Caregiver",
     "greeting": "Hello",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
@@ -22,7 +28,7 @@
       "imDone": "I am done!"
     },
     "quickTap": {
-      "name": "Quick Quick",
+      "name": "Quick Tap",
       "instruction": "Tap the picture as soon as you see it."
     },
     "pathMatch": {
@@ -44,6 +50,7 @@
     "memorySpan": { "name": "Memory Span" },
     "fishTrace": { "name": "Fish Trace" },
     "doubleDecision": { "name": "Double Decision" },
+    "reminiscenceQuiz": { "name": "Family & Life Quiz" },
     "correct": "Correct!",
     "tryAgain": "Try again",
     "sessionComplete": "Well done! You finished today's session.",
