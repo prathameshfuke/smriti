@@ -41,8 +41,8 @@ describe('CognitiveTrendChart', () => {
     expect(
       screen.getByText('2 sessions so far. A trend needs about 5. Showing each session instead.'),
     ).toBeInTheDocument();
-    expect(screen.getByText(/2026-09-01 · 90% accuracy/)).toBeInTheDocument();
-    expect(screen.getByText(/2026-09-02 · 60% accuracy/)).toBeInTheDocument();
+    expect(screen.getByText('Tue 1 Sep: 90% correct')).toBeInTheDocument();
+    expect(screen.getByText('Wed 2 Sep: 60% correct')).toBeInTheDocument();
     expect(screen.queryByText(/drop/i)).not.toBeInTheDocument();
     // No chart region drawn in this state.
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
@@ -95,33 +95,31 @@ describe('GameBreakdownChart', () => {
     expect(container.querySelector('.animate-pulse')).toBeTruthy();
   });
 
-  it('low-data (1-2 sessions): still renders bars — a bar chart makes no trend claim', () => {
+  it('low-data (1-2 sessions): still lists the game with a whole-number percentage', () => {
     render(<GameBreakdownChart points={[point({ gameType: 'quick_tap', accuracy: 75 })]} />);
-    const region = screen.getByRole('img');
-    const table = within(region).getByRole('table', { hidden: true });
-    expect(within(table).getByText('Quick Tap')).toBeInTheDocument();
-    expect(within(table).getByText('75%')).toBeInTheDocument();
+    const row = screen.getByTestId('game-breakdown-row');
+    expect(within(row).getByText('Quick Tap')).toBeInTheDocument();
+    expect(within(row).getByText('75%')).toBeInTheDocument();
   });
 
-  it('full dataset: groups rows-weighted accuracy per game with labels and level caps from the shared sources', () => {
+  it('full dataset: rounds-weighted accuracy per game, rounded, with level caps and last played date', () => {
     const points = [
       point({ gameType: 'object_hunt', date: '2026-09-01', accuracy: 50, totalRounds: 10, maxDifficultyReached: 4 }),
       point({ gameType: 'object_hunt', date: '2026-09-02', accuracy: 90, totalRounds: 10, maxDifficultyReached: 6 }),
       point({ gameType: 'memory_match', date: '2026-09-01', accuracy: 100, totalRounds: 5, maxDifficultyReached: 2 }),
+      point({ gameType: 'frog_leap', date: '2026-09-01', accuracy: 66.66666666666667, totalRounds: 3, maxDifficultyReached: 1 }),
+      point({ gameType: 'memory_span', date: '2026-09-01', accuracy: 0, totalRounds: 4, maxDifficultyReached: 1 }),
     ];
     render(<GameBreakdownChart points={points} />);
-    const region = screen.getByRole('img');
-    const table = within(region).getByRole('table', { hidden: true });
-    expect(within(table).getByText('Object Hunt')).toBeInTheDocument();
-    expect(within(table).getByText('Memory Match')).toBeInTheDocument();
-    expect(within(table).getByText('70%')).toBeInTheDocument(); // (5+9)/20
-    // maxDifficultyReached (max of 4 and 6 across the two object_hunt rows) / MAX_LEVEL.object_hunt.
-    // Split across 3 text nodes by JSX interpolation, so match on the cell's full textContent.
-    expect(
-      within(table).getByText(
-        (_content, el) => el?.tagName === 'TD' && el.textContent?.replace(/\s+/g, ' ').trim() === '6 / 10',
-      ),
-    ).toBeInTheDocument();
+    const rows = screen.getAllByTestId('game-breakdown-row');
+    expect(rows).toHaveLength(4);
+    const objectHunt = rows.find((r) => r.textContent?.includes('Object Hunt'))!;
+    expect(within(objectHunt).getByText('70%')).toBeInTheDocument(); // (5+9)/20
+    expect(objectHunt.textContent).toContain('Level 6 of 10.');
+    expect(objectHunt.textContent).toContain('Last played 2 Sep.');
+    expect(screen.getByText('67%')).toBeInTheDocument();
+    expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/\d\.\d{3,}/);
   });
 });
 

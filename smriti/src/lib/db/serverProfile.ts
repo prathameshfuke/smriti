@@ -156,6 +156,7 @@ export async function pullCaregiverProfile(authUserId: string): Promise<ProfileP
           daysOfWeek: r.days_of_week,
           isActive: r.is_active,
           updatedAt: r.updated_at,
+          createdAt: r.created_at,
         }));
       }
     }

@@ -5,7 +5,7 @@
 
 const gameUI = {
   en: {
-    heading: 'Memory Match: Family & Life',
+    heading: 'Family & Life Quiz',
     correct: 'Correct!',
     tryTogether: "Let's remember together.",
     next: 'Next',

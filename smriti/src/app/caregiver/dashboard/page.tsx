@@ -13,7 +13,14 @@ import { authedFetch } from '@/lib/api/client';
 import SyncStatus from '@/components/ui/SyncStatus';
 import ScoreRing from '@/components/ui/ScoreRing';
 import WeekActivity from '@/components/caregiver/WeekActivity';
-import { BAND_LABEL, type ScoreBand } from '@/lib/dashboard/cognitiveScore';
+import {
+  BAND_LABEL,
+  mergeScoreRows,
+  summarizeActivity,
+  type ScoreBand,
+  type ScoreRow,
+} from '@/lib/dashboard/cognitiveScore';
+import { useLocalScoreRows } from '@/hooks/useLocalScoreRows';
 import { languageName } from '@/lib/i18n/languages';
 
 interface DashboardPatient {
@@ -22,10 +29,37 @@ interface DashboardPatient {
   ageYears: number;
   primaryLanguage: string;
   alertStatus: TriageStatus;
-  accuracyToday: number;
+  accuracyToday: number | null;
   sessionsThisWeek: number;
   cognitiveScore?: { score: number; band: ScoreBand; delta: number | null; enoughData: boolean } | null;
   week?: Array<number | null>;
+  scoreRows?: ScoreRow[];
+}
+
+interface CardStats {
+  score: { score: number; band: ScoreBand; enoughData: boolean } | null;
+  accuracyToday: number | null;
+  daysPlayed: number;
+  week: Array<number | null>;
+}
+
+/**
+ * The server only knows about games that have synced. Games played on this
+ * phone are merged in, so a caregiver checking right after a session sees
+ * them rather than "no score" and 0% today.
+ */
+function cardStats(patient: DashboardPatient, localRows: ScoreRow[] | undefined, today: string): CardStats {
+  const merged = mergeScoreRows(patient.scoreRows ?? [], localRows ?? []);
+  if (merged.length > 0) {
+    const a = summarizeActivity(merged, today);
+    return { score: a.score, accuracyToday: a.accuracyToday, daysPlayed: a.daysPlayedThisWeek, week: a.week };
+  }
+  return {
+    score: patient.cognitiveScore ?? null,
+    accuracyToday: patient.accuracyToday,
+    daysPlayed: patient.sessionsThisWeek,
+    week: patient.week ?? Array.from({ length: 7 }, () => null),
+  };
 }
 
 const STATUS_ORDER: Record<TriageStatus, number> = { red: 0, yellow: 1, green: 2 };
@@ -57,6 +91,8 @@ function CaregiverDashboardPageInner() {
 
   const [patients, setPatients] = useState<DashboardPatient[] | null>(null);
   const [error, setError] = useState(false);
+  const [today] = useState(() => new Date().toISOString().slice(0, 10));
+  const localRows = useLocalScoreRows(today);
 
   const load = () => {
     setError(false);
@@ -124,8 +160,8 @@ function CaregiverDashboardPageInner() {
 
           <ul className="flex flex-col gap-3">
             {sorted.map((patient) => {
-              const score = patient.cognitiveScore ?? null;
-              const week = patient.week ?? Array.from({ length: 7 }, () => null);
+              const stats = cardStats(patient, localRows[patient.id], today);
+              const score = stats.score;
               return (
                 <li key={patient.id}>
                   <button
@@ -134,10 +170,7 @@ function CaregiverDashboardPageInner() {
                     className="flex w-full flex-col gap-4 rounded-card border border-line200 bg-surface-card p-4 text-left transition-[border-color,transform] duration-150 hover:border-ink-muted/60 active:scale-[0.99] motion-reduce:active:scale-100 sm:p-5 md:flex-row md:items-center md:gap-6"
                   >
                     <span className="flex min-w-0 items-center gap-4 md:flex-1">
-                      <ScoreRing
-                        value={score ? score.score : null}
-                        label={score ? `Cognitive score ${score.score} out of 100` : 'No cognitive score yet'}
-                      />
+                      {score ? <ScoreRing value={score.score} label={`Cognitive score ${score.score} out of 100`} /> : null}
                       <span className="min-w-0">
                         <span data-testid="patient-card-name" className="block break-words text-caregiver-body font-bold text-ink">
                           {patient.displayName}
@@ -154,17 +187,31 @@ function CaregiverDashboardPageInner() {
                     <span className="grid grid-cols-3 gap-3 border-t border-line200 pt-4 md:w-[26rem] md:border-t-0 md:pt-0">
                       <span className="flex flex-col gap-1">
                         <span className="text-patient-sm text-ink-muted">Score</span>
-                        <span className="text-caregiver-body font-bold text-ink">
-                          {score ? BAND_LABEL[score.band] : 'Not yet'}
-                        </span>
+                        {score ? (
+                          <span className="flex flex-col">
+                            <span className="text-caregiver-body font-bold tabular-nums text-ink">{score.score}</span>
+                            <span className="text-patient-sm text-ink-muted">
+                              {score.enoughData ? BAND_LABEL[score.band] : 'Early estimate'}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-caregiver-body font-bold text-ink-muted">No games yet</span>
+                        )}
                       </span>
                       <span className="flex flex-col gap-1">
                         <span className="text-patient-sm text-ink-muted">Today</span>
-                        <span className="text-caregiver-body font-bold tabular-nums text-ink">{patient.accuracyToday}%</span>
+                        {stats.accuracyToday === null ? (
+                          <span className="text-caregiver-body font-bold text-ink-muted">Not played</span>
+                        ) : (
+                          <span className="flex flex-col">
+                            <span className="text-caregiver-body font-bold tabular-nums text-ink">{stats.accuracyToday}%</span>
+                            <span className="text-patient-sm text-ink-muted">correct</span>
+                          </span>
+                        )}
                       </span>
                       <span className="flex flex-col gap-1">
-                        <span className="text-patient-sm text-ink-muted">{patient.sessionsThisWeek} of 7 days</span>
-                        <WeekActivity days={week} />
+                        <span className="text-patient-sm text-ink-muted">{stats.daysPlayed} of 7 days</span>
+                        <WeekActivity days={stats.week} />
                       </span>
                     </span>
                   </button>

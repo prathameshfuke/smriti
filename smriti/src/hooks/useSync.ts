@@ -30,6 +30,8 @@ export function useSync(): {
   syncStatus: SyncStatus;
   lastSynced: string | null;
   pendingCount: number;
+  /** Why the last sync failed (`SyncResult.error`), or null after a success. */
+  lastError: string | null;
   /** Resolves true only when the sync actually reached the server. */
   syncNow: () => Promise<boolean>;
 } {
@@ -37,6 +39,7 @@ export function useSync(): {
   const [pendingCount, setPendingCount] = useState(0);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   // Starts false, not `isOnline`: the goal is "attempt a sync shortly after
   // this hook first sees the device online," and the device being online
   // from the very first render (by far the common case — most sessions
@@ -67,6 +70,7 @@ export function useSync(): {
     // timestamp — otherwise the caregiver sees a fresh "last synced" time
     // while their pending records never actually reached the server.
     if (result.success) setLastSynced(new Date().toISOString());
+    setLastError(result.success ? null : (result.error ?? 'unknown'));
     await refreshPendingCount();
     setIsSyncing(false);
     return result.success;
@@ -99,5 +103,5 @@ export function useSync(): {
         ? 'pending'
         : 'synced';
 
-  return { syncStatus, lastSynced, pendingCount, syncNow };
+  return { syncStatus, lastSynced, pendingCount, lastError, syncNow };
 }

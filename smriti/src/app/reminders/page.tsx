@@ -96,6 +96,7 @@ export default function RemindersPage() {
       daysOfWeek,
       isActive: true,
       updatedAt: new Date().toISOString(),
+      createdAt: schedules.find((s) => s.id === editingId)?.createdAt ?? new Date().toISOString(),
     };
 
     await saveReminderSchedules([row]);
@@ -116,6 +117,7 @@ export default function RemindersPage() {
         daysOfWeek: ALL_DAYS,
         isActive: true,
         updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       },
     ]);
     await reload();

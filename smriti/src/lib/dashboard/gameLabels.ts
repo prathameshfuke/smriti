@@ -46,6 +46,6 @@ export const GAME_LABELS: Record<GameType, string> = {
   memory_span: 'Memory Span',
   fish_trace: 'Fish Trace',
   double_decision: 'Double Decision',
-  reminiscence_quiz: 'Memory Match: Family & Life',
+  reminiscence_quiz: 'Family & Life Quiz',
   routine_recall: 'Routine Recall',
 };

@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { playOnChannel } from '@/lib/audio/channel';
 import { BIG_TARGET_MIN_PX } from './touchTarget';
 
 export interface BigButtonProps {
@@ -50,7 +51,7 @@ export default function BigButton({
     if (audioSrc) {
       // Playback can reject (no gesture yet, asset missing). The button must
       // still work; audio is reinforcement, never the only channel.
-      void new Audio(audioSrc).play().catch(() => undefined);
+      playOnChannel(new Audio(audioSrc)).catch(() => undefined);
     }
     onClick?.();
   };

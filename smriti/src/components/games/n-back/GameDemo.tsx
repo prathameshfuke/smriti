@@ -1,5 +1,6 @@
 'use client';
 
+import { stopAllAudio } from '@/lib/audio/channel';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -130,6 +131,8 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
     // 播放当前步骤的音频
     const playCurrentAudio = useCallback(() => {
         if (currentTutorial && audioRefs.current[currentTutorial.letter]) {
+            stopAllAudio();
+            Object.values(audioRefs.current).forEach((sound) => sound.stop());
             audioRefs.current[currentTutorial.letter].play();
         }
     }, [currentTutorial]);

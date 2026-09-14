@@ -6,6 +6,8 @@ export interface AdherenceSchedule {
   time_of_day: string;
   days_of_week: number[];
   label: string;
+  /** Days before this are not counted as missed; the reminder did not exist yet. */
+  created_at?: string | null;
 }
 
 export interface AdherenceAck {
@@ -60,8 +62,11 @@ export function computeAdherence(
   for (const schedule of schedules) {
     const type = schedule.reminder_type;
     byType[type] ??= { acked: 0, total: 0 };
+    const firstDay = schedule.created_at ? schedule.created_at.slice(0, 10) : null;
 
     for (const dateStr of days) {
+      // A water reminder added on Friday was never "missed" on Monday.
+      if (firstDay && dateStr < firstDay) continue;
       const weekday = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
       if (!schedule.days_of_week.includes(weekday)) continue;
 
@@ -70,6 +75,9 @@ export function computeAdherence(
       // patient's adherence look worse than reality until each reminder's
       // own time actually passed.
       if (dateStr === todayStr && schedule.time_of_day.slice(0, 5) > currentTimeStr) continue;
+      if (firstDay && dateStr === firstDay && schedule.created_at && schedule.time_of_day.slice(0, 5) < schedule.created_at.slice(11, 16)) {
+        continue;
+      }
 
       totalExpected += 1;
       byType[type].total += 1;

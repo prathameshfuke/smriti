@@ -18,6 +18,7 @@ export function generateDefaultHydrationSchedule(patientId: string): LocalRemind
     daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
     isActive: true,
     updatedAt,
+    createdAt: updatedAt,
   }));
 }
 

@@ -11,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { formatDayDate } from '@/lib/dashboard/formatDate';
 import Skeleton from '@/components/ui/Skeleton';
 import {
   aggregateDailyBlended,
@@ -145,7 +146,7 @@ export default function CognitiveTrendChart({
             <li key={d.date} className="flex items-center gap-3">
               <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded-full ${dotColorClass(d.accuracy)}`} />
               <span className="text-patient-sm text-ink">
-                {d.date} · {Math.round(d.accuracy)}% accuracy
+                {formatDayDate(d.date)}: {Math.round(d.accuracy)}% correct
               </span>
             </li>
           ))}
