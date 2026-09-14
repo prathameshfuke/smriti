@@ -8,7 +8,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
-import { computeDPrime, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
+import { scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -205,9 +205,7 @@ function QuickTapPageInner() {
 
   const summary = scoreQuickTapRound(sequence.map((s) => ({ isTarget: s.isTarget, tapped: s.tapped })));
   const totalTargets = sequence.filter((s) => s.isTarget).length;
-  const totalNonTargets = sequence.length - totalTargets;
   const hitRate = totalTargets > 0 ? summary.hits / totalTargets : 0;
-  const dPrime = computeDPrime(summary.hits, totalTargets, summary.falseAlarms, totalNonTargets);
   const stars = starsFromRate(hitRate);
 
   const keepGoing = () => {
@@ -252,12 +250,12 @@ function QuickTapPageInner() {
       <main className="flex flex-1 flex-col items-center gap-4 px-4 py-6">
         {phase === 'instruction' && target ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
-            <p className="text-patient-body text-ink-muted">The target is:</p>
+            <p className="text-patient-body text-ink-muted">{t('game.quickTap.targetIs')}</p>
             <span className="text-[96px] leading-none" aria-hidden="true">
               {target.emoji}
             </span>
             <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
-            <BigButton label="Start!" variant="primary" onClick={startRound} />
+            <BigButton label={t('game.start')} variant="primary" onClick={startRound} />
           </div>
         ) : null}
 
@@ -265,7 +263,7 @@ function QuickTapPageInner() {
           <div className="flex w-full flex-1 flex-col">
             <div className="flex items-center justify-between gap-2 px-1">
               <p className="text-patient-sm text-ink-muted">
-                Item {Math.min(itemIndex + 1, sequence.length)} of {sequence.length}
+                {t('game.quickTap.itemOf', { n: Math.min(itemIndex + 1, sequence.length), total: sequence.length })}
               </p>
               {target ? (
                 <span className="shrink-0 text-[48px] leading-none" aria-hidden="true">
@@ -305,11 +303,10 @@ function QuickTapPageInner() {
               {'☆'.repeat(5 - stars)}
             </p>
             <p className="font-serif-display text-patient-heading text-ink">
-              {summary.hits} targets tapped correctly!
+              {t('game.quickTap.hits', { count: summary.hits })}
             </p>
-            <p className="text-patient-sm text-ink-muted">d&apos; {dPrime.toFixed(2)}</p>
-            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
+            <BigButton label={t('game.anotherRound')} variant="primary" onClick={keepGoing} />
+            <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

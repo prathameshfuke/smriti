@@ -6,6 +6,7 @@ import type { GameType } from '@/lib/supabase/types';
 import {
   dedupeDailySummaries,
   hasValidIds,
+  toWirePatientProfile,
   toWireDailySummary,
   toWireEvent,
   toWireReminderAck,
@@ -37,11 +38,14 @@ interface PatientSyncPayload {
   /** Schedules created or edited on the phone since the last sync. Saved
    * before reminderAcks, which reference them by foreign key. */
   reminderSchedules?: Array<Record<string, unknown> & { id: string }>;
+  /** Patient details edited on the phone (Settings: language, name, age). */
+  profile?: Record<string, unknown> | null;
 }
 
 /** Which of one patient's row categories Supabase actually rejected this sync. */
 interface PatientSyncErrors {
   patient?: string;
+  profile?: string;
   reminderSchedules?: string;
   sessions?: string;
   events?: string;
@@ -122,6 +126,18 @@ export async function POST(request: Request) {
     // whatever patient id the row itself carries.
     const own = <T extends { patient_id: string }>(row: T): T => ({ ...row, patient_id: patient.patientId });
 
+    if (patient.profile) {
+      // Only a newer edit wins, so a stale phone cannot undo a change made elsewhere.
+      const update = toWirePatientProfile(patient.profile);
+      if (update) {
+        const { error } = await supabase
+          .from('patients')
+          .update(update as never)
+          .eq('id', patient.patientId)
+          .lt('updated_at', update.updated_at);
+        if (error) errors.profile = error.message;
+      }
+    }
     if (patient.reminderSchedules?.length) {
       const { error } = await supabase
         .from('reminder_schedules')

@@ -47,18 +47,18 @@ export default function SessionComplete({
   return (
     <div className="flex min-h-dvh flex-col justify-center bg-surface px-6 py-10">
       <div className="mx-auto flex w-full max-w-patient flex-col gap-6">
-        <div role="img" aria-label={`${safeStars} of 5 stars`} className="flex gap-2">
+        <div role="img" aria-label={t('game.starsLabel', { count: safeStars })} className="flex gap-2">
           {Array.from({ length: 5 }, (_, i) => (
             <Star key={i} filled={i < safeStars} />
           ))}
         </div>
         <div>
           <p className="font-serif-display text-patient-heading font-medium text-ink">
-            {correctCount} out of {totalCount} correct
+            {t('game.outOfCorrect', { count: correctCount, total: totalCount })}
           </p>
           <p className="mt-3 text-patient-body text-ink-muted">{message}</p>
         </div>
-        <BigButton label="Back to home" variant="primary" onClick={onGoHome} />
+        <BigButton label={t('game.backToHome')} variant="primary" onClick={onGoHome} />
       </div>
     </div>
   );

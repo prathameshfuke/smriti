@@ -32,30 +32,29 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useTranslation } from '@/lib/i18n/provider';
 
 const GAMES = [
-  { gameName: 'Object Hunt', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.png' },
-  { gameName: 'Word Stream', gameType: 'word_stream', href: '/games/word-stream', illustrationSrc: '/images/game-word-stream.png' },
-  { gameName: 'Quick Tap', gameType: 'quick_tap', href: '/games/quick-tap', illustrationSrc: '/images/game-quick-tap.png' },
-  { gameName: 'Path Match', gameType: 'path_match', href: '/games/path-match', illustrationSrc: '/images/game-path-match.png' },
-  { gameName: 'Memory Match', gameType: 'memory_match', href: '/games/memory-match', illustrationSrc: '/images/game-memory-match.png' },
-  { gameName: 'Memory Blocks', gameType: 'memory_blocks', href: '/games/memory-blocks', illustrationSrc: '/images/game-memory-blocks.png' },
-  { gameName: 'Frog Leap', gameType: 'frog_leap', href: '/games/frog-leap', illustrationSrc: '/images/game-frog-leap.png' },
-  { gameName: 'Counting Boxes', gameType: 'counting_boxes', href: '/games/counting-boxes', illustrationSrc: '/images/game-counting-boxes.png' },
-  { gameName: 'Larger Number', gameType: 'larger_number', href: '/games/larger-number', illustrationSrc: '/images/game-larger-number.png' },
-  { gameName: 'Memory Span', gameType: 'memory_span', href: '/games/memory-span', illustrationSrc: '/images/game-memory-span.png' },
-  { gameName: 'Fish Trace', gameType: 'fish_trace', href: '/games/fish-trace', illustrationSrc: '/images/game-fish-trace.png' },
-  { gameName: 'Double Decision', gameType: 'double_decision', href: '/games/double-decision', illustrationSrc: '/images/game-double-decision.png' },
-  { gameName: 'N-Back', gameType: 'n_back', href: '/games/n-back', illustrationSrc: '/images/game-n-back.png' },
+  { nameKey: 'game.objectHunt.name', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.png' },
+  { nameKey: 'game.wordStream.name', gameType: 'word_stream', href: '/games/word-stream', illustrationSrc: '/images/game-word-stream.png' },
+  { nameKey: 'game.quickTap.name', gameType: 'quick_tap', href: '/games/quick-tap', illustrationSrc: '/images/game-quick-tap.png' },
+  { nameKey: 'game.pathMatch.name', gameType: 'path_match', href: '/games/path-match', illustrationSrc: '/images/game-path-match.png' },
+  { nameKey: 'game.memoryMatch.name', gameType: 'memory_match', href: '/games/memory-match', illustrationSrc: '/images/game-memory-match.png' },
+  { nameKey: 'game.memoryBlocks.name', gameType: 'memory_blocks', href: '/games/memory-blocks', illustrationSrc: '/images/game-memory-blocks.png' },
+  { nameKey: 'game.frogLeap.name', gameType: 'frog_leap', href: '/games/frog-leap', illustrationSrc: '/images/game-frog-leap.png' },
+  { nameKey: 'game.countingBoxes.name', gameType: 'counting_boxes', href: '/games/counting-boxes', illustrationSrc: '/images/game-counting-boxes.png' },
+  { nameKey: 'game.largerNumber.name', gameType: 'larger_number', href: '/games/larger-number', illustrationSrc: '/images/game-larger-number.png' },
+  { nameKey: 'game.memorySpan.name', gameType: 'memory_span', href: '/games/memory-span', illustrationSrc: '/images/game-memory-span.png' },
+  { nameKey: 'game.fishTrace.name', gameType: 'fish_trace', href: '/games/fish-trace', illustrationSrc: '/images/game-fish-trace.png' },
+  { nameKey: 'game.doubleDecision.name', gameType: 'double_decision', href: '/games/double-decision', illustrationSrc: '/images/game-double-decision.png' },
+  { nameKey: 'game.nBack.name', gameType: 'n_back', href: '/games/n-back', illustrationSrc: '/images/game-n-back.png' },
   {
     // Never "Memory Match: ..." — that collides with the actual Memory
-    // Match pairs game above and reads as a variant of it. Matches the
-    // in-game nav title (game.reminiscenceQuiz.name) and the landing page.
-    gameName: 'Family & Life Quiz',
+    // Match pairs game above and reads as a variant of it.
+    nameKey: 'game.reminiscenceQuiz.name',
     gameType: 'reminiscence_quiz',
     href: '/games/reminiscence-quiz',
     illustrationSrc: '/images/game-reminiscence-quiz.png',
   },
   {
-    gameName: 'Routine Recall',
+    nameKey: 'game.routineRecall.name',
     gameType: 'routine_recall',
     href: '/games/routine-recall',
     illustrationSrc: '/images/game-routine-recall.png',
@@ -81,6 +80,7 @@ const SHARED_IDLE_MS = 30 * 60_000;
 
 function PinDialog({ onClose }: { onClose: () => void }) {
   const router = useRouter();
+  const { t } = useTranslation();
   const verifyPin = useSettingsStore((s) => s.verifyPin);
   const pinCooldownUntil = useSettingsStore((s) => s.pinCooldownUntil);
   const isPinLocked = useSettingsStore((s) => s.isPinLocked);
@@ -180,27 +180,27 @@ function PinDialog({ onClose }: { onClose: () => void }) {
   return (
     <div
       role="dialog"
-      aria-label="Enter caregiver PIN"
+      aria-label={t('home.pinTitle')}
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 sm:items-center sm:p-4"
     >
       <div className="flex w-full max-w-sm flex-col gap-5 rounded-t-card bg-surface-card p-6 shadow-xl sm:rounded-card">
         <div>
-          <h2 className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">Enter Caregiver PIN</h2>
-          <p className="mt-1 text-caregiver-body text-ink-muted">For the caregiver only.</p>
+          <h2 className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">{t('home.pinTitle')}</h2>
+          <p className="mt-1 text-caregiver-body text-ink-muted">{t('home.pinForCaregiver')}</p>
         </div>
 
         <PinDots filled={digits.length} length={PIN_LENGTH} />
 
         {locked ? (
           <p role="status" className="text-caregiver-body font-bold text-danger">
-            Too many wrong attempts. Try again in {remainingSeconds}s.
+            {t('home.pinLocked', { seconds: remainingSeconds })}
           </p>
         ) : null}
 
         <PinPad onDigit={onDigit} onBackspace={onBackspace} disabled={locked || verifying} />
 
-        <BigButton label="Cancel" variant="secondary" onClick={onClose} />
+        <BigButton label={t('common.cancel')} variant="secondary" onClick={onClose} />
       </div>
     </div>
   );
@@ -388,13 +388,13 @@ export default function HomePage() {
         <button
           type="button"
           data-testid="caregiver-access-icon"
-          aria-label="Caregiver access"
+          aria-label={t('home.caregiverAccess')}
           onClick={() => openCaregiver('/caregiver/dashboard')}
           className="flex min-h-touch-min items-center gap-1.5 rounded-control px-3 text-patient-sm font-bold text-ink-muted underline decoration-ink-muted/40 underline-offset-4 transition-colors hover:bg-surface-muted hover:text-ink"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/caregiver-access.png" alt="" className="h-5 w-5" />
-          Caregiver
+          {t('home.caregiver')}
         </button>
       </header>
 
@@ -416,11 +416,11 @@ export default function HomePage() {
         >
           <div className="w-full max-w-patient rounded-card bg-surface-card p-6 shadow-2xl sm:p-8">
             <p id="family-note-title" className="font-serif-display text-patient-heading font-medium leading-[1.1] text-ink">
-              A message for you
+              {t('home.messageForYou')}
             </p>
             <p className="mt-4 text-patient-body text-ink">{familyNote.text}</p>
             <div className="mt-8">
-              <BigButton label="Thank you!" variant="primary" onClick={() => setFamilyNote(null)} />
+              <BigButton label={t('home.thankYou')} variant="primary" onClick={() => setFamilyNote(null)} />
             </div>
           </div>
         </div>
@@ -441,7 +441,7 @@ export default function HomePage() {
       {unassigned || (isShared && needsPick) ? null : (
       <>
       {currentPatient ? (
-        <section aria-label="Today" className="mt-8">
+        <section aria-label={t('home.today')} className="mt-8">
           <h1 className="font-serif-display text-[2.5rem] font-medium leading-[1.1] tracking-[-0.01em] text-ink">
             {t('home.greeting')}, {currentPatient.displayName}
           </h1>
@@ -473,16 +473,16 @@ export default function HomePage() {
           ) : null}
         </section>
       ) : restoring ? (
-        <div aria-busy="true" aria-label="Loading" className="mt-8 flex flex-col gap-3">
+        <div aria-busy="true" aria-label={t('common.loading')} className="mt-8 flex flex-col gap-3">
           <Skeleton height={44} width="75%" />
           <Skeleton height={28} width="50%" />
         </div>
       ) : (
         <section className="mt-8 flex flex-col gap-4">
-          <h1 className="font-serif-display text-patient-heading font-medium text-ink">No patient selected</h1>
-          <p className="text-patient-body text-ink-muted">A caregiver needs to sign in to set up this device.</p>
+          <h1 className="font-serif-display text-patient-heading font-medium text-ink">{t('home.noPatientTitle')}</h1>
+          <p className="text-patient-body text-ink-muted">{t('home.noPatientBody')}</p>
           <BigButton
-            label="Caregiver login"
+            label={t('home.caregiverLogin')}
             variant="primary"
             onClick={() => router.push('/caregiver/login?next=/app')}
           />
@@ -490,8 +490,8 @@ export default function HomePage() {
       )}
 
       <div className="mt-8 flex flex-col gap-touch-gap">
-        <BigButton label="Ask Smriti" variant="primary" onClick={() => router.push('/companion')} />
-        <BigButton label="Reminders" variant="secondary" onClick={() => router.push('/reminders')} />
+        <BigButton label={t('home.askSmriti')} variant="primary" onClick={() => router.push('/companion')} />
+        <BigButton label={t('home.reminders')} variant="secondary" onClick={() => router.push('/reminders')} />
       </div>
 
       {currentPatient ? (
@@ -502,13 +502,13 @@ export default function HomePage() {
 
       <section aria-labelledby="games-heading" className="mt-10">
         <h2 id="games-heading" className="font-serif-display text-[1.75rem] font-medium leading-tight text-ink">
-          Choose a game
+          {t('home.chooseGame')}
         </h2>
         <ul className="mt-4 flex flex-col gap-3">
           {GAMES.map((game) => (
             <li key={game.gameType}>
               <GameTile
-                gameName={game.gameName}
+                gameName={t(game.nameKey)}
                 href={game.href}
                 illustrationSrc={game.illustrationSrc}
                 difficultyLevel={((currentPatient?.currentDifficulty[game.gameType] ?? 1) as 1 | 2 | 3)}

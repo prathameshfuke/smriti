@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { DEFAULT_LANGUAGE, type UILanguage } from './languages';
 import as from './locales/as.json';
@@ -34,8 +34,9 @@ function lookup(catalog: Messages, key: string): string | undefined {
 interface I18nContextValue {
   language: UILanguage;
   setLanguage: (language: UILanguage) => void;
-  /** Returns the string for `key`, falling back to English, then to the key. */
-  t: (key: string) => string;
+  /** Returns the string for `key`, falling back to English, then to the key.
+   * `{name}`-style placeholders are filled from `vars`. */
+  t: (key: string, vars?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -68,19 +69,35 @@ export function I18nProvider({
   }, []);
 
   const t = useCallback(
-    (key: string) => lookup(CATALOGS[language], key) ?? lookup(CATALOGS.en, key) ?? key,
+    (key: string, vars?: Record<string, string | number>) => translate(language, key, vars),
     [language],
   );
+
+  // Screen readers pick their voice and pronunciation from <html lang>, and
+  // browsers use it to choose glyphs; it stayed "en" whatever was chosen.
+  useEffect(() => {
+    document.documentElement.lang = language;
+  }, [language]);
 
   const value = useMemo(() => ({ language, setLanguage, t }), [language, setLanguage, t]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
 
+function translate(language: UILanguage, key: string, vars?: Record<string, string | number>): string {
+  const text = lookup(CATALOGS[language], key) ?? lookup(CATALOGS.en, key) ?? key;
+  return vars ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match)) : text;
+}
+
+/** English, for a component rendered outside the provider (isolated tests, stories). */
+const FALLBACK_CONTEXT: I18nContextValue = {
+  language: DEFAULT_LANGUAGE,
+  setLanguage: () => undefined,
+  t: (key, vars) => translate('en', key, vars),
+};
+
 export function useTranslation(): I18nContextValue {
-  const ctx = useContext(I18nContext);
-  if (!ctx) throw new Error('useTranslation must be used inside <I18nProvider>');
-  return ctx;
+  return useContext(I18nContext) ?? FALLBACK_CONTEXT;
 }
 
 /** Spec name for the same provider. */

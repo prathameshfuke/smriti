@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import BigButton from '@/components/ui/BigButton';
@@ -21,6 +22,7 @@ const REFRESH_INTERVAL_MS = 60_000;
  * dementia-patient kiosk.
  */
 export default function FamilyMessageBoard({ patientId }: { patientId: string }) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<LocalFamilyMessage[] | null>(null);
 
   useEffect(() => {
@@ -70,7 +72,7 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/images/family-message.png" alt="" className="h-8 w-8" />
-        Messages from family
+        {t('family.messagesTitle')}
       </h2>
 
       <ul className="flex flex-col gap-3">
@@ -82,8 +84,8 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
           >
             {message.senderName ? (
               <p className="text-patient-sm font-bold text-ink-muted">
-                From {message.senderName}
-                {message.senderRelation ? `, your ${message.senderRelation.toLowerCase()}` : ''}
+                {t('family.from', { name: message.senderName })}
+                {message.senderRelation ? ` (${message.senderRelation})` : ''}
               </p>
             ) : null}
 
@@ -104,10 +106,10 @@ export default function FamilyMessageBoard({ patientId }: { patientId: string })
               <p className="flex items-center gap-2 text-patient-sm text-ink-muted" role="status">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/images/done-acknowledged.png" alt="" className="h-5 w-5" />
-                Seen
+                {t('family.seen')}
               </p>
             ) : (
-              <BigButton label="Seen" variant="success" onClick={() => void onAcknowledge(message.id)} />
+              <BigButton label={t('family.seen')} variant="success" onClick={() => void onAcknowledge(message.id)} />
             )}
           </li>
         ))}

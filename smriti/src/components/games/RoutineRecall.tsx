@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { useEffect, useMemo, useState } from 'react';
 import { REMINDER_ICON } from '@/components/ui/ReminderCard';
 import { BIG_TARGET_MIN_PX } from '@/components/ui/touchTarget';
@@ -17,11 +18,11 @@ export interface RoutineRecallProps {
   onComplete: (correct: boolean, submittedOrder: string[]) => void;
 }
 
-const LABEL: Record<ReminderType, string> = {
-  medication: 'Medication',
-  hydration: 'Hydration',
-  activity: 'Activity',
-  appointment: 'Appointment',
+const LABEL_KEY: Record<ReminderType, string> = {
+  medication: 'reminderType.medication',
+  hydration: 'reminderType.hydration',
+  activity: 'reminderType.activity',
+  appointment: 'reminderType.appointment',
 };
 
 type Phase = 'loading' | 'insufficient' | 'playing' | 'done';
@@ -32,6 +33,7 @@ type Phase = 'loading' | 'insufficient' | 'playing' | 'done';
  * Never generates synthetic content — see lib/games/routine-recall.ts.
  */
 export default function RoutineRecall({ patientId, sequenceLength, onComplete }: RoutineRecallProps) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<Phase>('loading');
   const [correctSequence, setCorrectSequence] = useState<RoutineRecallItem[]>([]);
   const [displayOrder, setDisplayOrder] = useState<RoutineRecallItem[]>([]);
@@ -77,7 +79,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
   if (phase === 'loading') {
     return (
       <div className="flex min-h-dvh items-center justify-center bg-game-bg px-4" aria-busy="true">
-        <p className="text-patient-body text-ink">Getting today&apos;s routine ready…</p>
+        <p className="text-patient-body text-ink">{t('game.routineRecall.loading')}</p>
       </div>
     );
   }
@@ -89,10 +91,10 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
           🗓️
         </p>
         <p className="text-patient-body font-semibold text-ink">
-          Not enough reminder activity yet today for Routine Recall
+          {t('game.routineRecall.notEnough')}
         </p>
         <p className="text-sm text-ink-muted">
-          Come back after a few more reminders have been checked off today.
+          {t('game.routineRecall.comeBack')}
         </p>
       </div>
     );
@@ -101,7 +103,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
   return (
     <div className="flex min-h-dvh flex-col gap-6 bg-game-bg px-4 py-6">
       <p className="text-center text-patient-body font-semibold text-ink">
-        Tap them in the order you did them today
+        {t('game.routineRecall.instruction')}
       </p>
 
       <div className="grid grid-cols-2 gap-4">
@@ -126,7 +128,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={icon.src} alt="" className="h-12 w-12" />
               <span className="text-patient-body font-semibold text-ink">
-                {LABEL[item.reminderType]}
+                {t(LABEL_KEY[item.reminderType])}
               </span>
             </button>
           );
@@ -135,20 +137,20 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
 
       {submitted.length > 0 && phase === 'playing' ? (
         <p className="text-center text-sm text-ink-muted" aria-live="polite">
-          {submitted.length} of {correctSequence.length} placed
+          {t('game.routineRecall.placed', { count: submitted.length, total: correctSequence.length })}
         </p>
       ) : null}
 
       {phase === 'done' ? (
         <div className="flex flex-col items-center gap-3 rounded-tile border border-line200 bg-surface-card p-6 text-center">
           <p className="text-patient-body font-semibold text-ink">
-            {wasCorrect ? 'Wonderful! That is exactly how today went.' : "Let's remember together."}
+            {wasCorrect ? t('game.routineRecall.correct') : t('game.routineRecall.remember')}
           </p>
           {!wasCorrect ? (
             <ol className="flex flex-col gap-1 text-sm text-ink-muted">
               {correctSequence.map((item, i) => (
                 <li key={item.ackId}>
-                  {i + 1}. {LABEL[item.reminderType]}
+                  {i + 1}. {t(LABEL_KEY[item.reminderType])}
                 </li>
               ))}
             </ol>

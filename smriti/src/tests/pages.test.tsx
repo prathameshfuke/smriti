@@ -141,20 +141,32 @@ describe('Home page', () => {
     usePatientStore.getState().setCurrentPatient(patient());
     render(<HomePage />);
     expect(screen.getByRole('link', { name: /object hunt/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /word stream/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /market list/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /quick tap/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /path match/i })).toBeInTheDocument();
   });
 
-  it('renders "No patient selected" and a login button when there is no patient', async () => {
+  it('shows its buttons, headings and game names in the chosen language', () => {
+    useSettingsStore.setState({ language: 'hi' });
+    usePatientStore.getState().setCurrentPatient(patient());
+    render(<HomePage />);
+    expect(screen.getByRole('button', { name: 'स्मृति से पूछें' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'मेरे रिमाइंडर' })).toBeInTheDocument();
+    expect(screen.getByText('एक खेल चुनें')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /बाज़ार सूची/ })).toBeInTheDocument();
+    expect(screen.queryByText('Choose a game')).not.toBeInTheDocument();
+    useSettingsStore.setState({ language: 'en' });
+  });
+
+  it('renders "Nobody is set up on this phone" and a sign-in button when there is no patient', async () => {
     // No local caregiver/patient in Dexie, so the cold-start restore this
     // page runs resolves to "nothing to restore" — but only after an async
     // Dexie read. Until then the page shows a loading state, not this
     // fallback, so a legitimate returning patient never sees a false
-    // "No patient selected" flash while restoration is still in flight.
+    // "Nobody is set up on this phone" flash while restoration is still in flight.
     render(<HomePage />);
-    expect(await screen.findByText(/no patient selected/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /caregiver login/i })).toBeInTheDocument();
+    expect(await screen.findByText(/nobody is set up on this phone/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /caregiver sign in/i })).toBeInTheDocument();
   });
 
   it('recovers the patient from local storage on a fresh load, instead of asking to log in again', async () => {
@@ -173,12 +185,12 @@ describe('Home page', () => {
     render(<HomePage />);
 
     // While restoration is in flight, neither the final "Hello" text nor the
-    // "No patient selected" / login fallback should be visible.
+    // "Nobody is set up on this phone" / sign-in fallback should be visible.
     expect(screen.queryByText(/no patient selected/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /caregiver sign in/i })).not.toBeInTheDocument();
 
     expect(await screen.findByText(/hello, aai/i)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /caregiver sign in/i })).not.toBeInTheDocument();
   });
 
   it('restores the device-trust token\'s patient, not just any active patient of the caregiver', async () => {
@@ -238,7 +250,7 @@ describe('Home page', () => {
 
     expect(await screen.findByText(/hello, aai/i)).toBeInTheDocument();
     expect(screen.queryByText(/no patient selected/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /caregiver login/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /caregiver sign in/i })).not.toBeInTheDocument();
     expect(getSession).not.toHaveBeenCalled();
 
     Object.defineProperty(window.navigator, 'onLine', { value: true, configurable: true });

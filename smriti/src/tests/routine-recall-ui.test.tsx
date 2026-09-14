@@ -62,7 +62,7 @@ describe('RoutineRecall', () => {
     render(<RoutineRecall patientId={PATIENT_ID} sequenceLength={3} onComplete={() => {}} />);
 
     expect(
-      await screen.findByText(/not enough reminder activity yet today/i),
+      await screen.findByText(/not enough reminders done yet today/i),
     ).toBeInTheDocument();
   });
 
@@ -86,13 +86,13 @@ describe('RoutineRecall', () => {
     );
 
     // Wait for the 3 cards (one per acknowledged reminder) to render.
-    const cards = await screen.findAllByRole('button', { name: /medication|hydration|activity/i });
+    const cards = await screen.findAllByRole('button', { name: /medicine|water|activity/i });
     expect(cards).toHaveLength(3);
 
     // Tap them back in the real chronological order regardless of shuffled
     // display order — find by accessible name each time.
-    fireEvent.click(await screen.findByRole('button', { name: /medication/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /hydration/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /medicine/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /water/i }));
     fireEvent.click(await screen.findByRole('button', { name: /activity/i }));
 
     await waitFor(() => expect(reported).not.toBeNull());
@@ -118,12 +118,12 @@ describe('RoutineRecall', () => {
       />,
     );
 
-    await screen.findAllByRole('button', { name: /medication|hydration|activity/i });
+    await screen.findAllByRole('button', { name: /medicine|water|activity/i });
 
     // Tap in a deliberately wrong order.
     fireEvent.click(await screen.findByRole('button', { name: /activity/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /medication/i }));
-    fireEvent.click(await screen.findByRole('button', { name: /hydration/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /medicine/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /water/i }));
 
     await waitFor(() => expect(reported).not.toBeNull());
     expect(reported!.correct).toBe(false);

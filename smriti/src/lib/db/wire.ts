@@ -122,3 +122,31 @@ export function toWireReminderSchedule(row: Row) {
     updated_at: (pick(row, 'updatedAt', 'updated_at') as string | undefined) ?? new Date().toISOString(),
   };
 }
+
+const PATIENT_LANGUAGES = new Set(['as', 'hi', 'en', 'mni', 'brx', 'kha', 'lus', 'bn', 'ne']);
+const GENDERS = new Set(['male', 'female', 'other']);
+
+/**
+ * The editable columns of a patient row. Ownership and `is_active` are never
+ * taken from the phone: removing a patient goes through its own checked
+ * route. Values outside the table's CHECK constraints are left out rather
+ * than failing the update.
+ */
+export function toWirePatientProfile(row: Row) {
+  const updatedAt = pick(row, 'updatedAt', 'updated_at');
+  if (typeof updatedAt !== 'string' || Number.isNaN(Date.parse(updatedAt))) return null;
+  const update: Record<string, unknown> = { updated_at: updatedAt };
+  const name = pick(row, 'displayName', 'display_name');
+  if (typeof name === 'string' && name.trim()) update.display_name = name.trim().slice(0, 120);
+  const language = pick(row, 'primaryLanguage', 'primary_language');
+  if (typeof language === 'string' && PATIENT_LANGUAGES.has(language)) update.primary_language = language;
+  const age = int(pick(row, 'ageYears', 'age_years'), null);
+  if (age !== null && age > 0 && age < 130) update.age_years = age;
+  const gender = pick(row, 'gender', 'gender');
+  if (typeof gender === 'string' && GENDERS.has(gender)) update.gender = gender;
+  const education = int(pick(row, 'educationYears', 'education_years'), null);
+  if (education !== null && education >= 0) update.education_years = education;
+  const minutes = int(pick(row, 'sessionDurationMinutes', 'session_duration_minutes'), null);
+  if (minutes !== null && minutes > 0) update.session_duration_minutes = minutes;
+  return update as { updated_at: string } & Record<string, unknown>;
+}

@@ -46,22 +46,16 @@ const INSTRUCTION_SECONDS = 5;
  * scores the same star count every time (common once a patient masters a
  * level) used to repeat the exact same sentence every single round.
  */
-const ENCOURAGEMENT: string[][] = [
-  [''],
-  ["You're learning! Keep trying.", "That's alright, let's try again.", 'Keep going, you can do it.'],
-  ["Good try! You're getting there.", 'Almost there!', "You're improving!"],
-  ['Nice work!', 'Well done!', "You're doing great!"],
-  ['Great job!', 'Excellent work!', 'Fantastic effort!'],
-  ['Wonderful! You remembered everything!', 'Perfect memory!', 'Amazing! Every one correct!'],
-];
+const ENCOURAGEMENT_VARIANTS = 3;
 
 function starsFor(accuracy: number): number {
   return Math.max(1, Math.round(accuracy / 20));
 }
 
+/** An i18n key (game.encourage.<stars>.<variant>) for one of the lines for this star count. */
 function pickEncouragement(stars: number): string {
-  const pool = ENCOURAGEMENT[stars] ?? ENCOURAGEMENT[0];
-  return pool[Math.floor(Math.random() * pool.length)];
+  const tier = Math.max(1, Math.min(5, stars));
+  return `game.encourage.${tier}.${Math.floor(Math.random() * ENCOURAGEMENT_VARIANTS)}`;
 }
 
 /** Places `objectCount` distinct objects across random tiles in the grid. */
@@ -286,11 +280,11 @@ function ObjectHuntPageInner() {
               {'☆'.repeat(5 - stars)}
             </p>
             <p className="font-serif-display text-patient-heading text-ink">
-              {correctCount} out of {targetOrder.length} correct!
+              {t('game.outOfCorrect', { count: correctCount, total: targetOrder.length })}
             </p>
-            <p className="text-patient-body text-ink-muted">{encouragement}</p>
-            <BigButton label="Keep going" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
+            <p className="text-patient-body text-ink-muted">{t(encouragement)}</p>
+            <BigButton label={t('game.keepGoing')} variant="primary" onClick={keepGoing} />
+            <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

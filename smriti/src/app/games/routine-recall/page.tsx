@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -25,6 +26,7 @@ export default function RoutineRecallPage() {
 
 function RoutineRecallPageInner() {
   const router = useRouter();
+  const { t } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const startSession = useGameStore((s) => s.startSession);
   const endSession = useGameStore((s) => s.endSession);
@@ -94,7 +96,7 @@ function RoutineRecallPageInner() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
       <PatientNav
-        title="Routine Recall"
+        title={t('game.routineRecall.name')}
         onBack={() => {
           void endSession();
           router.push('/app');
