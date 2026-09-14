@@ -1,5 +1,6 @@
 'use client';
 
+import { localDateString } from '@/lib/engine/adherence';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuid } from 'uuid';
@@ -27,7 +28,7 @@ const DAY_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
 
 function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return localDateString();
 }
 
 export default function RemindersPage() {
@@ -59,7 +60,7 @@ export default function RemindersPage() {
 
     const acks = await db.reminderAcks.where('patientId').equals(currentPatient.id).toArray();
     const todayStr = todayDateString();
-    setTodayAcks(acks.filter((a) => a.acknowledgedAt?.slice(0, 10) === todayStr));
+    setTodayAcks(acks.filter((a) => a.acknowledgedAt && localDateString(new Date(a.acknowledgedAt)) === todayStr));
   };
 
   useEffect(() => {

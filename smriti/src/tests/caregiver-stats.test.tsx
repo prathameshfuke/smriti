@@ -25,10 +25,19 @@ describe('computeAdherence', () => {
 
   it('does not count days before the reminder was set up as missed', () => {
     const days = dateRange(7);
-    const created = `${days[5]}T00:00:00.000Z`;
+    const created = new Date(`${days[5]}T00:00:00`).toISOString(); // local midnight
     const result = computeAdherence([{ ...schedule, created_at: created }], [], days);
     expect(result.byType.hydration.total).toBe(2);
     expect(result.missed.map((m) => m.date)).toEqual([days[5], days[6]]);
+  });
+
+  it("compares reminder times with the patient's local clock, not UTC", () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 8, 14, 10, 30)); // 10:30 am local
+    const result = computeAdherence([{ ...schedule, time_of_day: '10:00' }, { ...schedule, id: 'later', time_of_day: '11:00' }], [], dateRange(1));
+    expect(result.byType.hydration.total).toBe(1);
+    expect(result.missed).toEqual([{ date: '2026-09-14', time: '10:00', label: 'Drink water' }]);
+    vi.useRealTimers();
   });
 
   it('counts every day in the window for a reminder with no creation date', () => {
@@ -38,7 +47,7 @@ describe('computeAdherence', () => {
   it('skips the first day when the reminder time had already passed when it was added', () => {
     const days = dateRange(7);
     const result = computeAdherence(
-      [{ ...schedule, time_of_day: '00:00', created_at: `${days[4]}T09:30:00.000Z` }],
+      [{ ...schedule, time_of_day: '00:00', created_at: new Date(`${days[4]}T09:30:00`).toISOString() }],
       [],
       days,
     );

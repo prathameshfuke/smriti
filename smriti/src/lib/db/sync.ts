@@ -234,8 +234,12 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     // recorded in syncQueue instead, which nothing used to send.
     db.syncQueue.where('tableName').equals('reminder_schedules').toArray(),
   ]);
-  const queuedIds = new Set(scheduleQueue.map((q) => q.recordId));
-  const schedules = (await db.reminderSchedules.bulkGet([...queuedIds])).filter(
+  const queuedIds = [...new Set(scheduleQueue.map((q) => q.recordId))];
+  const found = await db.reminderSchedules.bulkGet(queuedIds);
+  // A queued schedule that no longer exists locally can never be sent.
+  const orphans = new Set(queuedIds.filter((_, i) => found[i] === undefined));
+  if (orphans.size) await db.syncQueue.bulkDelete(scheduleQueue.filter((q) => orphans.has(q.recordId)).map((q) => q.id));
+  const schedules = found.filter(
     (s): s is LocalReminderSchedule => s !== undefined && s.patientId === patientId,
   );
   const scheduleIds = new Set(schedules.map((s) => s.id));

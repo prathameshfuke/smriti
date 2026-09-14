@@ -22,12 +22,27 @@ export interface AdherenceResult {
   missed: Array<{ date: string; time: string; label: string }>;
 }
 
+/**
+ * Reminder times (`time_of_day`) are the patient's own wall-clock times, so
+ * every date and clock comparison here uses the device's local calendar.
+ * Comparing "10:00" with the UTC clock made a 10 am reminder in India count
+ * as not yet due until 3:30 pm. On the server the local zone is UTC.
+ */
+export function localDateString(d: Date = new Date()): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export function localTimeString(d: Date = new Date()): string {
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
 export function dateRange(days: number): string[] {
   const dates: string[] = [];
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().slice(0, 10));
+    dates.push(localDateString(d));
   }
   return dates;
 }
@@ -45,8 +60,8 @@ export function computeAdherence(
   days: string[] = dateRange(7),
 ): AdherenceResult {
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const currentTimeStr = now.toISOString().slice(11, 16);
+  const todayStr = localDateString(now);
+  const currentTimeStr = localTimeString(now);
 
   const ackedByReminderAndDate = new Set(
     acks
@@ -62,7 +77,9 @@ export function computeAdherence(
   for (const schedule of schedules) {
     const type = schedule.reminder_type;
     byType[type] ??= { acked: 0, total: 0 };
-    const firstDay = schedule.created_at ? schedule.created_at.slice(0, 10) : null;
+    const created = schedule.created_at ? new Date(schedule.created_at) : null;
+    const firstDay = created && !Number.isNaN(created.getTime()) ? localDateString(created) : null;
+    const createdTime = firstDay ? localTimeString(created!) : null;
 
     for (const dateStr of days) {
       // A water reminder added on Friday was never "missed" on Monday.
@@ -75,9 +92,8 @@ export function computeAdherence(
       // patient's adherence look worse than reality until each reminder's
       // own time actually passed.
       if (dateStr === todayStr && schedule.time_of_day.slice(0, 5) > currentTimeStr) continue;
-      if (firstDay && dateStr === firstDay && schedule.created_at && schedule.time_of_day.slice(0, 5) < schedule.created_at.slice(11, 16)) {
-        continue;
-      }
+      // Added at 9:30 am: that day's 8 am reminder never had a chance to fire.
+      if (dateStr === firstDay && createdTime && schedule.time_of_day.slice(0, 5) < createdTime) continue;
 
       totalExpected += 1;
       byType[type].total += 1;

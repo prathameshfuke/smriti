@@ -292,3 +292,68 @@ describe('client sync', () => {
     expect((await db.gameSessions.get('s3'))?.synced).toBe(false);
   });
 });
+
+describe('alerts stay in step with reality', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const longAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+  function setup(user: string, tables: Record<string, { data: unknown; error: null }>) {
+    getUser.mockResolvedValue({ data: { user: { id: user } }, error: null });
+    const chains: Record<string, ReturnType<typeof makeChain>> = {};
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      if (!chains[table]) {
+        const result = tables[table] ?? { data: [], error: null };
+        chains[table] = makeChain(result);
+        // `.single()` yields one row; the ownership check awaits the same chain for a list.
+        if (Array.isArray(result.data)) {
+          chains[table].single = vi.fn(() => Promise.resolve({ data: (result.data as unknown[])[0] ?? null, error: null }));
+        }
+      }
+      return chains[table];
+    });
+    return chains;
+  }
+  const emptyPatient = [{ patientId: 'p1', sessions: [], events: [], dailySummaries: [], reminderAcks: [] }];
+
+  it('resolves an open missed-days alert once a game has been played', async () => {
+    const chains = setup('u-alert-resolve', {
+      patients: { data: [{ id: 'p1', caregiver_id: 'c1', created_at: longAgo }], error: null },
+      alerts: { data: [{ id: 'alert-1' }], error: null },
+      daily_summaries: { data: [{ summary_date: today }], error: null },
+    });
+    const { POST } = await import('@/app/api/sync/route');
+    await POST(syncBody(emptyPatient));
+    expect(chains.alerts.update).toHaveBeenCalledWith(expect.objectContaining({ is_resolved: true }));
+    expect(chains.alerts.insert).not.toHaveBeenCalled();
+  });
+
+  it('does not say a patient added today has missed 3 days', async () => {
+    const chains = setup('u-alert-new-patient', {
+      patients: { data: [{ id: 'p1', caregiver_id: 'c1', created_at: new Date().toISOString() }], error: null },
+      alerts: { data: [], error: null },
+      daily_summaries: { data: [], error: null },
+    });
+    const { POST } = await import('@/app/api/sync/route');
+    await POST(syncBody(emptyPatient));
+    expect(chains.alerts.insert).not.toHaveBeenCalled();
+  });
+
+  it('raises no low-adherence alert when no reminder has been due yet', async () => {
+    const lateTonight = new Date();
+    const chains = setup('u-alert-nothing-due', {
+      patients: { data: [{ id: 'p1', caregiver_id: 'c1', created_at: new Date().toISOString() }], error: null },
+      alerts: { data: [], error: null },
+      daily_summaries: { data: [], error: null },
+      reminder_schedules: {
+        // Created just now, for a time that has already passed today: nothing due.
+        data: [{ id: 'r1', reminder_type: 'hydration', label: 'Water', time_of_day: '00:00', days_of_week: [0, 1, 2, 3, 4, 5, 6], created_at: lateTonight.toISOString() }],
+        error: null,
+      },
+      reminder_acks: { data: [], error: null },
+    });
+    const { POST } = await import('@/app/api/sync/route');
+    await POST(syncBody(emptyPatient));
+    expect(chains.alerts.insert).not.toHaveBeenCalled();
+  });
+});
