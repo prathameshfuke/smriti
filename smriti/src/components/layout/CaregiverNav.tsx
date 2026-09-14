@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
+import Icon from '@/components/Icon';
 
 /**
  * Fixed bottom tab bar for the caregiver side. Caregivers use SMRITI
  * one-handed on a shared device between other apps, so the destinations
  * stay reachable with a thumb at all times rather than scrolling to a header.
- * "Patient View" lives here too — on mobile, CaregiverTopNav (which carries
+ * "Patient View" lives here too — on mobile, CaregiverRail (which carries
  * the desktop equivalent) is hidden entirely, so without it there was no way
  * back to `/app` short of typing the URL once a caregiver session started.
  *
@@ -16,8 +17,10 @@ import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
  * (64px each at 320px), 12px labels that wrap between words rather than
  * truncate. Measured in Atkinson Hyperlegible, the widest single word
  * ("Overview", 47.8px) keeps 8px clear on each side at 320px — "Dashboard"
- * (56.8px) cannot, which is why the label matches CaregiverTopNav's
- * "Overview". Height and bottom padding come from `--caregiver-nav-h` /
+ * (56.8px) cannot, which is why the label matches CaregiverRail's
+ * "Overview". The active tab carries a 3px terracotta bar on top as well as
+ * the colour change, so the current place never depends on colour alone.
+ * Not bold: bold "Overview" loses the 8px side clearance at 320px. Height and bottom padding come from `--caregiver-nav-h` /
  * `--caregiver-nav-pad` in globals.css, which overlap the home-indicator
  * zone instead of stacking the full inset as a blank strip under the labels.
  */
@@ -36,9 +39,9 @@ export default function CaregiverNav() {
     <nav
       aria-label="Caregiver"
       data-caregiver-nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-(--caregiver-nav-h) pb-(--caregiver-nav-pad) bg-surface-card border-t border-surface-muted md:hidden"
+      className="fixed inset-x-0 bottom-0 z-40 flex h-(--caregiver-nav-h) pb-(--caregiver-nav-pad) bg-surface-card border-t border-line200 md:hidden"
     >
-      {ITEMS.map(({ href, label, Icon }) => {
+      {ITEMS.map(({ href, label, Icon: ItemIcon }) => {
         const active = pathname === href || pathname?.startsWith(`${href}/`);
         return (
           <Link
@@ -46,12 +49,12 @@ export default function CaregiverNav() {
             href={href}
             aria-current={active ? 'page' : undefined}
             className={
-              'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 pt-1.5 ' +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary ' +
-              (active ? 'text-primary' : 'text-ink-muted')
+              'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 border-t-[3px] pt-[3px] ' +
+              'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-dark ' +
+              (active ? 'border-primary text-primary-dark' : 'border-transparent text-ink-muted')
             }
           >
-            <Icon size={20} aria-hidden="true" className="shrink-0" />
+            <Icon icon={ItemIcon} size={20} className="shrink-0" />
             <span className="px-2 text-center text-xs leading-[1.1]">{label}</span>
           </Link>
         );

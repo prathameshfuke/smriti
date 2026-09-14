@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  // Middleware runs on the server, cannot access IndexedDB.
-  // Device trust check must happen in the browser (client-side).
-  // This middleware serves as a placeholder for future auth checks.
+/**
+ * Device trust check must happen in the browser (middleware runs on the
+ * server and cannot access IndexedDB) — this is a placeholder for future
+ * auth checks that don't need the request, not dead code.
+ */
+export function middleware() {
   return NextResponse.next();
 }
 

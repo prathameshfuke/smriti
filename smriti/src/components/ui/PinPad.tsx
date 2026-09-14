@@ -1,6 +1,7 @@
 'use client';
 
 import { Delete } from 'lucide-react';
+import Icon from '@/components/Icon';
 import { TOUCH_TARGET_MIN_PX } from './touchTarget';
 
 export interface PinPadProps {
@@ -32,14 +33,14 @@ export default function PinPad({ onDigit, onBackspace, disabled = false }: PinPa
             onClick={() => (isBackspace ? onBackspace() : onDigit(key))}
             style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
             className={
-              'flex items-center justify-center rounded-tile border border-black/5 bg-surface-card ' +
-              'text-patient-heading font-semibold text-ink transition-all duration-100 ' +
-              'active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-surface-muted hover:shadow-md ' +
+              'flex items-center justify-center rounded-control border border-line200 bg-surface-card ' +
+              'text-patient-heading font-bold text-ink transition-[transform,background-color] duration-150 ' +
+              'active:scale-[0.97] motion-reduce:active:scale-100 hover:bg-surface-muted ' +
               'disabled:opacity-40 disabled:pointer-events-none focus-visible:outline focus-visible:outline-4 ' +
               'focus-visible:outline-offset-2 focus-visible:outline-primary-dark'
             }
           >
-            {isBackspace ? <Delete size={28} aria-hidden="true" /> : key}
+            {isBackspace ? <Icon icon={Delete} size={28} /> : key}
           </button>
         );
       })}

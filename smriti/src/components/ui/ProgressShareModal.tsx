@@ -5,6 +5,7 @@ export interface ProgressShareModalProps {
   [key: string]: unknown;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented prop-shape contract above
 export function ProgressShareModal(_props: ProgressShareModalProps) {
   return null;
 }

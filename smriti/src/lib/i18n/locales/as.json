@@ -1,5 +1,11 @@
 {
   "home": {
+    "whoIsPlaying": "কোনে খেলি আছে?",
+    "tapYourName": "আপোনাৰ নামত টিপক।",
+    "notYou": "আপুনি {name} নহয়?",
+    "chooseWhoTitle": "এই ফোন কোনে ব্যৱহাৰ কৰিব বাছনি কৰক",
+    "chooseWhoBody": "এই ফোনত কোনে খেলিব, সেয়া এজন তত্ত্বাৱধায়কে বাছনি কৰিব লাগিব।",
+    "caregiver": "তত্ত্বাৱধায়ক",
     "greeting": "নমস্কাৰ",
     "startSession": "Start Playing",
     "reminders": "My Reminders",
@@ -44,6 +50,7 @@
     "memorySpan": { "name": "স্মৃতি বিস্তাৰ" },
     "fishTrace": { "name": "মাছ অনুসৰণ" },
     "doubleDecision": { "name": "দ্বৈত সিদ্ধান্ত" },
+    "reminiscenceQuiz": { "name": "পৰিয়াল আৰু জীৱন কুইজ" },
     "correct": "শুদ্ধ!",
     "tryAgain": "পুনৰ চেষ্টা কৰক",
     "sessionComplete": "বাহ! আপুনি আজিৰ অনুশীলন সম্পূৰ্ণ কৰিলে।",

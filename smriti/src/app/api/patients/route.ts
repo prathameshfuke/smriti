@@ -1,5 +1,12 @@
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import type { AlertSeverity } from '@/lib/supabase/types';
+import {
+  SCORE_WINDOW_DAYS,
+  computeCognitiveScore,
+  recentActivity,
+  shiftDate,
+  type ScoreRow,
+} from '@/lib/dashboard/cognitiveScore';
 
 function reduceAlertStatus(severities: AlertSeverity[]): AlertSeverity {
   if (severities.includes('red')) return 'red';
@@ -23,21 +30,28 @@ export async function GET(request: Request) {
   const { data: patients } = await supabase
     .from('patients')
     .select('*')
-    .eq('caregiver_id', caregiver.id);
+    .eq('caregiver_id', caregiver.id)
+    // Removed patients (DELETE /api/patients/[id]) stay in the table for the
+    // record but never come back into the caregiver's list.
+    .eq('is_active', true);
 
   const todayStr = new Date().toISOString().slice(0, 10);
+  const scoreFrom = shiftDate(todayStr, -(2 * SCORE_WINDOW_DAYS - 1));
+  const weekFrom = shiftDate(todayStr, -6);
 
   const results = await Promise.all(
     (patients ?? []).map(async (patient) => {
       const [{ data: summaries }, { data: alerts }] = await Promise.all([
-        // Last 7 rows, not just the latest: dashboard needs both "today's
-        // accuracy" and "distinct days played this week" from one query.
+        // Two score windows (this fortnight and the one before, for the
+        // change arrow). One row per game per day, so bounded by date, not
+        // by row count: the old `.limit(7)` could cover a single busy day.
         supabase
           .from('daily_summaries')
           .select('*')
           .eq('patient_id', patient.id)
+          .gte('summary_date', scoreFrom)
           .order('summary_date', { ascending: false })
-          .limit(7),
+          .limit(500),
         supabase
           .from('alerts')
           .select('severity, is_read')
@@ -49,9 +63,26 @@ export async function GET(request: Request) {
       const unreadAlertCount = (alerts ?? []).filter((a) => !a.is_read).length;
 
       const recentSummaries = summaries ?? [];
-      const accuracyToday =
-        recentSummaries.find((s) => s.summary_date === todayStr)?.accuracy_pct ?? 0;
-      const sessionsThisWeek = new Set(recentSummaries.map((s) => s.summary_date)).size;
+      const scoreRows: ScoreRow[] = recentSummaries.map((s) => {
+        // `accuracy_pct` is generated in Postgres; fall back to it when the
+        // raw round counts are absent so a row always carries its weight.
+        const totalRounds = s.total_rounds ?? 1;
+        const correctRounds = s.correct_rounds ?? ((s.accuracy_pct ?? 0) / 100) * totalRounds;
+        return {
+          date: s.summary_date,
+          gameType: s.game_type,
+          correctRounds,
+          totalRounds,
+          maxDifficultyReached: s.max_difficulty_reached ?? 1,
+        };
+      });
+      const week = recentActivity(scoreRows, todayStr, 7);
+      // Rounds-weighted across every game played today, not the first row found.
+      const accuracyToday = Math.round(week[6].accuracy ?? 0);
+      const sessionsThisWeek = new Set(
+        recentSummaries.filter((s) => s.summary_date >= weekFrom).map((s) => s.summary_date),
+      ).size;
+      const score = computeCognitiveScore(scoreRows, todayStr);
 
       return {
         id: patient.id,
@@ -64,6 +95,10 @@ export async function GET(request: Request) {
         latestSummary: recentSummaries[0] ?? null,
         accuracyToday,
         sessionsThisWeek,
+        cognitiveScore: score
+          ? { score: score.score, band: score.band, delta: score.delta, enoughData: score.enoughData }
+          : null,
+        week: week.map((d) => (d.accuracy === null ? null : Math.round(d.accuracy))),
         alertStatus,
         unreadAlertCount,
       };

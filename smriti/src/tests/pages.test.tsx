@@ -76,6 +76,10 @@ vi.mock('@/lib/auth/deviceTrust', async (importOriginal) => {
   return {
     ...actual,
     getDeviceTrustToken: () => Promise.resolve(deviceTrustToken),
+    // Kept consistent with the token above: the real module derives both
+    // from the same rows.
+    getTrustedPatientIds: () =>
+      Promise.resolve(deviceTrustToken ? [(deviceTrustToken as { patientId: string }).patientId] : []),
   };
 });
 

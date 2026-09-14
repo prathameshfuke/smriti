@@ -1,5 +1,11 @@
 {
   "home": {
+    "whoIsPlaying": "কে খেলছেন?",
+    "tapYourName": "আপনার নামে ট্যাপ করুন।",
+    "notYou": "আপনি {name} নন?",
+    "chooseWhoTitle": "এই ফোন কে ব্যবহার করবেন, বেছে নিন",
+    "chooseWhoBody": "এই ফোনে কে খেলবেন, একজন পরিচর্যাকারীকে তা বেছে নিতে হবে।",
+    "caregiver": "পরিচর্যাকারী",
     "greeting": "নমস্কার",
     "startSession": "খেলা শুরু করুন",
     "reminders": "আমার রিমাইন্ডার",
@@ -42,6 +48,7 @@
     "memorySpan": { "name": "স্মৃতি বিস্তার" },
     "fishTrace": { "name": "মাছ অনুসরণ" },
     "doubleDecision": { "name": "দ্বৈত সিদ্ধান্ত" },
+    "reminiscenceQuiz": { "name": "পরিবার ও জীবন কুইজ" },
     "correct": "সঠিক!",
     "tryAgain": "আবার চেষ্টা করুন",
     "sessionComplete": "সাবাশ! আপনি আজকের অনুশীলন শেষ করেছেন।",

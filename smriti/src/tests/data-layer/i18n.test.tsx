@@ -124,4 +124,39 @@ describe('locale files', () => {
     expect(hi.home.greeting).toBe('नमस्ते');
     expect(hi.reminder.medication).toBe('दवाई लेने का समय');
   });
+
+  it('resolves game.quickTap.name to English, not the reduplicated-idiom mistranslation', () => {
+    // Was the literal string "Quick Quick" — a South-Asian-language
+    // reduplication idiom ("जल्दी जल्दी" = hastily) carried word-for-word
+    // into English, where doubling a word has no such meaning.
+    renderWith('game.quickTap.name');
+    expect(screen.getByTestId('value').textContent).toBe('Quick Tap');
+  });
+
+  it('resolves game.reminiscenceQuiz.name to a real title, not its own key', () => {
+    // Had no key in ANY locale (so the "keeps identical key sets" test above
+    // never caught it), and `t()`'s own last-resort fallback — returning the
+    // raw key string, never `undefined` — meant the page's own
+    // `t(...) || 'Memory Match'` never actually reached its fallback: the
+    // nav bar showed the literal string "game.reminiscenceQuiz.name".
+    renderWith('game.reminiscenceQuiz.name');
+    const title = screen.getByTestId('value').textContent;
+    expect(title).not.toMatch(/^game\./);
+    expect(title).toBe('Family & Life Quiz');
+  });
+
+  it('never resolves a game name to its own translation key, in any shipped language', async () => {
+    const locales = await Promise.all(
+      (['as', 'hi', 'en', 'brx', 'mni', 'bn', 'ne'] as const).map(
+        async (code) => [code, (await import(`@/lib/i18n/locales/${code}.json`)).default] as const,
+      ),
+    );
+    for (const [code, catalog] of locales) {
+      for (const [gameKey, entry] of Object.entries(catalog.game)) {
+        if (!entry || typeof entry !== 'object' || !('name' in entry)) continue;
+        expect(typeof entry.name, `${code}.game.${gameKey}.name`).toBe('string');
+        expect((entry.name as string).length, `${code}.game.${gameKey}.name`).toBeGreaterThan(0);
+      }
+    }
+  });
 });

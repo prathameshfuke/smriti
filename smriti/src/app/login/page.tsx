@@ -9,42 +9,37 @@ type Role = 'patient' | 'caregiver' | null;
 
 function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-paper50 px-4">
-      <div className="mx-auto max-w-sm">
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.12em] text-terra600">
-          Welcome back
-        </p>
-        <h1 className="mt-3 flex items-center justify-center gap-3 font-serif-display text-4xl font-medium text-ink950">
-          <Image src={appIcon} alt="" width={40} height={40} className="h-10 w-10" priority />
-          SMRITI
-        </h1>
-        <h2 className="mt-8 text-center text-xl text-ink700">Who are you?</h2>
+    <main className="flex min-h-dvh flex-col bg-paper50 px-5 py-8">
+      <p className="flex items-center gap-2.5 font-serif-display text-[1.375rem] font-medium text-ink950">
+        <Image src={appIcon} alt="" width={28} height={28} className="h-7 w-7" priority />
+        SMRITI
+      </p>
 
-        <button
-          type="button"
-          onClick={() => onSelect('patient')}
-          className="mt-12 flex h-20 w-full flex-col items-center justify-center rounded-control bg-terra600 text-lg font-bold text-paper50 transition-all duration-200 hover:bg-terra700 hover:shadow-md active:scale-[0.97]"
-        >
-          I am the Patient
-          <span className="mt-1 block text-sm font-normal text-paper50/80">Play games</span>
-        </button>
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
+        <h1 className="font-serif-display text-[2.5rem] font-medium leading-[1.1] text-ink950">Who is using SMRITI?</h1>
+        <p className="mt-3 text-patient-body text-ink700">Choose one. You can switch later.</p>
 
-        <button
-          type="button"
-          onClick={() => onSelect('caregiver')}
-          className="mt-4 flex h-20 w-full flex-col items-center justify-center rounded-control border-2 border-line200 bg-paper50 text-lg font-bold text-ink950 transition-colors duration-200 hover:border-terra600 hover:bg-paper100 active:scale-[0.97]"
-        >
-          I am the Caregiver
-          <span className="mt-1 block text-sm font-normal text-ink700">Monitor progress</span>
-        </button>
+        <div className="mt-10 flex flex-col gap-4">
+          <button
+            type="button"
+            onClick={() => onSelect('patient')}
+            className="flex min-h-24 w-full flex-col items-start justify-center rounded-card bg-terra600 px-6 py-4 text-left text-paper50 transition-[transform,background-color] duration-150 hover:bg-terra700 active:scale-[0.98] motion-reduce:active:scale-100"
+          >
+            <span className="text-patient-body font-bold">I am the Patient</span>
+            <span className="mt-1 text-caregiver-body text-paper50/90">Play games and see my reminders</span>
+          </button>
 
-        <footer className="mt-12 text-center">
-          <p className="text-xs text-ink700">
-            SMRITI supports cognitive engagement. It does not diagnose or treat any condition.
-          </p>
-        </footer>
+          <button
+            type="button"
+            onClick={() => onSelect('caregiver')}
+            className="flex min-h-24 w-full flex-col items-start justify-center rounded-card border-2 border-ink700 bg-white px-6 py-4 text-left text-ink950 transition-[transform,background-color] duration-150 hover:bg-paper100 active:scale-[0.98] motion-reduce:active:scale-100"
+          >
+            <span className="text-patient-body font-bold">I am the Caregiver</span>
+            <span className="mt-1 text-caregiver-body text-ink700">Check progress and set things up</span>
+          </button>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
 

@@ -74,8 +74,8 @@ const gameUI = {
     cardSubtitle: 'Recent completions',
     improveMemorySubtitle: 'Practice regularly to build working memory',
     empty: 'No activity recorded yet.',
-    totalClears: '{count} completions',
-    averagePassTime: 'Average time: {value}',
+    totalClears: 'Completions',
+    averagePassTime: 'Average time',
     you: 'You',
     columns: {
       player: 'Name',
@@ -157,8 +157,8 @@ const gameUI = {
     cardSubtitle: 'हाल की गतिविधियाँ',
     improveMemorySubtitle: 'याददाश्त बढ़ाने के लिए नियमित अभ्यास करें',
     empty: 'अभी तक कोई गतिविधि दर्ज नहीं हुई।',
-    totalClears: '{count} पूर्णताएँ',
-    averagePassTime: 'औसत समय: {value}',
+    totalClears: 'पूर्णताएँ',
+    averagePassTime: 'औसत समय',
     you: 'आप',
     columns: {
       player: 'नाम',
@@ -240,8 +240,8 @@ const gameUI = {
     cardSubtitle: 'শেহতীয়া কাৰ্যকলাপ',
     improveMemorySubtitle: 'স্মৃতিশক্তি বঢ়াবলৈ নিয়মিত অনুশীলন কৰক',
     empty: 'এতিয়ালৈ কোনো কাৰ্যকলাপ লিপিবদ্ধ হোৱা নাই।',
-    totalClears: '{count} সম্পূৰ্ণতা',
-    averagePassTime: 'গড় সময়: {value}',
+    totalClears: 'সম্পূৰ্ণতা',
+    averagePassTime: 'গড় সময়',
     you: 'আপুনি',
     columns: {
       player: 'নাম',

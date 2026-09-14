@@ -30,7 +30,7 @@ interface FeedNote {
  */
 export async function pullFamilyMessages(patientId: string): Promise<void> {
   try {
-    const token = await getDeviceTrustToken();
+    const token = await getDeviceTrustToken(patientId);
     if (!token || !isTokenWellFormed(token)) return;
 
     const res = await fetch(
@@ -94,7 +94,7 @@ export async function acknowledgeFamilyMessage(patientId: string, messageId: str
   });
 
   try {
-    const token = await getDeviceTrustToken();
+    const token = await getDeviceTrustToken(patientId);
     if (!token || !isTokenWellFormed(token)) return;
 
     const res = await fetch(

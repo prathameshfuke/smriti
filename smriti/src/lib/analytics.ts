@@ -7,6 +7,7 @@
  */
 type AnalyticsPayload = Record<string, unknown>;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- matches the reference client's call shape
 function noop(_payload: AnalyticsPayload): void {
   return;
 }
@@ -34,6 +35,7 @@ export const analytics = {
     share: noop,
   },
   engagement: {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- matches the reference client's call shape
     pageTime: (_page: string, _ms: number): void => undefined,
   },
 };

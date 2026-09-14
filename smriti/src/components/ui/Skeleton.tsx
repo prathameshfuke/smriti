@@ -14,7 +14,7 @@ export default function Skeleton({
     <div
       aria-hidden="true"
       style={{ width, height }}
-      className={`animate-pulse rounded-card bg-surface-muted motion-reduce:animate-none ${className}`}
+      className={`animate-pulse rounded-tile bg-surface-muted motion-reduce:animate-none ${className}`}
     />
   );
 }

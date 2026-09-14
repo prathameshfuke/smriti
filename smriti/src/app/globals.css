@@ -46,9 +46,7 @@
   --animate-ring-fill: smriti-ring-fill 700ms ease-out both;
   --animate-shake: smriti-shake 200ms ease-in-out 3;
   --animate-pulse-ring: smriti-pulse-ring 1200ms ease-in-out infinite;
-  --animate-rise-in: smriti-rise-in 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
-  --animate-stripe-drift: smriti-stripe-drift 90s linear infinite;
-  --animate-reveal: smriti-reveal 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-rise-in: smriti-rise-in 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
 /*
@@ -87,50 +85,19 @@
   }
 }
 
-/* Landing hero entrance: headline, subhead and CTA rise + fade in, staggered
-   via each element's own animation-delay utility class. */
+/* The one page-load moment: the landing hero's headline, subhead and CTA,
+   staggered via each element's own animation-delay. Nothing else in the app
+   animates on load. Scroll-triggered reveals were removed: content that moves
+   while a person with memory or attention difficulties is reading it is a
+   distraction, not orientation. */
 @keyframes smriti-rise-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-/* Scroll-reveal for sections entering the viewport (toggled by an
-   IntersectionObserver adding/removing a class — see Reveal.tsx). */
-@keyframes smriti-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.smriti-reveal-pending {
-  opacity: 0;
-  transform: translateY(24px);
-}
-
-.smriti-reveal-visible {
-  animation: var(--animate-reveal);
-}
-
-/* Ambient gamosa-stripe drift behind the landing hero — a slow, barely
-   perceptible pan, not a spectacle. Background-position only, so it never
-   affects layout or triggers reflow. */
-@keyframes smriti-stripe-drift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: 400px 400px;
   }
 }
 
@@ -141,18 +108,40 @@
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;
   }
 }
 
 html {
   color-scheme: light;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-smriti-sans);
+  text-rendering: optimizeLegibility;
+}
+
+/*
+ * One focus ring for every keyboard-reachable control that doesn't draw its
+ * own. Terracotta-dark at 3px clears 3:1 against paper, white and every
+ * tinted surface in the palette (WCAG 2.4.7 / 2.4.11). Components with a
+ * bespoke ring (BigButton, GameTile, the bottom nav) keep theirs; `:where`
+ * keeps this at zero specificity so any utility class overrides it.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid #933a27;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #e7b2a2;
+  color: #151312;
 }
 
 /*
@@ -187,4 +176,55 @@ body {
       padding-bottom: 0;
     }
   }
+}
+
+/*
+ * Streak flame flicker (StreakFlame). Each layer scales a few percent from
+ * its own base on offset timings, so the flame breathes in place. Motion is
+ * opt-in: nothing moves unless the viewer allows motion.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .smriti-flame-outer,
+  .smriti-flame-inner {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+  }
+  .smriti-flame-outer {
+    animation: smriti-flame-outer 1.9s ease-in-out infinite;
+  }
+  .smriti-flame-inner {
+    animation: smriti-flame-inner 1.3s ease-in-out infinite;
+  }
+}
+
+@keyframes smriti-flame-outer {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  35% {
+    transform: scale(0.97, 1.05) skewX(-2deg);
+  }
+  70% {
+    transform: scale(1.02, 0.97) skewX(1.5deg);
+  }
+}
+
+@keyframes smriti-flame-inner {
+  0%,
+  100% {
+    transform: scale(1, 1);
+  }
+  50% {
+    transform: scale(0.9, 1.1);
+  }
+}
+
+/* Scroll areas that must scroll (tall bottom sheets) but should not draw a
+   scrollbar track inside the sheet. */
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

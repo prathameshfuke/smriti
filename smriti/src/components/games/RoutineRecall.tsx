@@ -54,7 +54,6 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
       cancelled = true;
     };
     // Re-runs only if the patient or requested length changes, not on every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId, sequenceLength]);
 
   const remaining = useMemo(
@@ -124,9 +123,8 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
                   : 'border-transparent hover:-translate-y-0.5 hover:shadow-md motion-reduce:hover:translate-y-0')
               }
             >
-              <span className="text-4xl" aria-hidden="true">
-                {icon.emoji}
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={icon.src} alt="" className="h-12 w-12" />
               <span className="text-patient-body font-semibold text-ink">
                 {LABEL[item.reminderType]}
               </span>
@@ -150,7 +148,7 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
             <ol className="flex flex-col gap-1 text-sm text-ink-muted">
               {correctSequence.map((item, i) => (
                 <li key={item.ackId}>
-                  {i + 1}. {REMINDER_ICON[item.reminderType].emoji} {LABEL[item.reminderType]}
+                  {i + 1}. {LABEL[item.reminderType]}
                 </li>
               ))}
             </ol>

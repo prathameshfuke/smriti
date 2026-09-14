@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useTranslations } from "next-intl";
@@ -63,6 +63,11 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
             trialInterval: settings.trialInterval,
         },
     });
+
+    // react-hook-form's own hook-based subscription, not `form.watch()` read
+    // during render: `watch()` calls inside JSX don't re-render on their own
+    // and bail the React Compiler out of optimizing this component.
+    const selectedTypes = useWatch({ control: form.control, name: "selectedTypes" });
 
     // 提交表单时更新设置
     const onSubmit = (values: z.infer<typeof settingsFormSchema>) => {
@@ -176,11 +181,9 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                                                 >
                                                     <Checkbox
                                                         id={`mode-${type}`}
-                                                        checked={form
-                                                            .watch("selectedTypes")
-                                                            .includes(
-                                                                type as "position" | "audio"
-                                                            )}
+                                                        checked={selectedTypes.includes(
+                                                            type as "position" | "audio"
+                                                        )}
                                                         onCheckedChange={(checked) => {
                                                             const currentTypes = form.getValues("selectedTypes");
                                                             const newTypes = checked
@@ -196,8 +199,8 @@ export default function GameSettings({ settings, onSettingsChange, disabled = fa
                                                         }}
                                                         disabled={
                                                             disabled ||
-                                                            (form.watch("selectedTypes").length === 1 &&
-                                                                form.watch("selectedTypes").includes(
+                                                            (selectedTypes.length === 1 &&
+                                                                selectedTypes.includes(
                                                                     type as "position" | "audio"
                                                                 ))
                                                         }

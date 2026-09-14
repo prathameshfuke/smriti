@@ -7,13 +7,16 @@ import BigButton from '@/components/ui/BigButton';
 import { Checkbox } from '@/components/ui/checkbox';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
-import { db, type LocalCaregiver, type LocalPatient, type LocalReminderSchedule } from '@/lib/db/schema';
+import PinDots from '@/components/ui/PinDots';
+import { fieldClass, labelClass } from '@/components/ui/Panel';
+import { db, type LocalCaregiver, type LocalPatient } from '@/lib/db/schema';
 import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { setDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { pushCaregiverProfile } from '@/lib/db/serverProfile';
+import { buildStarterReminders } from '@/lib/patients/starterReminders';
 import type { CaregiverRole, Gender } from '@/lib/supabase/types';
 
 const STEPS = [1, 2, 3, 4] as const;
@@ -66,55 +69,27 @@ const initialData: WizardData = {
   consentGiven: false,
 };
 
+/** Where the caregiver is in setup, in words and as four segments. */
 function StepDots({ step }: { step: number }) {
   return (
-    <div className="flex justify-center gap-2" aria-label={`Step ${step} of 4`}>
-      {STEPS.map((s) => (
-        <span
-          key={s}
-          className={`h-3 w-3 rounded-full transition-colors duration-300 ${
-            s <= step ? 'bg-muga' : 'bg-surface-muted'
-          }`}
-        />
-      ))}
+    <div aria-label={`Step ${step} of 4`} role="group">
+      <p aria-hidden="true" className="text-caregiver-body font-bold text-ink-muted">
+        Step {step} of 4
+      </p>
+      <div aria-hidden="true" className="mt-2 grid grid-cols-4 gap-1.5">
+        {STEPS.map((s) => (
+          <span
+            key={s}
+            className={`h-1.5 rounded-full transition-colors duration-300 ${s <= step ? 'bg-primary' : 'bg-line200'}`}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-function buildReminders(patientId: string, data: WizardData): LocalReminderSchedule[] {
-  const now = new Date().toISOString();
-  const reminders: LocalReminderSchedule[] = [];
-
-  if (data.addMorningReminder) {
-    reminders.push({
-      id: uuid(),
-      patientId,
-      reminderType: 'medication',
-      label: 'Morning medication',
-      timeOfDay: '08:00',
-      daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-      isActive: true,
-      updatedAt: now,
-    });
-  }
-
-  if (data.addHydrationReminders) {
-    for (let hour = 8; hour <= 20; hour += 2) {
-      reminders.push({
-        id: uuid(),
-        patientId,
-        reminderType: 'hydration',
-        label: 'Drink water',
-        timeOfDay: `${String(hour).padStart(2, '0')}:00`,
-        daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
-        isActive: true,
-        updatedAt: now,
-      });
-    }
-  }
-
-  return reminders;
-}
+const stepHeading = 'font-serif-display text-[2.25rem] font-medium leading-[1.1] text-ink';
+const groupLabel = 'mb-3 block text-caregiver-body font-bold text-ink';
 
 export default function CaregiverOnboardingPage() {
   const router = useRouter();
@@ -203,7 +178,10 @@ export default function CaregiverOnboardingPage() {
     await setPin(data.pin);
     useSettingsStore.getState().markCaregiverSessionVerified();
 
-    const reminders = buildReminders(patientId, data);
+    const reminders = buildStarterReminders(patientId, {
+      morningMedication: data.addMorningReminder,
+      hydration: data.addHydrationReminders,
+    });
     if (reminders.length > 0) await db.reminderSchedules.bulkPut(reminders);
 
     // Best-effort: mirrors the profile to Supabase so the dashboard's
@@ -211,7 +189,14 @@ export default function CaregiverOnboardingPage() {
     // instead of forcing onboarding again. Never blocks or fails setup —
     // an offline caregiver still gets a fully working local device.
     if (isSupabaseConfigured()) {
-      void pushCaregiverProfile(caregiver, patient, language, reminders);
+      // Awaited when online so the "Trust this device" step that follows can
+      // find the patient on the account; offline setup still completes
+      // locally and syncs the profile later.
+      if (typeof navigator === 'undefined' || navigator.onLine) {
+        await pushCaregiverProfile(caregiver, patient, language, reminders);
+      } else {
+        void pushCaregiverProfile(caregiver, patient, language, reminders);
+      }
     }
 
     return { caregiverId, patientId };
@@ -248,26 +233,27 @@ export default function CaregiverOnboardingPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-patient flex-col gap-6 bg-canvas px-4 py-6">
+    <main className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-8 bg-canvas px-5 py-8">
       <StepDots step={step} />
 
       {step === 1 ? (
-        <section className="flex flex-col gap-4">
-          <h1 className="text-center font-serif-display text-caregiver-heading font-semibold text-ink">
-            About you
-          </h1>
-          <label htmlFor="caregiver-name" className="sr-only">
-            Your name
-          </label>
-          <input
-            id="caregiver-name"
-            value={data.caregiverName}
-            onChange={(e) => setData((d) => ({ ...d, caregiverName: e.target.value }))}
-            placeholder="Your name"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-caregiver-body text-ink">Your role</p>
-          <div className="flex flex-col gap-3">
+        <section className="flex flex-col gap-5">
+          <h1 className={stepHeading}>About you</h1>
+          <div>
+            <label htmlFor="caregiver-name" className={labelClass}>
+              Your name
+            </label>
+            <input
+              id="caregiver-name"
+              value={data.caregiverName}
+              onChange={(e) => setData((d) => ({ ...d, caregiverName: e.target.value }))}
+              placeholder="Your name"
+              autoComplete="name"
+              className={fieldClass}
+            />
+          </div>
+          <p className={groupLabel}>Your role</p>
+          <div className="-mt-1 flex flex-col gap-3">
             {ROLES.map((r) => (
               <BigButton
                 key={r.value}
@@ -277,7 +263,7 @@ export default function CaregiverOnboardingPage() {
               />
             ))}
           </div>
-          <label className="flex items-start gap-3 rounded-card border border-line200 p-4 text-caregiver-body text-ink">
+          <label className="flex cursor-pointer items-start gap-4 rounded-card border border-line200 bg-surface-card p-5 text-caregiver-body text-ink">
             <Checkbox
               className="mt-1 shrink-0"
               checked={data.consentGiven}
@@ -285,7 +271,7 @@ export default function CaregiverOnboardingPage() {
             />
             <span>
               I consent to creating a cognitive care profile for my patient. SMRITI supports
-              cognitive engagement and monitoring — it does not diagnose or treat any medical
+              cognitive engagement and monitoring. It does not diagnose or treat any medical
               condition. I understand the collected data stays on this device and syncs only to
               our secured account, and I can delete it at any time from Settings.
             </span>
@@ -300,34 +286,38 @@ export default function CaregiverOnboardingPage() {
       ) : null}
 
       {step === 2 ? (
-        <section className="flex flex-col gap-4">
-          <h1 className="text-center font-serif-display text-caregiver-heading font-semibold text-ink">
-            Your patient
-          </h1>
-          <label htmlFor="patient-name" className="sr-only">
-            Patient name
-          </label>
-          <input
-            id="patient-name"
-            value={data.patientName}
-            onChange={(e) => setData((d) => ({ ...d, patientName: e.target.value }))}
-            placeholder="Patient name"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <label htmlFor="patient-age" className="sr-only">
-            Age
-          </label>
-          <input
-            id="patient-age"
-            type="number"
-            min={40}
-            max={120}
-            value={data.ageYears}
-            onChange={(e) => setData((d) => ({ ...d, ageYears: e.target.value }))}
-            placeholder="Age"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <div className="flex gap-3">
+        <section className="flex flex-col gap-5">
+          <h1 className={stepHeading}>Your patient</h1>
+          <div>
+            <label htmlFor="patient-name" className={labelClass}>
+              Patient name
+            </label>
+            <input
+              id="patient-name"
+              value={data.patientName}
+              onChange={(e) => setData((d) => ({ ...d, patientName: e.target.value }))}
+              placeholder="Patient name"
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="patient-age" className={labelClass}>
+              Age
+            </label>
+            <input
+              id="patient-age"
+              type="number"
+              inputMode="numeric"
+              min={40}
+              max={120}
+              value={data.ageYears}
+              onChange={(e) => setData((d) => ({ ...d, ageYears: e.target.value }))}
+              placeholder="Age"
+              className={fieldClass}
+            />
+          </div>
+          <p className={groupLabel}>Gender</p>
+          <div className="-mt-1 flex flex-col gap-3 sm:flex-row">
             {GENDERS.map((g) => (
               <div key={g.value} className="flex-1">
                 <BigButton
@@ -338,23 +328,28 @@ export default function CaregiverOnboardingPage() {
               </div>
             ))}
           </div>
-          <label htmlFor="patient-education" className="sr-only">
-            Years of education
-          </label>
-          <input
-            id="patient-education"
-            type="number"
-            min={0}
-            max={20}
-            value={data.educationYears}
-            onChange={(e) => setData((d) => ({ ...d, educationYears: e.target.value }))}
-            placeholder="Years of education"
-            className="h-14 w-full rounded-card border border-line200 px-4 text-caregiver-body text-ink transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-          />
-          <p className="text-caregiver-body text-ink">Patient&apos;s language</p>
-          <LanguagePicker />
-          <p className="text-caregiver-body text-ink">Session duration</p>
-          <div className="flex gap-3">
+          <div>
+            <label htmlFor="patient-education" className={labelClass}>
+              Years of education
+            </label>
+            <input
+              id="patient-education"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={20}
+              value={data.educationYears}
+              onChange={(e) => setData((d) => ({ ...d, educationYears: e.target.value }))}
+              placeholder="Years of education"
+              className={fieldClass}
+            />
+          </div>
+          <p className={groupLabel}>Patient&apos;s language</p>
+          <div className="-mt-1">
+            <LanguagePicker />
+          </div>
+          <p className={groupLabel}>Session length</p>
+          <div className="-mt-1 flex gap-3">
             {DURATIONS.map((mins) => (
               <div key={mins} className="flex-1">
                 <BigButton
@@ -375,47 +370,37 @@ export default function CaregiverOnboardingPage() {
       ) : null}
 
       {step === 3 ? (
-        <section className="flex flex-col gap-4">
-          <h1 className="text-center font-serif-display text-caregiver-heading font-semibold text-ink">
-            Setup
-          </h1>
-          <p className="text-center text-caregiver-body text-ink">
+        <section className="flex flex-col gap-5">
+          <h1 className={stepHeading}>Caregiver PIN</h1>
+          <p className="-mt-2 text-caregiver-body text-ink-muted">
             Create a 4-digit PIN to access the caregiver area
           </p>
 
-          <div className="flex justify-center gap-3" aria-hidden="true">
-            {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
-                  i < data.pin.length ? 'border-primary bg-primary' : 'border-line200'
-                }`}
-              />
-            ))}
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-caregiver-body font-bold text-ink">New PIN</p>
+            <PinDots filled={data.pin.length} length={PIN_LENGTH} />
           </div>
           <PinPad
             onDigit={(d) => enterPinDigit('pin', d)}
             onBackspace={() => backspacePin('pin')}
           />
 
-          <p className="text-center text-caregiver-body text-ink">Confirm PIN</p>
-          <div className="flex justify-center gap-3" aria-hidden="true">
-            {Array.from({ length: PIN_LENGTH }).map((_, i) => (
-              <span
-                key={i}
-                className={`h-14 w-14 rounded-card border-2 transition-colors duration-200 ${
-                  i < data.confirmPin.length ? 'border-primary bg-primary' : 'border-line200'
-                }`}
-              />
-            ))}
+          <div className="mt-4 flex items-center justify-between gap-4 border-t border-line200 pt-6">
+            <p className="text-caregiver-body font-bold text-ink">Confirm PIN</p>
+            <PinDots filled={data.confirmPin.length} length={PIN_LENGTH} />
           </div>
           <PinPad
             onDigit={(d) => enterPinDigit('confirmPin', d)}
             onBackspace={() => backspacePin('confirmPin')}
           />
 
-          {pinError ? <p className="text-center text-caregiver-body text-warning">{pinError}</p> : null}
+          {pinError ? (
+            <p role="alert" className="text-caregiver-body font-bold text-danger">
+              {pinError}
+            </p>
+          ) : null}
 
+          <p className={`${groupLabel} mt-4 border-t border-line200 pt-6`}>Starter reminders (optional)</p>
           <BigButton
             label="Add morning medication reminder"
             variant={data.addMorningReminder ? 'primary' : 'secondary'}
@@ -439,21 +424,19 @@ export default function CaregiverOnboardingPage() {
       ) : null}
 
       {step === 4 ? (
-        <section className="flex flex-col gap-4">
-          <h1 className="text-center font-serif-display text-caregiver-heading font-semibold text-ink">
-            Trust this device
-          </h1>
-          <p className="text-center text-caregiver-body text-ink">
+        <section className="flex flex-col gap-5">
+          <h1 className={stepHeading}>Trust this device</h1>
+          <p className="text-caregiver-body text-ink">
             This device is now set up for <strong>{data.patientName}</strong>.
           </p>
-          <div className="mt-6 p-6 rounded-card bg-primary/10 border border-primary/30">
-            <p className="text-center text-caregiver-body text-ink">
+          <div className="rounded-card border border-line200 bg-surface-card p-5">
+            <p className="text-caregiver-body text-ink">
               You can now hand this device to the patient. They can open SMRITI anytime without entering any code.
             </p>
+            <p className="mt-3 text-caregiver-body text-ink-muted">
+              To come back to the caregiver area, tap Caregiver at the top of the patient home screen.
+            </p>
           </div>
-          <p className="text-center text-sm text-ink/70 mt-4">
-            When you need to check the caregiver dashboard, tap the icon in the corner of the patient home screen.
-          </p>
           <BigButton
             label="Done"
             variant="success"

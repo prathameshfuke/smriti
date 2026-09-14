@@ -10,6 +10,8 @@ import { useGameStore } from '@/stores/gameStore';
 export type SyncStatus = 'synced' | 'offline' | 'syncing' | 'pending';
 
 const AFTER_ONLINE_DELAY_MS = 3000;
+
+let inFlightSync: ReturnType<typeof syncAllPatients> | null = null;
 const PERIODIC_INTERVAL_MS = 5 * 60_000;
 
 async function countUnsynced(patientId: string): Promise<number> {
@@ -28,7 +30,8 @@ export function useSync(): {
   syncStatus: SyncStatus;
   lastSynced: string | null;
   pendingCount: number;
-  syncNow: () => Promise<void>;
+  /** Resolves true only when the sync actually reached the server. */
+  syncNow: () => Promise<boolean>;
 } {
   const { isOnline } = useOfflineStatus();
   const [pendingCount, setPendingCount] = useState(0);
@@ -51,15 +54,22 @@ export function useSync(): {
   }, []);
 
   const syncNow = useCallback(async () => {
-    if (useGameStore.getState().isSessionActive) return;
+    if (useGameStore.getState().isSessionActive) return false;
     setIsSyncing(true);
-    const result = await syncAllPatients();
+    // Several components mount this hook at once (desktop rail and the
+    // dashboard's phone card are both in the DOM). They share one in-flight
+    // sync instead of racing two uploads of the same unsynced rows.
+    inFlightSync ??= syncAllPatients().finally(() => {
+      inFlightSync = null;
+    });
+    const result = await inFlightSync;
     // Only a genuine success (including "nothing to sync") updates the
     // timestamp — otherwise the caregiver sees a fresh "last synced" time
     // while their pending records never actually reached the server.
     if (result.success) setLastSynced(new Date().toISOString());
     await refreshPendingCount();
     setIsSyncing(false);
+    return result.success;
   }, [refreshPendingCount]);
 
   useEffect(() => {

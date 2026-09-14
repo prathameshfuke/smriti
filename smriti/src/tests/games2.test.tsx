@@ -93,7 +93,7 @@ describe('SessionComplete', () => {
         />
       </I18nProvider>,
     );
-    expect(container.textContent?.match(/⭐/g)?.length ?? 0).toBeGreaterThanOrEqual(1);
+    expect(container.querySelector('[aria-label="1 of 5 stars"]')).toBeTruthy();
   });
 
   it('output HTML never contains the words "wrong" or "failed"', () => {

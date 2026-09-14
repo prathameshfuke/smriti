@@ -13,10 +13,19 @@ export interface BigButtonProps {
   disabled?: boolean;
 }
 
+/*
+ * primary: terracotta fill, white label (5.5:1).
+ * secondary: white with a solid ink-muted outline. The boundary has to clear
+ * 3:1 (WCAG 1.4.11) so an older eye can see where the button is; line200
+ * (1.4:1) and a second terracotta outline (reads as a second primary) both
+ * failed that job.
+ * success: green fill with an ink label. White on #39A85A is only 3:1, too
+ * low for this cohort; ink on the same green is 6:1. The colour is unchanged.
+ */
 const VARIANTS = {
-  primary: 'bg-primary text-ink-inverse hover:bg-primary-dark hover:shadow-md',
-  secondary: 'bg-surface-card text-ink border-2 border-primary hover:bg-surface-muted',
-  success: 'bg-success text-ink-inverse hover:brightness-95 hover:shadow-md',
+  primary: 'bg-primary text-ink-inverse hover:bg-primary-dark',
+  secondary: 'bg-surface-card text-ink border-2 border-ink-muted hover:bg-surface-muted',
+  success: 'bg-success text-ink hover:brightness-95',
 } as const;
 
 /**
@@ -54,8 +63,8 @@ export default function BigButton({
       aria-label={label}
       style={{ minHeight: BIG_TARGET_MIN_PX }}
       className={
-        'flex w-full items-center justify-center gap-touch-gap rounded-tile px-6 py-4 ' +
-        'text-patient-body font-semibold transition-transform duration-100 ' +
+        'flex w-full items-center justify-center gap-touch-gap rounded-control px-6 py-3 ' +
+        'text-center text-patient-body font-bold transition-[transform,background-color] duration-150 ' +
         'active:scale-[0.97] motion-reduce:active:scale-100 ' +
         'focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 ' +
         'focus-visible:outline-primary-dark ' +

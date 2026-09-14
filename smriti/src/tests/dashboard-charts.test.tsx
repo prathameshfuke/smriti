@@ -132,12 +132,14 @@ describe('SessionCalendar', () => {
     expect(cells).toHaveLength(30);
   });
 
-  it('sizes each day button at the 48px touch-min token, not the old 40px', () => {
+  it('keeps each day button 48px tall and lets it fill its column instead of a fixed width', () => {
+    // A fixed 48px width made 7 columns overflow a 320px phone sideways.
     render(<SessionCalendar year={2026} month={8} points={[]} />);
     const cells = screen.getAllByTestId('calendar-day');
     for (const cell of cells) {
       expect(cell.style.height).toBe('48px');
-      expect(cell.style.width).toBe('48px');
+      expect(cell.style.width).toBe('');
+      expect(cell.className).toMatch(/\bw-full\b/);
     }
   });
 

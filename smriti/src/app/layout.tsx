@@ -7,6 +7,7 @@ import {
 } from "next/font/google";
 import { LanguageProvider } from "@/lib/i18n/provider";
 import Disclaimer from "@/components/layout/Disclaimer";
+import ActivityTracker from "@/components/layout/ActivityTracker";
 import "./globals.css";
 
 /**
@@ -78,6 +79,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>
+          <ActivityTracker />
           <div className="flex flex-1 flex-col">{children}</div>
           <Disclaimer />
         </LanguageProvider>

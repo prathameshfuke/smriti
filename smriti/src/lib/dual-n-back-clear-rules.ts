@@ -8,6 +8,7 @@
 export const DUAL_N_BACK_CLEAR_MIN_ACCURACY = 90;
 export const DUAL_N_BACK_CLEAR_TRAINING_MODE = 'standard';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented reference-project signature
 export function isDualNBackClearLeaderboardEligible(_settings: unknown): boolean {
   return false;
 }

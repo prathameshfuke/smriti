@@ -5,10 +5,7 @@
  * backend, kept at the same import path/signature so copied game
  * components don't need editing.
  */
-export async function submitScoreToLeaderboard(
-  _gameId: string,
-  _score: number,
-  _meta?: Record<string, unknown>,
-): Promise<void> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for the documented reference-project call shape
+export async function submitScoreToLeaderboard(_gameId: string, _score: number, _meta?: Record<string, unknown>): Promise<void> {
   return;
 }
