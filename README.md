@@ -200,22 +200,48 @@ flowchart LR
     Engine -.-> Dashboard["Caregiver Dashboard"]
 ```
 
+### The games
+
 <p align="center">
-  <img src="smriti/public/images/game-object-hunt.svg" width="52" title="Object Hunt" />
-  <img src="smriti/public/images/game-word-stream.svg" width="52" title="Word Stream" />
-  <img src="smriti/public/images/game-quick-tap.svg" width="52" title="Quick Tap" />
-  <img src="smriti/public/images/game-path-match.svg" width="52" title="Path Match" />
-  <img src="smriti/public/images/game-memory-match.svg" width="52" title="Memory Match" />
-  <img src="smriti/public/images/game-memory-span.svg" width="52" title="Memory Span" />
-  <img src="smriti/public/images/game-memory-blocks.svg" width="52" title="Memory Blocks" />
-  <img src="smriti/public/images/game-n-back.svg" width="52" title="N-Back" />
-  <img src="smriti/public/images/game-double-decision.svg" width="52" title="Double Decision" />
-  <img src="smriti/public/images/game-counting-boxes.svg" width="52" title="Counting Boxes" />
-  <img src="smriti/public/images/game-larger-number.svg" width="52" title="Larger Number" />
-  <img src="smriti/public/images/game-frog-leap.svg" width="52" title="Frog Leap" />
-  <img src="smriti/public/images/game-fish-trace.svg" width="52" title="Fish Trace" />
-  <img src="smriti/public/images/game-reminiscence-quiz.svg" width="52" title="Reminiscence Quiz" />
+  <img src="smriti/public/images/game-object-hunt.png" width="72" title="Object Hunt" alt="Object Hunt" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-word-stream.png" width="72" title="Word Stream" alt="Word Stream" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-quick-tap.png" width="72" title="Quick Tap" alt="Quick Tap" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-path-match.png" width="72" title="Path Match" alt="Path Match" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-memory-match.png" width="72" title="Memory Match" alt="Memory Match" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-memory-span.png" width="72" title="Memory Span" alt="Memory Span" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-memory-blocks.png" width="72" title="Memory Blocks" alt="Memory Blocks" />
+  <br /><br />
+  <img src="smriti/public/images/game-n-back.png" width="72" title="N-Back" alt="N-Back" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-double-decision.png" width="72" title="Double Decision" alt="Double Decision" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-counting-boxes.png" width="72" title="Counting Boxes" alt="Counting Boxes" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-larger-number.png" width="72" title="Larger Number" alt="Larger Number" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-frog-leap.png" width="72" title="Frog Leap" alt="Frog Leap" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-fish-trace.png" width="72" title="Fish Trace" alt="Fish Trace" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-reminiscence-quiz.png" width="72" title="Family &amp; Life Quiz" alt="Family &amp; Life Quiz" />&nbsp;&nbsp;
+  <img src="smriti/public/images/game-routine-recall.png" width="72" title="Routine Recall" alt="Routine Recall" />
 </p>
+<p align="center"><sub>Object Hunt · Word Stream · Quick Tap · Path Match · Memory Match · Memory Span · Memory Blocks · N-Back · Double Decision · Counting Boxes · Larger Number · Frog Leap · Fish Trace · Family &amp; Life Quiz · Routine Recall</sub></p>
+
+### Reminder icons
+
+<p align="center">
+  <img src="smriti/public/images/reminders/medication.png" width="56" title="Medication" alt="Medication" />&nbsp;&nbsp;
+  <img src="smriti/public/images/reminders/hydration.png" width="56" title="Hydration" alt="Hydration" />&nbsp;&nbsp;
+  <img src="smriti/public/images/reminders/activity.png" width="56" title="Activity" alt="Activity" />&nbsp;&nbsp;
+  <img src="smriti/public/images/reminders/appointment.png" width="56" title="Appointment" alt="Appointment" />
+</p>
+<p align="center"><sub>Medication · Hydration · Activity · Appointment</sub></p>
+
+### Interface icons
+
+<p align="center">
+  <img src="smriti/public/images/ask-smriti.png" width="56" title="Ask Smriti" alt="Ask Smriti" />&nbsp;&nbsp;
+  <img src="smriti/public/images/caregiver-access.png" width="56" title="Caregiver access" alt="Caregiver access" />&nbsp;&nbsp;
+  <img src="smriti/public/images/family-message.png" width="56" title="Family message" alt="Family message" />&nbsp;&nbsp;
+  <img src="smriti/public/images/done-acknowledged.png" width="56" title="Seen / done" alt="Seen / done" />&nbsp;&nbsp;
+  <img src="smriti/public/images/error.png" width="56" title="Could not connect" alt="Could not connect" />
+</p>
+<p align="center"><sub>Ask Smriti · Caregiver access · Family message · Seen / done · Could not connect</sub></p>
 
 ## Offline-First Sync
 
