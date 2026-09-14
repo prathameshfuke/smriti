@@ -160,3 +160,48 @@ describe('locale files', () => {
     }
   });
 });
+
+describe('patient screens follow the chosen language', () => {
+  const flatten = (node: Record<string, unknown>, prefix = ''): Record<string, string> =>
+    Object.entries(node).reduce<Record<string, string>>((acc, [k, v]) => {
+      if (v && typeof v === 'object') Object.assign(acc, flatten(v as Record<string, unknown>, `${prefix}${k}.`));
+      else acc[`${prefix}${k}`] = String(v);
+      return acc;
+    }, {});
+
+  it('has every English key translated in Hindi, Assamese, Bengali and Nepali', async () => {
+    const en = flatten((await import('@/lib/i18n/locales/en.json')).default);
+    for (const code of ['hi', 'as', 'bn', 'ne']) {
+      const catalog = flatten((await import(`@/lib/i18n/locales/${code}.json`)).default);
+      const missing = Object.keys(en).filter((k) => !(k in catalog));
+      expect({ code, missing }).toEqual({ code, missing: [] });
+      const placeholdersLost = Object.keys(en).filter((k) => {
+        const want = (en[k].match(/\{\w+\}/g) ?? []).sort().join();
+        return want !== ((catalog[k] ?? '').match(/\{\w+\}/g) ?? []).sort().join();
+      });
+      expect({ code, placeholdersLost }).toEqual({ code, placeholdersLost: [] });
+    }
+  });
+
+  it('fills {placeholders} and leaves unknown ones visible', async () => {
+    await seedLanguage('hi');
+    function Vars() {
+      const { t } = useTranslation();
+      return <span data-testid="v">{t('game.outOfCorrect', { count: 3, total: 5 })}</span>;
+    }
+    render(
+      <I18nProvider>
+        <Vars />
+      </I18nProvider>,
+    );
+    expect(screen.getByTestId('v').textContent).toBe('5 में से 3 सही');
+  });
+
+  it('keeps <html lang> in step with the language', async () => {
+    await seedLanguage('as');
+    renderWith();
+    expect(document.documentElement.lang).toBe('as');
+    act(() => useSettingsStore.getState().setLanguage('hi'));
+    expect(document.documentElement.lang).toBe('hi');
+  });
+});

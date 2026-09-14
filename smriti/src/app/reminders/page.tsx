@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { localDateString } from '@/lib/engine/adherence';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -33,6 +34,8 @@ function todayDateString(): string {
 
 export default function RemindersPage() {
   const router = useRouter();
+  // Named `tr` here: this page already uses `t` for reminder types in the caregiver form.
+  const { t: tr } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
 
   const [schedules, setSchedules] = useState<LocalReminderSchedule[]>([]);
@@ -150,15 +153,15 @@ export default function RemindersPage() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-surface">
-      <PatientNav title="Reminders" onBack={() => router.push('/app')} />
+      <PatientNav title={tr('reminders.title')} onBack={() => router.push('/app')} />
 
       <main className="flex flex-1 flex-col gap-10 px-5 py-8">
         <section aria-labelledby="today-heading" className="flex flex-col gap-4">
           <h2 id="today-heading" className="font-serif-display text-[2rem] font-medium leading-tight text-ink">
-            Today
+            {tr('reminders.today')}
           </h2>
           {todaysSchedules.length === 0 ? (
-            <p className="text-patient-body text-ink-muted">No reminders scheduled today.</p>
+            <p className="text-patient-body text-ink-muted">{tr('reminders.noneToday')}</p>
           ) : (
             <ul className="divide-y divide-line200 overflow-hidden rounded-card border border-line200 bg-surface-card">
               {todaysSchedules.map((s) => {
@@ -171,14 +174,15 @@ export default function RemindersPage() {
                       {ack?.acknowledgedAt ? (
                         <p className="mt-1 flex items-center gap-2 text-patient-sm text-ink">
                           <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-success" />
-                          Done at{' '}
-                          {new Date(ack.acknowledgedAt).toLocaleTimeString([], {
-                            hour: 'numeric',
-                            minute: '2-digit',
+                          {tr('reminders.doneAt', {
+                            time: new Date(ack.acknowledgedAt).toLocaleTimeString([], {
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            }),
                           })}
                         </p>
                       ) : (
-                        <p className="mt-1 text-patient-sm text-ink-muted">Not done yet</p>
+                        <p className="mt-1 text-patient-sm text-ink-muted">{tr('reminders.notDoneYet')}</p>
                       )}
                     </div>
                   </li>

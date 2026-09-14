@@ -227,14 +227,14 @@ function MemoryMatchPageInner() {
         {phase === 'instruction' ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink">{t('game.memoryMatch.instruction')}</p>
-            <BigButton label="Start!" variant="primary" onClick={startPlaying} />
+            <BigButton label={t('game.start')} variant="primary" onClick={startPlaying} />
           </div>
         ) : null}
 
         {phase === 'playing' ? (
           <div className="flex w-full flex-1 flex-col items-center gap-4">
             <p data-testid="memory-match-progress" className="text-patient-body text-ink">
-              {matchedCount} of {level.pairs} matched
+              {t('game.memoryMatch.progress', { count: matchedCount, total: level.pairs })}
             </p>
             <MemoryGrid
               tiles={tiles}
@@ -252,10 +252,10 @@ function MemoryMatchPageInner() {
               {'☆'.repeat(5 - stars)}
             </p>
             <p className="font-serif-display text-patient-heading text-ink">
-              {level.pairs} out of {level.pairs} matched!
+              {t('game.memoryMatch.done', { total: level.pairs })}
             </p>
-            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
+            <BigButton label={t('game.anotherRound')} variant="primary" onClick={keepGoing} />
+            <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

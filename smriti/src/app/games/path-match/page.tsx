@@ -235,7 +235,7 @@ function PathMatchPageInner() {
                 </span>
               ))}
             </div>
-            <BigButton label="Start!" variant="primary" onClick={startPlaying} />
+            <BigButton label={t('game.start')} variant="primary" onClick={startPlaying} />
           </div>
         ) : null}
 
@@ -243,7 +243,7 @@ function PathMatchPageInner() {
           <div className="flex w-full flex-1 flex-col gap-2">
             <div className="flex items-center justify-between px-1">
               <p data-testid="current-target-label" className="text-patient-body text-ink">
-                Point {currentTarget} of {points.length}
+                {t('game.pathMatch.pointOf', { n: currentTarget, total: points.length })}
               </p>
               {timeLeft != null ? (
                 <p
@@ -274,10 +274,10 @@ function PathMatchPageInner() {
               {'☆'.repeat(5 - stars)}
             </p>
             <p className="font-serif-display text-patient-heading text-ink">
-              {completedPairs.length} out of {totalConnections} connected!
+              {t('game.pathMatch.connected', { count: completedPairs.length, total: totalConnections })}
             </p>
-            <BigButton label="Another round" variant="primary" onClick={keepGoing} />
-            <BigButton label="Finish session" variant="secondary" onClick={finishSession} />
+            <BigButton label={t('game.anotherRound')} variant="primary" onClick={keepGoing} />
+            <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
         ) : null}
 

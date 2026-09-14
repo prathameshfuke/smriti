@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Square } from 'lucide-react';
@@ -13,7 +14,6 @@ import { FALLBACK_TEXT } from '@/lib/ai/llm-client';
 import { cacheAnswer, findCachedAnswer } from '@/lib/ai/companion-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
-import { isUILanguage } from '@/lib/i18n/languages';
 import { usePatientStore } from '@/stores/patientStore';
 
 type Phase = 'idle' | 'recording' | 'thinking' | 'answered' | 'fallback';
@@ -74,6 +74,7 @@ interface SpeechRecognitionLike {
 
 export default function CompanionPage() {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const { isOnline } = useOfflineStatus();
   const [phase, setPhase] = useState<Phase>('idle');
@@ -94,10 +95,9 @@ export default function CompanionPage() {
     () => true,
   );
 
-  // Shared by speakAnswer (TTS) and acquireTranscript (ASR) — both need to
-  // know which language this patient's device is in.
-  const patientLanguage =
-    currentPatient && isUILanguage(currentPatient.primaryLanguage) ? currentPatient.primaryLanguage : 'en';
+  // Spoken answers and speech recognition use the same language as the
+  // screen, which follows the patient's language (selectActivePatient).
+  const patientLanguage = language;
 
   const speakAnswer = (text: string) => {
     void narrate(text, patientLanguage, isOnline);
@@ -248,11 +248,17 @@ export default function CompanionPage() {
   };
 
   const prompt =
-    phase === 'recording' ? 'Listening…' : phase === 'thinking' ? 'Thinking…' : phase === 'idle' ? 'Ask me something' : null;
+    phase === 'recording'
+      ? t('companion.listening')
+      : phase === 'thinking'
+        ? t('companion.thinking')
+        : phase === 'idle'
+          ? t('companion.askMeSomething')
+          : null;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-canvas">
-      <PatientNav title="Ask Smriti" onBack={() => router.push('/app')} />
+      <PatientNav title={t('companion.title')} onBack={() => router.push('/app')} />
 
       <main className="flex flex-1 flex-col gap-8 px-5 py-8">
         {prompt ? (
@@ -264,7 +270,7 @@ export default function CompanionPage() {
         {mediaRecorderSupported ? (
           <button
             type="button"
-            aria-label={phase === 'recording' ? 'Stop asking' : 'Ask a question'}
+            aria-label={phase === 'recording' ? t('companion.stopAsking') : t('companion.askQuestion')}
             onClick={onMicClick}
             disabled={phase === 'thinking' || phase === 'answered' || phase === 'fallback'}
             className="flex flex-col items-center gap-4 self-center rounded-card p-2 disabled:opacity-50 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary-dark"
@@ -285,13 +291,13 @@ export default function CompanionPage() {
               )}
             </span>
             <span aria-hidden="true" className="text-patient-body font-bold text-ink">
-              {phase === 'recording' ? 'Tap when you finish' : 'Tap and speak'}
+              {phase === 'recording' ? t('companion.tapWhenFinished') : t('companion.tapAndSpeak')}
             </span>
           </button>
         ) : (
           <div className="flex w-full flex-col gap-3">
             <label htmlFor="companion-text-question" className="text-patient-body font-bold text-ink">
-              Type your question
+              {t('companion.typeQuestion')}
             </label>
             <input
               id="companion-text-question"
@@ -303,13 +309,13 @@ export default function CompanionPage() {
               style={{ minHeight: 64 }}
               className={`${fieldClass} text-patient-body`}
             />
-            <BigButton label="Ask" variant="primary" onClick={onTextSubmit} />
+            <BigButton label={t('companion.ask')} variant="primary" onClick={onTextSubmit} />
           </div>
         )}
 
         {(phase === 'answered' || phase === 'fallback') && transcript ? (
           <div>
-            <p className="text-patient-sm font-bold text-ink-muted">You asked</p>
+            <p className="text-patient-sm font-bold text-ink-muted">{t('companion.youAsked')}</p>
             <p className="mt-1 text-patient-body text-ink">{transcript}</p>
           </div>
         ) : null}
@@ -317,12 +323,12 @@ export default function CompanionPage() {
         {answer ? (
           <div className="rounded-card border border-line200 bg-surface-card p-5">
             <p className="text-patient-body text-ink">{answer.text}</p>
-            <p className="mt-3 text-patient-sm text-ink-muted">{answer.fromCache ? 'from earlier' : 'AI-generated answer'}</p>
+            <p className="mt-3 text-patient-sm text-ink-muted">{answer.fromCache ? t('companion.fromEarlier') : t('companion.aiAnswer')}</p>
           </div>
         ) : null}
 
         {phase === 'answered' || phase === 'fallback' ? (
-          <BigButton label="Ask again" variant="primary" onClick={reset} />
+          <BigButton label={t('companion.askAgain')} variant="primary" onClick={reset} />
         ) : null}
       </main>
     </div>

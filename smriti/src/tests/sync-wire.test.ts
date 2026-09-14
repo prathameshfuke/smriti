@@ -14,7 +14,7 @@ const getUser = vi.fn();
 
 function makeChain(result: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'in', 'gte', 'order', 'limit', 'upsert', 'insert', 'update']) {
+  for (const method of ['select', 'eq', 'in', 'gte', 'lt', 'order', 'limit', 'upsert', 'insert', 'update']) {
     chain[method] = vi.fn(() => chain);
   }
   chain.single = vi.fn(() => Promise.resolve(result));
@@ -355,5 +355,89 @@ describe('alerts stay in step with reality', () => {
     const { POST } = await import('@/app/api/sync/route');
     await POST(syncBody(emptyPatient));
     expect(chains.alerts.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe("a patient's language chosen on the phone survives sync and sign-in", () => {
+  const patient = {
+    id: 'p1',
+    caregiverId: 'c1',
+    displayName: 'Jalaja',
+    ageYears: 56,
+    gender: 'female' as const,
+    educationYears: 8,
+    primaryLanguage: 'hi',
+    sessionDurationMinutes: 10,
+    isActive: true,
+    currentDifficulty: { quick_tap: 4 },
+    updatedAt: '2026-09-14T10:00:00.000Z',
+    syncedAt: null,
+  };
+
+  it('sends a queued patient edit and clears the queue once saved', async () => {
+    await db.patients.put(patient);
+    const { buildQueueItem } = await import('@/lib/db/syncQueue');
+    await db.syncQueue.put(buildQueueItem('patients', 'p1', 'update', { ...patient }));
+    getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ serverTimestamp: 'now', syncedEventCount: 0, syncErrors: {}, updates: { patients: [], reminders: [], alerts: [] } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncAllPatients } = await import('@/lib/db/sync');
+    expect(await syncAllPatients()).toEqual({ success: true });
+
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.patients[0].profile).toMatchObject({ id: 'p1', primaryLanguage: 'hi' });
+    expect(await db.syncQueue.where('tableName').equals('patients').count()).toBe(0);
+  });
+
+  it('updates only the editable columns, and only over an older server row', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-profile-update' } }, error: null });
+    const chains: Record<string, ReturnType<typeof makeChain>> = {};
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
+      chains[table] ??= makeChain(table === 'patients' ? { data: [{ id: 'p1' }], error: null } : { data: [], error: null });
+      return chains[table];
+    });
+    const { POST } = await import('@/app/api/sync/route');
+    await POST(
+      syncBody([
+        {
+          patientId: 'p1',
+          sessions: [],
+          events: [],
+          dailySummaries: [],
+          reminderAcks: [],
+          profile: { ...patient, primaryLanguage: 'hi', caregiverId: 'someone-else', isActive: false },
+        },
+      ]),
+    );
+    const update = (chains.patients.update as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(update).toMatchObject({ primary_language: 'hi', display_name: 'Jalaja', updated_at: patient.updatedAt });
+    expect(update).not.toHaveProperty('caregiver_id');
+    expect(update).not.toHaveProperty('is_active');
+    expect(chains.patients.lt).toHaveBeenCalledWith('updated_at', patient.updatedAt);
+  });
+
+  it('keeps a newer language and the game levels from this phone when signing in pulls older server data', async () => {
+    await db.patients.put(patient);
+    vi.doMock('@/lib/db/serverProfile', () => ({
+      pullCaregiverProfile: vi.fn().mockResolvedValue({
+        status: 'found',
+        caregiver: { id: 'c1', authUserId: 'u1', displayName: 'Care', role: 'family', createdAt: 't' },
+        patients: [{ ...patient, primaryLanguage: 'en', currentDifficulty: {}, updatedAt: '2026-09-01T00:00:00.000Z' }],
+        reminders: [],
+      }),
+    }));
+    const { pullAndStoreServerProfile } = await import('@/lib/auth/localSession');
+    expect(await pullAndStoreServerProfile('u1')).toBe('found');
+    expect(await db.caregivers.get('c1')).toBeTruthy();
+    const stored = await db.patients.get('p1');
+    expect(stored?.primaryLanguage).toBe('hi');
+    expect(stored?.currentDifficulty).toEqual({ quick_tap: 4 });
+    vi.doUnmock('@/lib/db/serverProfile');
   });
 });

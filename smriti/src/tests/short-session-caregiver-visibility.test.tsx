@@ -131,15 +131,15 @@ async function playPathMatchRoundsToHome(numRounds: number): Promise<void> {
         clientY: Number(circle.getAttribute('cy')),
       });
     }
-    await waitFor(() => expect(screen.getByText(/finish session/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/finish for now/i)).toBeInTheDocument());
 
     if (round < numRounds) {
-      fireEvent.click(screen.getByText(/another round/i));
+      fireEvent.click(screen.getByText(/play again/i));
       await waitFor(() => expect(screen.getByText(/start!/i)).toBeInTheDocument());
     }
   }
 
-  fireEvent.click(screen.getByText(/finish session/i));
+  fireEvent.click(screen.getByText(/finish for now/i));
   await waitFor(() => expect(screen.getByText(/back to home/i)).toBeInTheDocument());
   fireEvent.click(screen.getByText(/back to home/i));
   // goHome() awaits buildDailySummary() and endSession() before this fires,
@@ -177,10 +177,10 @@ async function playPathMatchRoundsThenAbandon(numRounds: number): Promise<void> 
         clientY: Number(circle.getAttribute('cy')),
       });
     }
-    await waitFor(() => expect(screen.getByText(/finish session/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/finish for now/i)).toBeInTheDocument());
 
     if (round < numRounds) {
-      fireEvent.click(screen.getByText(/another round/i));
+      fireEvent.click(screen.getByText(/play again/i));
       await waitFor(() => expect(screen.getByText(/start!/i)).toBeInTheDocument());
     }
   }

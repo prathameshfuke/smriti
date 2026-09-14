@@ -111,10 +111,11 @@ function ReminiscenceQuizPageInner() {
 }
 
 function NoQuizYet() {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
       <p className="text-patient-body text-ink-muted">
-        No quiz is ready yet. Ask your caregiver to set one up.
+        {t('game.reminiscenceQuiz.noQuiz')}
       </p>
     </div>
   );

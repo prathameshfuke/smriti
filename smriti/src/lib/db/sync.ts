@@ -50,6 +50,7 @@ interface ServerReminderRow {
 interface PatientSyncErrors {
   /** The whole patient was refused (not on this account); nothing was saved. */
   patient?: string;
+  profile?: string;
   reminderSchedules?: string;
   sessions?: string;
   events?: string;
@@ -161,6 +162,9 @@ interface PatientSyncPayload {
   reminderSchedules: LocalReminderSchedule[];
   /** syncQueue rows behind `reminderSchedules`, removed once the server saves them. */
   scheduleQueueIds: string[];
+  /** The patient's own details (name, language…) when edited on this phone. */
+  profile: LocalPatient | null;
+  profileQueueIds: string[];
 }
 
 function payloadSize(p: PatientSyncPayload): number {
@@ -170,7 +174,8 @@ function payloadSize(p: PatientSyncPayload): number {
     p.dailySummaries.length +
     p.reminderAcks.length +
     p.memoryBankEntries.length +
-    p.reminderSchedules.length
+    p.reminderSchedules.length +
+    (p.profile ? 1 : 0)
   );
 }
 
@@ -222,7 +227,7 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
 
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
-  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries, scheduleQueue] = await Promise.all([
+  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries, scheduleQueue, profileQueue, profile] = await Promise.all([
     db.gameSessions.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.telemetryEvents.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     // dailySummaries has no plain `patientId` index (only the compound
@@ -233,6 +238,13 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     // Schedules have no `synced` flag; edits made on the Reminders page are
     // recorded in syncQueue instead, which nothing used to send.
     db.syncQueue.where('tableName').equals('reminder_schedules').toArray(),
+    // Patient edits (language, name, age) are queued the same way.
+    db.syncQueue
+      .where('tableName')
+      .equals('patients')
+      .filter((q) => q.recordId === patientId)
+      .toArray(),
+    db.patients.get(patientId),
   ]);
   const queuedIds = [...new Set(scheduleQueue.map((q) => q.recordId))];
   const found = await db.reminderSchedules.bulkGet(queuedIds);
@@ -252,6 +264,8 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     memoryBankEntries: await uploadMemoryBankPhotos(memoryBankEntries),
     reminderSchedules: schedules,
     scheduleQueueIds: scheduleQueue.filter((q) => scheduleIds.has(q.recordId)).map((q) => q.id),
+    profile: profileQueue.length && profile ? profile : null,
+    profileQueueIds: profileQueue.map((q) => q.id),
   };
 }
 
@@ -283,6 +297,9 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
       for (const payload of payloads) {
         const errors = body.syncErrors?.[payload.patientId] ?? {};
         if (errors.patient) continue;
+        if (!errors.profile && payload.profileQueueIds.length) {
+          await db.syncQueue.bulkDelete(payload.profileQueueIds);
+        }
         if (!errors.reminderSchedules && payload.scheduleQueueIds.length) {
           await db.syncQueue.bulkDelete(payload.scheduleQueueIds);
         }
@@ -344,6 +361,7 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
           dailySummaries: p.dailySummaries,
           reminderAcks: p.reminderAcks,
           reminderSchedules: p.reminderSchedules,
+          profile: p.profile,
           memoryBankEntries: p.memoryBankEntries.map(toWireMemoryBankEntry),
         })),
       }),

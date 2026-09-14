@@ -95,7 +95,18 @@ export async function pullAndStoreServerProfile(
 
   await db.transaction('rw', db.caregivers, db.patients, db.reminderSchedules, async () => {
     await db.caregivers.put(pulled.caregiver);
-    await db.patients.bulkPut(pulled.patients);
+    // Merged, not overwritten: a plain bulkPut replaced a language chosen on
+    // this phone with the server's older one on every sign-in, and reset
+    // every game's level, which only exists on the phone.
+    const local = await db.patients.bulkGet(pulled.patients.map((p) => p.id));
+    await db.patients.bulkPut(
+      pulled.patients.map((server, i) => {
+        const mine = local[i];
+        if (!mine) return server;
+        const newer = new Date(mine.updatedAt).getTime() > new Date(server.updatedAt).getTime();
+        return { ...(newer ? mine : server), currentDifficulty: mine.currentDifficulty ?? {} };
+      }),
+    );
     if (pulled.reminders.length) await db.reminderSchedules.bulkPut(pulled.reminders);
   });
   useCaregiverStore.getState().setCurrentCaregiver(pulled.caregiver);

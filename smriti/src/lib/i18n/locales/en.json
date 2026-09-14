@@ -11,7 +11,19 @@
     "reminders": "My Reminders",
     "myProgress": "My progress",
     "streakCount": "day streak",
-    "streakStart": "Play today to start a streak"
+    "streakStart": "Play today to start a streak",
+    "askSmriti": "Ask Smriti",
+    "chooseGame": "Choose a game",
+    "caregiverAccess": "Caregiver access",
+    "pinTitle": "Enter caregiver PIN",
+    "pinForCaregiver": "For the caregiver only.",
+    "pinLocked": "Too many wrong tries. Try again in {seconds} seconds.",
+    "messageForYou": "A message for you",
+    "thankYou": "Thank you!",
+    "noPatientTitle": "Nobody is set up on this phone",
+    "noPatientBody": "A caregiver needs to sign in to set up this phone.",
+    "caregiverLogin": "Caregiver sign in",
+    "today": "Today"
   },
   "game": {
     "objectHunt": {
@@ -29,28 +41,54 @@
     },
     "quickTap": {
       "name": "Quick Tap",
-      "instruction": "Tap the picture as soon as you see it."
+      "instruction": "Tap the picture as soon as you see it.",
+      "targetIs": "Tap this picture:",
+      "itemOf": "Picture {n} of {total}",
+      "hits": "You tapped {count} pictures correctly"
     },
     "pathMatch": {
       "name": "Path Match",
       "instruction": "Join the numbers in order, from 1 onwards.",
-      "good": "Good!"
+      "good": "Good!",
+      "pointOf": "Number {n} of {total}",
+      "connected": "{count} out of {total} joined"
     },
     "memoryMatch": {
       "name": "Memory Match",
       "instruction": "Tap two cards. If they match, they stay open.",
       "goodMatch": "Good match",
-      "tryAnotherOne": "Let's try another one"
+      "tryAnotherOne": "Let's try another one",
+      "progress": "{count} of {total} pairs found",
+      "done": "All {total} pairs found!"
     },
-    "memoryBlocks": { "name": "Memory Blocks" },
-    "frogLeap": { "name": "Frog Leap" },
-    "countingBoxes": { "name": "Counting Boxes" },
-    "nBack": { "name": "N-Back" },
-    "largerNumber": { "name": "Larger Number" },
-    "memorySpan": { "name": "Memory Span" },
-    "fishTrace": { "name": "Fish Trace" },
-    "doubleDecision": { "name": "Double Decision" },
-    "reminiscenceQuiz": { "name": "Family & Life Quiz" },
+    "memoryBlocks": {
+      "name": "Memory Blocks"
+    },
+    "frogLeap": {
+      "name": "Frog Leap"
+    },
+    "countingBoxes": {
+      "name": "Counting Boxes"
+    },
+    "nBack": {
+      "name": "N-Back"
+    },
+    "largerNumber": {
+      "name": "Larger Number"
+    },
+    "memorySpan": {
+      "name": "Memory Span"
+    },
+    "fishTrace": {
+      "name": "Fish Trace"
+    },
+    "doubleDecision": {
+      "name": "Double Decision"
+    },
+    "reminiscenceQuiz": {
+      "name": "Family & Life Quiz",
+      "noQuiz": "No quiz is ready yet. Ask your caregiver to set one up."
+    },
     "correct": "Correct!",
     "tryAgain": "Try again",
     "sessionComplete": "Well done! You finished today's session.",
@@ -61,6 +99,50 @@
       "star3": "Great job today! Keep it up!",
       "star2": "Good effort! Every session helps.",
       "star1": "Well done for trying! Each day gets better."
+    },
+    "backToHome": "Back to home",
+    "start": "Start!",
+    "anotherRound": "Play again",
+    "keepGoing": "Keep going",
+    "finishSession": "Finish for now",
+    "outOfCorrect": "{count} out of {total} correct",
+    "starsLabel": "{count} of 5 stars",
+    "routineRecall": {
+      "name": "Routine Recall",
+      "loading": "Getting today's routine ready…",
+      "notEnough": "Not enough reminders done yet today",
+      "comeBack": "Come back after a few more reminders are done today.",
+      "instruction": "Tap them in the order you did them today",
+      "placed": "{count} of {total} placed",
+      "correct": "Wonderful! That is exactly how today went.",
+      "remember": "Let's remember together."
+    },
+    "encourage": {
+      "1": {
+        "0": "You're learning! Keep trying.",
+        "1": "That's alright, let's try again.",
+        "2": "Keep going, you can do it."
+      },
+      "2": {
+        "0": "Good try! You're getting there.",
+        "1": "Almost there!",
+        "2": "You're improving!"
+      },
+      "3": {
+        "0": "Nice work!",
+        "1": "Well done!",
+        "2": "You're doing great!"
+      },
+      "4": {
+        "0": "Great job!",
+        "1": "Excellent work!",
+        "2": "Fantastic effort!"
+      },
+      "5": {
+        "0": "Wonderful! You remembered everything!",
+        "1": "Perfect memory!",
+        "2": "Amazing! Every one correct!"
+      }
     }
   },
   "reminder": {
@@ -96,5 +178,45 @@
     "mni": "মৈতৈলোন্",
     "bn": "বাংলা",
     "ne": "नेपाली"
+  },
+  "common": {
+    "back": "Back",
+    "goBack": "Go back",
+    "cancel": "Cancel",
+    "loading": "Loading"
+  },
+  "companion": {
+    "title": "Ask Smriti",
+    "askMeSomething": "Ask me something",
+    "listening": "Listening…",
+    "thinking": "Thinking…",
+    "askQuestion": "Ask a question",
+    "stopAsking": "Stop asking",
+    "tapAndSpeak": "Tap and speak",
+    "tapWhenFinished": "Tap when you finish",
+    "typeQuestion": "Type your question",
+    "ask": "Ask",
+    "youAsked": "You asked",
+    "aiAnswer": "AI-generated answer",
+    "fromEarlier": "From earlier",
+    "askAgain": "Ask again"
+  },
+  "reminders": {
+    "title": "Reminders",
+    "today": "Today",
+    "noneToday": "No reminders today.",
+    "doneAt": "Done at {time}",
+    "notDoneYet": "Not done yet"
+  },
+  "reminderType": {
+    "medication": "Medicine",
+    "hydration": "Water",
+    "activity": "Activity",
+    "appointment": "Appointment"
+  },
+  "family": {
+    "messagesTitle": "Messages from family",
+    "from": "From {name}",
+    "seen": "Seen"
   }
 }

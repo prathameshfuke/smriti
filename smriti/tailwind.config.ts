@@ -67,7 +67,16 @@ const config: Config = {
          * this cohort's low-vision readers; swapping it for a generic sans
          * would trade a documented accessibility requirement for house style.
          */
-        'serif-display': ['var(--font-smriti-serif)', 'Georgia', 'serif'],
+        // Fraunces has no Bengali or Devanagari glyphs. Without the Noto faces
+        // here, an Assamese or Hindi heading fell through to whatever serif the
+        // phone had, so the same screen mixed two unrelated typefaces.
+        'serif-display': [
+          'var(--font-smriti-serif)',
+          'var(--font-smriti-bengali)',
+          'var(--font-smriti-devanagari)',
+          'Georgia',
+          'serif',
+        ],
         sans: ['var(--font-smriti-sans)', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },
       fontSize: {

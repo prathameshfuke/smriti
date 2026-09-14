@@ -34,7 +34,11 @@ vi.mock('@/lib/ai/llm-client', async (importOriginal) => {
 
 vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
 vi.mock('@/lib/i18n/provider', () => ({
-  useTranslation: () => ({ t: (key: string) => key, language: 'en' as const }),
+  useTranslation: () => ({
+    t: (key: string, vars?: Record<string, string | number>) =>
+      vars ? `${key}:${Object.values(vars).join(',')}` : key,
+    language: 'en' as const,
+  }),
 }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -255,7 +259,7 @@ describe('reminiscence-quiz GameComponent', () => {
     }
 
     expect(onComplete).toHaveBeenCalledWith(0);
-    expect(screen.getByRole('img', { name: '1 of 5 stars' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'game.starsLabel:1' })).toBeInTheDocument();
   });
 });
 

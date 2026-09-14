@@ -85,8 +85,8 @@ async function oneVisitPerfectRound(): Promise<number> {
       clientY: Number(circle.getAttribute('cy')),
     });
   }
-  await waitFor(() => expect(screen.getByText(/finish session/i)).toBeInTheDocument());
-  fireEvent.click(screen.getByText(/finish session/i));
+  await waitFor(() => expect(screen.getByText(/finish for now/i)).toBeInTheDocument());
+  fireEvent.click(screen.getByText(/finish for now/i));
   await waitFor(() => expect(screen.getByText(/back to home/i)).toBeInTheDocument());
   await waitFor(() =>
     expect(usePatientStore.getState().currentPatient?.updatedAt).not.toBe(updatedAtBeforeThisVisit),

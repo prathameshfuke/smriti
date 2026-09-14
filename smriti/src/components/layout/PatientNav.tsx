@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
 import { ChevronLeft } from 'lucide-react';
 import Icon from '@/components/Icon';
 import { NAV_BAR_PX, TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
@@ -17,6 +18,7 @@ export interface PatientNavProps {
  * arrow: an arrow alone asks the patient to remember what it means.
  */
 export default function PatientNav({ title, onBack }: PatientNavProps) {
+  const { t } = useTranslation();
   return (
     <header
       style={{ height: NAV_BAR_PX }}
@@ -26,7 +28,7 @@ export default function PatientNav({ title, onBack }: PatientNavProps) {
         <button
           type="button"
           onClick={onBack}
-          aria-label="Go back"
+          aria-label={t('common.goBack')}
           style={{ minHeight: TOUCH_TARGET_MIN_PX }}
           className={
             'flex items-center gap-1 justify-self-start rounded-control pl-1 pr-3 text-patient-body font-bold text-ink ' +
@@ -37,7 +39,7 @@ export default function PatientNav({ title, onBack }: PatientNavProps) {
           }
         >
           <Icon icon={ChevronLeft} size={28} />
-          <span>Back</span>
+          <span>{t('common.back')}</span>
         </button>
       ) : (
         <span aria-hidden="true" />
