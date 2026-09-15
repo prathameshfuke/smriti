@@ -131,12 +131,19 @@ function ObjectHuntPageInner() {
       .filter((v): v is { index: number; object: SmritiObject } => v !== null);
 
     let i = 0;
-    let interval: ReturnType<typeof setInterval>;
+    let interval: ReturnType<typeof setInterval> | undefined;
+    let advanceTimer: ReturnType<typeof setTimeout> | undefined;
+    // Set on cleanup so a microtask/interval tick still pending when the
+    // phase changes or this page unmounts never touches state or narration
+    // again — otherwise it fires detached from React entirely and keeps
+    // reading object names over whatever screen comes next.
+    let cancelled = false;
 
     // Deferred one microtask: this effect derives fresh round state from a
     // phase change rather than syncing with an external system, so the lint
     // rule wants it out of the effect's synchronous body.
     queueMicrotask(() => {
+      if (cancelled) return;
       setTiles(placed);
       setTargetOrder(order);
       setTargetPos(0);
@@ -145,10 +152,13 @@ function ObjectHuntPageInner() {
       speak(order[0] ? objectName(order[0].object, language) : '', language);
 
       interval = setInterval(() => {
+        if (cancelled) return;
         i += 1;
         if (i >= order.length) {
           clearInterval(interval);
-          setTimeout(() => setPhase('recall'), 500);
+          advanceTimer = setTimeout(() => {
+            if (!cancelled) setPhase('recall');
+          }, 500);
           return;
         }
         setRevealedIndex(order[i].index);
@@ -157,7 +167,9 @@ function ObjectHuntPageInner() {
     });
 
     return () => {
+      cancelled = true;
       if (interval) clearInterval(interval);
+      if (advanceTimer) clearTimeout(advanceTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
@@ -165,11 +177,16 @@ function ObjectHuntPageInner() {
   useEffect(() => {
     if (phase !== 'recall') return;
     const target = targetOrder[targetPos];
+    let cancelled = false;
     queueMicrotask(() => {
+      if (cancelled) return;
       setRevealedIndex(-1);
       setRoundStartedAt(Date.now());
       if (target) speak(`${t('game.objectHunt.whereWasThe')} ${objectName(target.object, language)}?`, language);
     });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, targetPos]);
 
