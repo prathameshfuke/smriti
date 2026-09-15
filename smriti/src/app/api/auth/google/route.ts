@@ -24,9 +24,13 @@ import { createServerClient } from '@/lib/supabase/client';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const next = searchParams.get('next') || '/caregiver/dashboard';
+  const resetPin = searchParams.get('resetPin') === '1';
 
   const supabase = createServerClient(await cookies());
-  const redirectTo = `${origin}/caregiver/login/callback?next=${encodeURIComponent(next)}`;
+  const callbackUrl = new URL('/caregiver/login/callback', origin);
+  callbackUrl.searchParams.set('next', next);
+  if (resetPin) callbackUrl.searchParams.set('resetPin', '1');
+  const redirectTo = callbackUrl.toString();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',

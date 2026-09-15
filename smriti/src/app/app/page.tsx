@@ -200,6 +200,16 @@ function PinDialog({ onClose }: { onClose: () => void }) {
 
         <PinPad onDigit={onDigit} onBackspace={onBackspace} disabled={locked || verifying} />
 
+        <button
+          type="button"
+          onClick={() =>
+            router.push(`/caregiver/login?next=${encodeURIComponent('/caregiver/dashboard')}&resetPin=1`)
+          }
+          className="text-center text-caregiver-body text-ink-muted underline"
+        >
+          {t('home.forgotPin')}
+        </button>
+
         <BigButton label={t('common.cancel')} variant="secondary" onClick={onClose} />
       </div>
     </div>

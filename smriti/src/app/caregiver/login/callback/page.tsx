@@ -44,6 +44,10 @@ function CaregiverLoginCallbackInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/caregiver/dashboard';
   const code = searchParams.get('code');
+  // Set from the PIN dialog's "Forgot PIN?" link (see `app/page.tsx`) —
+  // forces the PIN-setup step below even when a valid PIN already exists on
+  // this device, instead of silently continuing on the (forgotten) old one.
+  const resetPin = searchParams.get('resetPin') === '1';
 
   const [status, setStatus] = useState<Status>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
@@ -121,7 +125,7 @@ function CaregiverLoginCallbackInner() {
       // gets set below.
       useSettingsStore.getState().markCaregiverSessionVerified();
 
-      if (useSettingsStore.getState().caregiverPinHash) {
+      if (useSettingsStore.getState().caregiverPinHash && !resetPin) {
         router.replace(next);
         return;
       }
@@ -130,7 +134,7 @@ function CaregiverLoginCallbackInner() {
     };
 
     void finish();
-  }, [code, next, router]);
+  }, [code, next, router, resetPin]);
 
   const onPinDigit = async (digit: string) => {
     setPinError('');

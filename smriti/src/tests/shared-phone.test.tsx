@@ -78,7 +78,7 @@ beforeEach(async () => {
   pushCaregiverProfile.mockReset();
   pullCaregiverProfile.mockReset();
   pullCaregiverProfile.mockResolvedValue({ status: 'error' });
-  useSettingsStore.setState({ caregiverPinHash: null });
+  useSettingsStore.setState({ caregiverPinHash: null, caregiverPinOwnerId: null });
   pathname = '/app';
   vi.stubGlobal('fetch', trustFetch());
 });
@@ -339,6 +339,30 @@ describe('signing in on a patient’s own phone', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Caregiver' }));
     expect(push).toHaveBeenCalledWith(`/caregiver/login?next=${encodeURIComponent('/caregiver/device?setup=1')}`);
     expect(screen.queryByRole('dialog', { name: /enter caregiver pin/i })).not.toBeInTheDocument();
+  });
+
+  it('keeps the PIN when the same caregiver signs back in on this device (#15)', async () => {
+    useCaregiverStore.getState().setCurrentCaregiver(caregiver);
+    await useSettingsStore.getState().setPin('1234');
+    const hash = useSettingsStore.getState().caregiverPinHash;
+    pullCaregiverProfile.mockResolvedValue({ status: 'found', caregiver, patients: [patient()], reminders: [] });
+    const { pullAndStoreServerProfile } = await import('@/lib/auth/localSession');
+    await pullAndStoreServerProfile('u1');
+    expect(useSettingsStore.getState().caregiverPinHash).toBe(hash);
+  });
+
+  it('drops a leftover PIN when a different caregiver signs in on this device', async () => {
+    useCaregiverStore.getState().setCurrentCaregiver(caregiver);
+    await useSettingsStore.getState().setPin('1234');
+    pullCaregiverProfile.mockResolvedValue({
+      status: 'found',
+      caregiver: { ...caregiver, id: 'c2' },
+      patients: [patient({ caregiverId: 'c2' })],
+      reminders: [],
+    });
+    const { pullAndStoreServerProfile } = await import('@/lib/auth/localSession');
+    await pullAndStoreServerProfile('u2');
+    expect(useSettingsStore.getState().caregiverPinHash).toBeNull();
   });
 });
 
