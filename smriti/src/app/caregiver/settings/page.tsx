@@ -30,7 +30,7 @@ const SETTINGS_FAQ = [
     id: 'forgot-pin',
     question: 'Forgot my PIN?',
     answer:
-      'There is no PIN reset from this screen for safety reasons. Log out and sign back in with your email to set a new PIN from a fresh caregiver login.',
+      'There is no PIN reset from this screen for safety reasons. Log out and sign back in with your email — after verifying, you can choose to set a new PIN instead of continuing with the old one.',
   },
   {
     id: 'offline',
@@ -177,6 +177,15 @@ export default function CaregiverSettingsPage() {
    * someone logs back in. A real re-login pulls the caregiver and patient
    * back down from the server — this does not require re-entering patient
    * data, only `deleteAllData` below does.
+   *
+   * The PIN itself is deliberately left alone: it's a device-level quick
+   * unlock, not part of "this login's" state, and clearing it here forced
+   * the same caregiver to redo PIN setup on every ordinary logout (#15).
+   * `clearPinIfDifferentCaregiver` (called from `pullAndStoreServerProfile`
+   * on the next real login) still wipes it the moment a *different*
+   * caregiver signs in on this device, so nobody inherits a stranger's PIN.
+   * `caregiverSessionVerifiedAt` still resets — a real sign-out happened,
+   * so the PIN's freshness check must not treat this session as still live.
    */
   const logOut = async () => {
     await createBrowserClient().auth.signOut();
@@ -187,7 +196,7 @@ export default function CaregiverSettingsPage() {
     });
     useCaregiverStore.getState().setCurrentCaregiver(null);
     usePatientStore.setState({ currentPatient: null, allPatients: [] });
-    useSettingsStore.setState({ caregiverPinHash: null, caregiverSessionVerifiedAt: null });
+    useSettingsStore.setState({ caregiverSessionVerifiedAt: null });
     router.push('/caregiver/login');
   };
 

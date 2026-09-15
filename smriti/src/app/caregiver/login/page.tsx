@@ -31,6 +31,10 @@ function CaregiverLoginPageInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/caregiver/dashboard';
   const googleError = searchParams.get('googleError');
+  // Set from the PIN dialog's "Forgot PIN?" link (see `app/page.tsx`) —
+  // skips straight to setting a new PIN below even though a valid one
+  // already exists on this device, instead of silently continuing on it.
+  const resetPin = searchParams.get('resetPin') === '1';
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMessage, setErrorMessage] = useState(googleError ? decodeURIComponent(googleError) : '');
@@ -44,10 +48,13 @@ function CaregiverLoginPageInner() {
     }
 
     setStatus('sending');
+    const callbackUrl = new URL('/caregiver/login/callback', window.location.origin);
+    callbackUrl.searchParams.set('next', next);
+    if (resetPin) callbackUrl.searchParams.set('resetPin', '1');
     const { error } = await createBrowserClient().auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/caregiver/login/callback?next=${encodeURIComponent(next)}`,
+        emailRedirectTo: callbackUrl.toString(),
       },
     });
 
@@ -62,11 +69,14 @@ function CaregiverLoginPageInner() {
 
   const signInWithGoogle = () => {
     setErrorMessage('');
+    const googleUrl = new URL('/api/auth/google', window.location.origin);
+    googleUrl.searchParams.set('next', next);
+    if (resetPin) googleUrl.searchParams.set('resetPin', '1');
     // A full browser navigation, deliberately — not an internal page (the
     // lint rule below assumes it is), a Route Handler that issues its own
     // HTTP redirect to Google.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.href = `/api/auth/google?next=${encodeURIComponent(next)}`;
+    window.location.href = `${googleUrl.pathname}${googleUrl.search}`;
   };
 
   const sent = status === 'sent';
