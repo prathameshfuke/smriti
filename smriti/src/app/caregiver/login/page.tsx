@@ -2,55 +2,40 @@
 
 import { Suspense, useState } from 'react';
 import appIcon from '@/appicon.png';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
-import PinPad from '@/components/ui/PinPad';
-import PinDots from '@/components/ui/PinDots';
 import { fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { pullAndStoreServerProfile } from '@/lib/auth/localSession';
-import { useSettingsStore } from '@/stores/settingsStore';
 
-type Status = 'idle' | 'sending' | 'sent' | 'verifying' | 'error' | 'setup-pin';
-
-const OTP_LENGTH = 6;
-const PIN_LENGTH = 4;
+type Status = 'idle' | 'sending' | 'sent' | 'error';
 
 /**
- * Two ways in, side by side: email + 6-digit code (verified on this one
- * page, in one request — no redirect, no callback route, no cookie needing
- * to survive a hop across sites, since the caregiver carries the code over
- * themselves by typing it), and Google sign-in (via `GET /api/auth/google`
- * — see that route's own comment for why it's server-side, not a client
- * `signInWithOAuth` call).
+ * Two ways in, side by side: email + magic link (sent via `signInWithOtp`,
+ * landing on `caregiver/login/callback` to finish the sign-in and, for a
+ * first-time caregiver, set up their PIN), and Google sign-in (via
+ * `GET /api/auth/google` — see that route's own comment for why it's
+ * server-side, not a client `signInWithOAuth` call).
  *
- * The code path exists because Google's redirect chain (this site →
- * Supabase → Google → Supabase → this site) hits a real Safari/WebKit
- * cookie bug that isn't fixable from this app's code (bugs.webkit.org
- * #196375, #219650) — code entry has none of that surface area, so it's
- * the one guaranteed-to-work fallback regardless of browser.
+ * The link needs an explicit `emailRedirectTo` pointing at the callback
+ * route, and that exact URL added to Supabase's Redirect URLs allow list
+ * (Authentication → URL Configuration) — otherwise Supabase silently falls
+ * back to the bare Site URL and the callback page never runs.
  *
- * Requires the Supabase project's Magic Link email template to include
- * `{{ .Token }}` (Authentication → Email Templates → Magic Link in the
- * Supabase dashboard) — the default template only has a link, no code, so
- * the email arrives with nothing to type in here until that's changed.
+ * There used to be an in-app 6-digit code path alongside the link, for a
+ * Magic Link email template customized to include `{{ .Token }}`. Dropped:
+ * editing that template needs custom SMTP configured first (the default
+ * Supabase email provider doesn't allow template edits), so on an
+ * unconfigured project the code box always had nothing to type into it.
  */
 function CaregiverLoginPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/caregiver/dashboard';
   const googleError = searchParams.get('googleError');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [errorMessage, setErrorMessage] = useState(googleError ? decodeURIComponent(googleError) : '');
-  const [pendingDestination, setPendingDestination] = useState<string | null>(null);
-  const [newPin, setNewPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState('');
-  const [pinStage, setPinStage] = useState<'new' | 'confirm'>('new');
-  const [pinError, setPinError] = useState('');
 
-  const sendCode = async () => {
+  const sendLink = async () => {
     setErrorMessage('');
     if (!isSupabaseConfigured()) {
       setStatus('error');
@@ -59,7 +44,12 @@ function CaregiverLoginPageInner() {
     }
 
     setStatus('sending');
-    const { error } = await createBrowserClient().auth.signInWithOtp({ email });
+    const { error } = await createBrowserClient().auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/caregiver/login/callback?next=${encodeURIComponent(next)}`,
+      },
+    });
 
     if (error) {
       setStatus('error');
@@ -79,152 +69,24 @@ function CaregiverLoginPageInner() {
     window.location.href = `/api/auth/google?next=${encodeURIComponent(next)}`;
   };
 
-  const verifyCode = async () => {
-    setErrorMessage('');
-    setStatus('verifying');
-    const { data, error } = await createBrowserClient().auth.verifyOtp({
-      email,
-      token: code,
-      type: 'email',
-    });
-
-    if (error || !data.session) {
-      setStatus('sent');
-      setErrorMessage(error?.message ?? 'Could not verify that code. Try again.');
-      return;
-    }
-
-    const result = await pullAndStoreServerProfile(data.session.user.id);
-
-    if (result === 'error') {
-      setStatus('sent');
-      setErrorMessage('Signed in, but could not reach your account details. Check your connection and try again.');
-      return;
-    }
-
-    if (result === 'not_found') {
-      // Onboarding sets its own PIN as part of setup — nothing more to do.
-      router.replace('/caregiver/onboarding');
-      return;
-    }
-
-    useSettingsStore.getState().markCaregiverSessionVerified();
-
-    if (useSettingsStore.getState().caregiverPinHash) {
-      router.replace(next);
-      return;
-    }
-
-    setPendingDestination(next);
-    setStatus('setup-pin');
-  };
-
-  const onPinDigit = async (digit: string) => {
-    setPinError('');
-
-    if (pinStage === 'new') {
-      const nextNewPin = newPin.length < PIN_LENGTH ? newPin + digit : newPin;
-      setNewPin(nextNewPin);
-      if (nextNewPin.length === PIN_LENGTH) setPinStage('confirm');
-      return;
-    }
-
-    const nextConfirmPin = confirmPin.length < PIN_LENGTH ? confirmPin + digit : confirmPin;
-    setConfirmPin(nextConfirmPin);
-    if (nextConfirmPin.length !== PIN_LENGTH) return;
-
-    if (nextConfirmPin !== newPin) {
-      setPinError('PINs do not match');
-      setNewPin('');
-      setConfirmPin('');
-      setPinStage('new');
-      return;
-    }
-
-    await useSettingsStore.getState().setPin(nextConfirmPin);
-    router.replace(pendingDestination ?? next);
-  };
-
-  const onPinBackspace = () => {
-    setPinError('');
-    if (pinStage === 'new') setNewPin((p) => p.slice(0, -1));
-    else setConfirmPin((p) => p.slice(0, -1));
-  };
-
-  const skipPinSetup = () => {
-    router.replace(pendingDestination ?? next);
-  };
-
-  if (status === 'setup-pin') {
-    return (
-      <AuthShell
-        title="Set Up Quick Access"
-        description={
-          pinStage === 'new'
-            ? 'Create a 4-digit PIN for a fast way back into the caregiver area on this device'
-            : 'Confirm PIN'
-        }
-      >
-        <PinDots filled={pinStage === 'new' ? newPin.length : confirmPin.length} length={PIN_LENGTH} />
-        <PinPad onDigit={onPinDigit} onBackspace={onPinBackspace} />
-        {pinError ? (
-          <p role="alert" className="text-caregiver-body font-bold text-danger">
-            {pinError}
-          </p>
-        ) : null}
-        <button type="button" onClick={skipPinSetup} className={`${textActionClass} self-start`}>
-          Skip for now
-        </button>
-      </AuthShell>
-    );
-  }
-
-  const awaitingCode = status === 'sent' || status === 'verifying';
+  const sent = status === 'sent';
 
   return (
     <AuthShell
       title="Caregiver Login"
-      description={awaitingCode ? `Enter the 6-digit code we emailed to ${email || 'you'}.` : 'Enter your email to receive a login code'}
+      description={sent ? `Tap the sign-in link we emailed to ${email || 'you'}.` : 'Enter your email to receive a sign-in link'}
     >
-      {awaitingCode ? (
-        <>
-          <div>
-            <label htmlFor="caregiver-code" className={labelClass}>
-              6-digit code
-            </label>
-            <input
-              id="caregiver-code"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={OTP_LENGTH}
-              required
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-              placeholder="123456"
-              className={`${fieldClass} min-h-16 text-center text-caregiver-heading tracking-[0.3em]`}
-            />
-          </div>
-
-          <BigButton
-            label={status === 'verifying' ? 'Verifying…' : 'Verify code'}
-            variant="primary"
-            disabled={status === 'verifying' || code.length !== OTP_LENGTH}
-            onClick={verifyCode}
-          />
-
-          <button
-            type="button"
-            onClick={() => {
-              setStatus('idle');
-              setCode('');
-              setErrorMessage('');
-            }}
-            className={`${textActionClass} self-start`}
-          >
-            Use a different email
-          </button>
-        </>
+      {sent ? (
+        <button
+          type="button"
+          onClick={() => {
+            setStatus('idle');
+            setErrorMessage('');
+          }}
+          className={`${textActionClass} self-start`}
+        >
+          Use a different email
+        </button>
       ) : (
         <>
           <div>
@@ -244,10 +106,10 @@ function CaregiverLoginPageInner() {
           </div>
 
           <BigButton
-            label={status === 'sending' ? 'Sending…' : 'Send login code'}
+            label={status === 'sending' ? 'Sending…' : 'Send login link'}
             variant="primary"
             disabled={status === 'sending' || !email}
-            onClick={sendCode}
+            onClick={sendLink}
           />
 
           <div className="flex items-center gap-4" aria-hidden="true">
