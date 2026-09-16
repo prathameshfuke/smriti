@@ -3,7 +3,9 @@
 import { useEffect, useRef } from 'react';
 import BigButton from './BigButton';
 import { narrate } from '@/lib/audio/narrate';
-import { useTranslation, type UILanguage } from '@/lib/i18n/provider';
+import { hasTranslation, useTranslation, type UILanguage } from '@/lib/i18n/provider';
+import { textFitsLanguage } from '@/lib/i18n/script';
+import { buildAppointmentPrompt, type AppointmentOccurrence } from '@/lib/engine/appointments';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import type { LocalReminderSchedule } from '@/lib/db/schema';
 import type { ReminderType } from '@/lib/supabase/types';
@@ -14,6 +16,8 @@ export interface ReminderCardProps {
   onSnooze: () => void;
   /** On a shared phone: who the reminder is for, shown above it. */
   forName?: string;
+  /** For a dated appointment: which of its two prompts this is. */
+  occurrence?: AppointmentOccurrence;
 }
 
 /** Used inside the Routine Recall game's own picture cards. The reminder overlay itself shows only the translated words, no emoji. */
@@ -24,30 +28,8 @@ export const REMINDER_ICON: Record<ReminderType, { src: string; bg: string }> = 
   appointment: { src: '/images/reminders/appointment.png', bg: 'bg-primary/15' },
 };
 
-/** Script ranges for the two non-Latin UI languages. Used to detect a
- * reminder's caregiver-typed `label` that's plainly in English (no matching
- * script present) so it can fall back to the translated per-type phrase
- * instead of reading/showing English text to a Hindi/Assamese-only patient.
- * `label` is freeform caregiver text (see reminders/page.tsx), never one of
- * the catalog's own English defaults verbatim, so an exact-string match
- * against the catalog would essentially never fire — script detection is
- * the only heuristic that actually catches the common case. */
-const SCRIPT_RANGE: Partial<Record<UILanguage, RegExp>> = {
-  hi: /[ऀ-ॿ]/,
-  as: /[ঀ-৿]/,
-  // Bodo and Nepali both use Devanagari here, same range as Hindi.
-  brx: /[ऀ-ॿ]/,
-  ne: /[ऀ-ॿ]/,
-  // Bengali, and Manipuri (written in Bengali script in this app — see
-  // languages.ts), share the same Unicode block as Assamese.
-  bn: /[ঀ-৿]/,
-  mni: /[ঀ-৿]/,
-};
-
 function displayLabel(label: string, reminderType: ReminderType, language: UILanguage, t: (key: string) => string): string {
-  const script = SCRIPT_RANGE[language];
-  if (!script || script.test(label)) return label;
-  return t(`reminder.${reminderType}`);
+  return textFitsLanguage(label, language) ? label : t(`reminder.${reminderType}`);
 }
 
 /**
@@ -56,15 +38,26 @@ function displayLabel(label: string, reminderType: ReminderType, language: UILan
  * it back up as still-due — that stands in for an internal re-trigger timer,
  * which can't outlive a card that unmounts on dismiss.
  */
-export default function ReminderCard({ reminder, onAcknowledge, onSnooze, forName }: ReminderCardProps) {
+export default function ReminderCard({ reminder, onAcknowledge, onSnooze, forName, occurrence }: ReminderCardProps) {
   const { language, t } = useTranslation();
   const { isOnline } = useOfflineStatus();
   const cardRef = useRef<HTMLDivElement>(null);
   const doneLabel = `${t('reminder.done')} ✓`;
-  const label = displayLabel(reminder.label, reminder.reminderType, language, t);
+  const appointment = occurrence
+    ? buildAppointmentPrompt(reminder, occurrence, language, t, (key) => hasTranslation(language, key))
+    : null;
+  const label = appointment?.display ?? displayLabel(reminder.label, reminder.reminderType, language, t);
+  // Where to go and what to bring are read on screen, not aloud: long, and
+  // often in English whatever the patient's language.
+  const details = appointment
+    ? [
+        { heading: t('reminder.whereToGo'), text: reminder.locationNotes },
+        { heading: t('reminder.whatToBring'), text: reminder.bringNotes },
+      ].filter((d): d is { heading: string; text: string } => Boolean(d.text))
+    : [];
 
   useEffect(() => {
-    void narrate(label, language, isOnline);
+    void narrate(appointment?.speech ?? label, language, isOnline);
     cardRef.current
       ?.querySelector<HTMLButtonElement>(`[aria-label="${doneLabel}"]`)
       ?.focus();
@@ -84,13 +77,23 @@ export default function ReminderCard({ reminder, onAcknowledge, onSnooze, forNam
         {forName ? (
           <p className="mb-2 font-serif-display text-[1.75rem] font-medium leading-tight text-primary-dark">{forName}</p>
         ) : null}
-        <p className="text-caregiver-body font-bold text-ink-muted">{t('reminder.timeFor')}</p>
+        {appointment ? null : <p className="text-caregiver-body font-bold text-ink-muted">{t('reminder.timeFor')}</p>}
         <p
           id="reminder-card-label"
-          className="mt-3 font-serif-display text-patient-heading font-medium text-ink"
+          className="mt-3 break-words font-serif-display text-patient-heading font-medium text-ink"
         >
           {label}
         </p>
+        {details.length > 0 ? (
+          <dl className="mt-5 flex flex-col gap-3">
+            {details.map((d) => (
+              <div key={d.heading}>
+                <dt className="text-caregiver-body font-bold text-ink-muted">{d.heading}</dt>
+                <dd className="whitespace-pre-line break-words text-patient-body text-ink">{d.text}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
 
         <div className="mt-8 flex flex-col gap-touch-gap">
           <BigButton label={doneLabel} variant="success" onClick={onAcknowledge} />

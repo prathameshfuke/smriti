@@ -10,6 +10,7 @@ import {
 } from './schema';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { toHHMM } from '@/lib/supabase/types';
+import { toLocalAppointmentFields } from './wire';
 
 const SYNC_TIMEOUT_MS = 15_000;
 
@@ -45,6 +46,12 @@ interface ServerReminderRow {
   is_active: boolean;
   updated_at: string;
   created_at?: string;
+  appointment_date?: string | null;
+  facility_name?: string | null;
+  location_notes?: string | null;
+  bring_notes?: string | null;
+  remind_day_before_time?: string | null;
+  remind_day_of_time?: string | null;
 }
 
 /** Which of one patient's row categories the server rejected this sync — see api/sync/route.ts. */
@@ -223,8 +230,10 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
     isActive: row.is_active,
     updatedAt: row.updated_at,
     createdAt: row.created_at,
+    ...toLocalAppointmentFields(row),
   };
 }
+
 
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {

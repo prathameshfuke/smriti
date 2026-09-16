@@ -1,6 +1,7 @@
 import { createBrowserClient } from '@/lib/supabase/client';
 import type { LocalCaregiver, LocalPatient, LocalReminderSchedule } from './schema';
 import { toHHMM, type Language, type PatientLanguage } from '@/lib/supabase/types';
+import { toLocalAppointmentFields, toWireAppointmentFields } from './wire';
 
 const NETWORK_TIMEOUT_MS = 8_000;
 
@@ -73,6 +74,7 @@ export async function pushCaregiverProfile(
             time_of_day: r.timeOfDay,
             days_of_week: r.daysOfWeek,
             is_active: r.isActive,
+            ...(r.reminderType === 'appointment' ? toWireAppointmentFields({ ...r }) : {}),
           })),
         ),
         NETWORK_TIMEOUT_MS,
@@ -157,6 +159,7 @@ export async function pullCaregiverProfile(authUserId: string): Promise<ProfileP
           isActive: r.is_active,
           updatedAt: r.updated_at,
           createdAt: r.created_at,
+          ...toLocalAppointmentFields(r),
         }));
       }
     }

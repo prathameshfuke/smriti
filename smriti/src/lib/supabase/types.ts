@@ -132,6 +132,13 @@ export type ReminderSchedule = {
   is_active: boolean;
   created_at: Timestamptz;
   updated_at: Timestamptz;
+  /** Appointment-only columns (docs/03_DATABASE.md, "Appointment details"). NULL for other types. */
+  appointment_date?: DateOnly | null;
+  facility_name?: string | null;
+  location_notes?: string | null;
+  bring_notes?: string | null;
+  remind_day_before_time?: TimeOfDay | null;
+  remind_day_of_time?: TimeOfDay | null;
 }
 
 export type ReminderAck = {

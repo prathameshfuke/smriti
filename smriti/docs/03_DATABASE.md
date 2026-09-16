@@ -769,3 +769,37 @@ create policy caregiver_memory_bank_photos on storage.objects
     )
   );
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 013: Appointment details on reminder_schedules
+-- =============================================
+
+-- An appointment reminder is one dated event entered by the caregiver from
+-- what they were told (a PHC/CHC slip, a verbal instruction, an eSanjeevani
+-- slot) — never synced from any booking system. It prompts up to twice: the
+-- day before (travel planning) and on the day. See
+-- src/lib/engine/appointments.ts.
+--
+-- For these rows time_of_day is the appointment time and days_of_week is '{}'.
+-- Every column is nullable and NULL for the other reminder types. The app
+-- only sends these columns on appointment rows, so other reminder types keep
+-- syncing before this migration is applied.
+ALTER TABLE reminder_schedules
+  ADD COLUMN appointment_date DATE,
+  ADD COLUMN facility_name TEXT CHECK (char_length(facility_name) <= 120),
+  ADD COLUMN location_notes TEXT CHECK (char_length(location_notes) <= 500),
+  ADD COLUMN bring_notes TEXT CHECK (char_length(bring_notes) <= 500),
+  ADD COLUMN remind_day_before_time TIME,
+  ADD COLUMN remind_day_of_time TIME;
+
+ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_appointment_fields_check
+  CHECK (
+    reminder_type = 'appointment'
+    OR (appointment_date IS NULL AND facility_name IS NULL AND location_notes IS NULL
+        AND bring_notes IS NULL AND remind_day_before_time IS NULL AND remind_day_of_time IS NULL)
+  );
+
+ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_day_of_before_appointment_check
+  CHECK (remind_day_of_time IS NULL OR remind_day_of_time <= time_of_day);
+```

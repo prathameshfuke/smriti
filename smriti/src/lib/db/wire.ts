@@ -1,3 +1,5 @@
+import type { LocalReminderSchedule } from './schema';
+
 /**
  * Converts the rows a phone sends to /api/sync into the column names and
  * value ranges the Supabase tables accept.
@@ -111,7 +113,7 @@ export function toWireReminderAck(row: Row) {
 }
 
 export function toWireReminderSchedule(row: Row) {
-  return {
+  const base = {
     id: row.id as string,
     patient_id: pick(row, 'patientId', 'patient_id') as string,
     reminder_type: pick(row, 'reminderType', 'reminder_type') as string,
@@ -121,6 +123,42 @@ export function toWireReminderSchedule(row: Row) {
     is_active: Boolean(pick(row, 'isActive', 'is_active')),
     updated_at: (pick(row, 'updatedAt', 'updated_at') as string | undefined) ?? new Date().toISOString(),
   };
+  // Appointment columns only on appointment rows: a database that has not had
+  // the "Appointment details" migration yet keeps accepting every other type.
+  if (base.reminder_type !== 'appointment') return base;
+  return { ...base, ...toWireAppointmentFields(row) };
+}
+
+/** Appointment columns of a reminder row, camelCase or snake_case in, snake_case out; absent → null. */
+export function toWireAppointmentFields(row: Row) {
+  const value = (camel: string, snake: string) => (pick(row, camel, snake) as string | null | undefined) ?? null;
+  return {
+    appointment_date: value('appointmentDate', 'appointment_date'),
+    facility_name: value('facilityName', 'facility_name'),
+    location_notes: value('locationNotes', 'location_notes'),
+    bring_notes: value('bringNotes', 'bring_notes'),
+    remind_day_before_time: value('remindDayBeforeTime', 'remind_day_before_time'),
+    remind_day_of_time: value('remindDayOfTime', 'remind_day_of_time'),
+  };
+}
+
+/** Postgres TIME comes back as `HH:MM:SS`; the app keeps `HH:MM`. Null columns stay absent. */
+export function toLocalAppointmentFields(row: {
+  appointment_date?: string | null;
+  facility_name?: string | null;
+  location_notes?: string | null;
+  bring_notes?: string | null;
+  remind_day_before_time?: string | null;
+  remind_day_of_time?: string | null;
+}): Partial<LocalReminderSchedule> {
+  const fields: Partial<LocalReminderSchedule> = {};
+  if (row.appointment_date) fields.appointmentDate = row.appointment_date.slice(0, 10);
+  if (row.facility_name) fields.facilityName = row.facility_name;
+  if (row.location_notes) fields.locationNotes = row.location_notes;
+  if (row.bring_notes) fields.bringNotes = row.bring_notes;
+  if (row.remind_day_before_time) fields.remindDayBeforeTime = row.remind_day_before_time.slice(0, 5);
+  if (row.remind_day_of_time) fields.remindDayOfTime = row.remind_day_of_time.slice(0, 5);
+  return fields;
 }
 
 const PATIENT_LANGUAGES = new Set(['as', 'hi', 'en', 'mni', 'brx', 'kha', 'lus', 'bn', 'ne']);

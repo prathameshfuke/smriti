@@ -375,7 +375,9 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
       .limit(1),
     supabase
       .from('reminder_schedules')
-      .select('id, reminder_type, label, time_of_day, days_of_week, created_at')
+      // '*' rather than a column list: the appointment columns count toward
+      // adherence when present, and a database without them still answers.
+      .select('*')
       .eq('patient_id', patientId)
       .eq('is_active', true),
     supabase

@@ -18,6 +18,13 @@ export function toAdherenceSchedule(schedule: LocalReminderSchedule): AdherenceS
     days_of_week: schedule.daysOfWeek,
     label: schedule.label,
     created_at: schedule.createdAt ?? schedule.updatedAt,
+    ...(schedule.reminderType === 'appointment'
+      ? {
+          appointment_date: schedule.appointmentDate ?? null,
+          remind_day_before_time: schedule.remindDayBeforeTime ?? null,
+          remind_day_of_time: schedule.remindDayOfTime ?? null,
+        }
+      : {}),
   };
 }
 

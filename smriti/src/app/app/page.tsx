@@ -221,7 +221,7 @@ export default function HomePage() {
   const { t, language } = useTranslation();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const [showPin, setShowPin] = useState(false);
-  const { pendingReminder, clearPendingReminder } = useReminders();
+  const { pendingReminder, pendingOccurrence, clearPendingReminder, snoozePendingReminder } = useReminders();
   const streak = useGameStreak(currentPatient?.id ?? null);
   const [familyNote, setFamilyNote] = useState<{ id: string; text: string } | null>(null);
 
@@ -337,7 +337,7 @@ export default function HomePage() {
     // Hari's reminder can come up while Maya is playing.
     const patientId = pendingReminder?.patientId ?? currentPatient?.id;
     if (pendingReminder && patientId) {
-      await acknowledgeReminder(pendingReminder.id, patientId, 'touch');
+      await acknowledgeReminder(pendingReminder.id, patientId, 'touch', pendingOccurrence ?? undefined);
     }
     clearPendingReminder();
   };
@@ -411,8 +411,9 @@ export default function HomePage() {
       {pendingReminder ? (
         <ReminderCard
           reminder={pendingReminder}
+          occurrence={pendingOccurrence ?? undefined}
           onAcknowledge={() => void onAcknowledgeReminder()}
-          onSnooze={clearPendingReminder}
+          onSnooze={snoozePendingReminder}
           forName={reminderFor}
         />
       ) : null}

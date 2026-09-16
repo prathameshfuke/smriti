@@ -1,5 +1,6 @@
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { createServiceRoleClient } from '@/lib/supabase/client';
+import { computeAdherence } from '@/lib/engine/adherence';
 import { callLLM } from '@/lib/ai/llm-client';
 import { buildFallbackDigest, containsForbiddenWord, shouldRegenerateDigest } from '@/lib/ai/digest-safety';
 
@@ -68,7 +69,7 @@ export async function POST(request: Request) {
   const [{ data: summaries }, { data: logRows }, { data: schedules }, { data: acks }] = await Promise.all([
     service.from('daily_summaries').select('game_type, accuracy_pct').eq('patient_id', body.patientId).gte('summary_date', days[0]),
     service.from('ai_conversation_log').select('grounded').eq('patient_id', body.patientId).gte('created_at', earliest),
-    service.from('reminder_schedules').select('id, days_of_week').eq('patient_id', body.patientId).eq('is_active', true),
+    service.from('reminder_schedules').select('*').eq('patient_id', body.patientId).eq('is_active', true),
     service.from('reminder_acks').select('reminder_id, scheduled_at, acknowledged_at').eq('patient_id', body.patientId).gte('scheduled_at', earliest),
   ]);
 
@@ -79,20 +80,12 @@ export async function POST(request: Request) {
   const grounded = (logRows ?? []).filter((r) => r.grounded).length;
   const askedTotal = (logRows ?? []).length;
 
-  const ackedSet = new Set(
-    (acks ?? []).filter((a) => a.acknowledged_at).map((a) => `${a.reminder_id}:${a.scheduled_at.slice(0, 10)}`),
-  );
-  let totalExpected = 0;
-  let totalAcked = 0;
-  for (const schedule of schedules ?? []) {
-    for (const dateStr of days) {
-      const weekday = new Date(`${dateStr}T00:00:00Z`).getUTCDay();
-      if (!schedule.days_of_week.includes(weekday)) continue;
-      totalExpected += 1;
-      if (ackedSet.has(`${schedule.id}:${dateStr}`)) totalAcked += 1;
-    }
-  }
-  const adherencePct = totalExpected > 0 ? Math.round((totalAcked / totalExpected) * 100) : 0;
+  // Same counting as the caregiver adherence view, so a dated appointment
+  // counts by its own prompts rather than every day of the week.
+  const adherence = computeAdherence(schedules ?? [], acks ?? [], days);
+  const totalExpected = Object.values(adherence.byType).reduce((sum, t) => sum + t.total, 0);
+  const totalAcked = Object.values(adherence.byType).reduce((sum, t) => sum + t.acked, 0);
+  const adherencePct = adherence.overallPct;
 
   const fallbackStats = { gamesPlayed, avgAccuracyPct, adherencePct };
 

@@ -1,4 +1,5 @@
 import type { ReminderType } from '@/lib/supabase/types';
+import { appointmentOccurrences, occurrenceWindowEnd } from './appointments';
 
 export interface AdherenceSchedule {
   id: string;
@@ -8,6 +9,10 @@ export interface AdherenceSchedule {
   label: string;
   /** Days before this are not counted as missed; the reminder did not exist yet. */
   created_at?: string | null;
+  /** Dated appointments only (lib/engine/appointments.ts); absent or null otherwise. */
+  appointment_date?: string | null;
+  remind_day_before_time?: string | null;
+  remind_day_of_time?: string | null;
 }
 
 export interface AdherenceAck {
@@ -74,12 +79,47 @@ export function computeAdherence(
   let totalAcked = 0;
   let totalExpected = 0;
 
+  const count = (schedule: AdherenceSchedule, dateStr: string, time: string) => {
+    totalExpected += 1;
+    byType[schedule.reminder_type].total += 1;
+    if (ackedByReminderAndDate.has(`${schedule.id}:${dateStr}`)) {
+      totalAcked += 1;
+      byType[schedule.reminder_type].acked += 1;
+    } else {
+      missed.push({ date: dateStr, time, label: schedule.label });
+    }
+  };
+  const nowStamp = `${todayStr} ${currentTimeStr}`;
+
   for (const schedule of schedules) {
     const type = schedule.reminder_type;
     byType[type] ??= { acked: 0, total: 0 };
     const created = schedule.created_at ? new Date(schedule.created_at) : null;
     const firstDay = created && !Number.isNaN(created.getTime()) ? localDateString(created) : null;
     const createdTime = firstDay ? localTimeString(created!) : null;
+
+    // A dated appointment is one event with up to two prompts, not a
+    // weekday pattern: each prompt counts once, and only after its window
+    // has closed, since until then opening the app still shows it.
+    if (type === 'appointment' && schedule.appointment_date) {
+      const asSchedule = {
+        id: schedule.id,
+        reminderType: type,
+        timeOfDay: schedule.time_of_day,
+        appointmentDate: schedule.appointment_date,
+        remindDayBeforeTime: schedule.remind_day_before_time ?? undefined,
+        remindDayOfTime: schedule.remind_day_of_time ?? undefined,
+      } as Parameters<typeof appointmentOccurrences>[0];
+      const createdStamp = firstDay ? `${firstDay} ${createdTime}` : null;
+      for (const o of appointmentOccurrences(asSchedule)) {
+        if (!days.includes(o.date)) continue;
+        const windowEnd = occurrenceWindowEnd(asSchedule, o);
+        if (windowEnd > nowStamp) continue;
+        if (createdStamp && createdStamp >= windowEnd) continue;
+        count(schedule, o.date, o.time);
+      }
+      continue;
+    }
 
     for (const dateStr of days) {
       // A water reminder added on Friday was never "missed" on Monday.
@@ -95,16 +135,7 @@ export function computeAdherence(
       // Added at 9:30 am: that day's 8 am reminder never had a chance to fire.
       if (dateStr === firstDay && createdTime && schedule.time_of_day.slice(0, 5) < createdTime) continue;
 
-      totalExpected += 1;
-      byType[type].total += 1;
-
-      const wasAcked = ackedByReminderAndDate.has(`${schedule.id}:${dateStr}`);
-      if (wasAcked) {
-        totalAcked += 1;
-        byType[type].acked += 1;
-      } else {
-        missed.push({ date: dateStr, time: schedule.time_of_day, label: schedule.label });
-      }
+      count(schedule, dateStr, schedule.time_of_day);
     }
   }
 

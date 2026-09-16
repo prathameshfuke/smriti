@@ -78,6 +78,23 @@ export interface LocalReminderSchedule {
   /** When the reminder was first set up. Adherence never counts days before
    * it. Absent on rows saved by older builds, which fall back to `updatedAt`. */
   createdAt?: string;
+  /*
+   * Appointment-only fields (see lib/engine/appointments.ts). For a dated
+   * appointment `timeOfDay` is the appointment time and `daysOfWeek` is `[]`.
+   * Not indexed, so no Dexie version bump. Absent on every other type.
+   */
+  /** `YYYY-MM-DD`, the patient's local calendar day. */
+  appointmentDate?: string;
+  /** Free text: "the CHC", "Dr. Borah". */
+  facilityName?: string;
+  /** Free text: how to get there. */
+  locationNotes?: string;
+  /** Free text: documents or items to bring. */
+  bringNotes?: string;
+  /** `HH:MM` on the day before; absent = no day-before prompt. */
+  remindDayBeforeTime?: string;
+  /** `HH:MM` on the day, at or before the appointment; absent = no day-of prompt. */
+  remindDayOfTime?: string;
 }
 
 export interface LocalReminderAck {

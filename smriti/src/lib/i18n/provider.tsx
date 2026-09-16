@@ -89,6 +89,11 @@ function translate(language: UILanguage, key: string, vars?: Record<string, stri
   return vars ? text.replace(/\{(\w+)\}/g, (match, name: string) => (name in vars ? String(vars[name]) : match)) : text;
 }
 
+/** True when `language`'s own catalog has `key` (no English fallback). */
+export function hasTranslation(language: UILanguage, key: string): boolean {
+  return lookup(CATALOGS[language], key) !== undefined;
+}
+
 /** English, for a component rendered outside the provider (isolated tests, stories). */
 const FALLBACK_CONTEXT: I18nContextValue = {
   language: DEFAULT_LANGUAGE,
