@@ -70,7 +70,7 @@ describe('SessionComplete — spoken encouragement is translated, not hardcoded 
         />
       </I18nProvider>,
     );
-    expect(narrateMock).toHaveBeenCalledWith('बहुत बढ़िया! आज शानदार काम किया!', 'hi', expect.anything());
+    expect(narrateMock).toHaveBeenCalledWith('बहुत बढ़िया! आज शानदार काम किया!', 'hi', expect.anything(), expect.anything());
     expect(screen.getByText('बहुत बढ़िया! आज शानदार काम किया!')).toBeInTheDocument();
   });
 });

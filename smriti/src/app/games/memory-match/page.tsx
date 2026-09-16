@@ -11,12 +11,13 @@ import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty'
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { OBJECTS } from '@/lib/engine/objects';
-import { speak } from '@/lib/audio/speech';
+import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { slower } from '@/lib/games/pacing';
 
 type Phase = 'instruction' | 'playing' | 'round_complete' | 'session_complete';
 
@@ -36,8 +37,10 @@ const LEVELS: Record<number, { pairs: number }> = {
   6: { pairs: 8 },
 };
 
-const MISMATCH_DELAY_MS = 900;
-const MATCH_DELAY_MS = 500;
+/** Slowed 20% (pacing.SLOWDOWN) per clinical feedback so a flipped pair
+ * stays visible long enough to actually study before it flips back. */
+const MISMATCH_DELAY_MS = slower(900);
+const MATCH_DELAY_MS = slower(500);
 
 function shuffle<T>(items: T[]): T[] {
   const arr = [...items];
@@ -97,7 +100,7 @@ function MemoryMatchPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    void narrate(t('game.memoryMatch.instruction'), language, isOnline);
+    void narrate(t('game.memoryMatch.instruction'), language, isOnline, GAME_SPEECH_RATE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -153,7 +156,7 @@ function MemoryMatchPageInner() {
       setInputLocked(true);
 
       if (tiles[first].pairId === tiles[index].pairId) {
-        speak(t('game.memoryMatch.goodMatch'), language);
+        speak(t('game.memoryMatch.goodMatch'), language, GAME_SPEECH_RATE);
         setTimeout(() => {
           setTiles((prev) => prev.map((tl, i) => (i === first || i === index ? { ...tl, matched: true } : tl)));
           setFaceUpIndices([]);
@@ -170,7 +173,7 @@ function MemoryMatchPageInner() {
           });
         }, MATCH_DELAY_MS);
       } else {
-        speak(t('game.memoryMatch.tryAnotherOne'), language);
+        speak(t('game.memoryMatch.tryAnotherOne'), language, GAME_SPEECH_RATE);
         setWrongAttempts((w) => w + 1);
         setTimeout(() => {
           setFaceUpIndices([]);

@@ -1,7 +1,9 @@
+import { slower } from '@/lib/games/pacing';
+
 export const GAME_CONFIG = {
     trials: {
         perRound: 20, // Number of trials per round
-        interval: 3000, // Time between trials in ms
+        interval: slower(3000), // Time between trials in ms — slowed 20% (pacing.SLOWDOWN) per clinical feedback
         startDelay: 500, // Delay before first trial
     },
     grid: {

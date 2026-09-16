@@ -2,6 +2,7 @@
 
 import type { SmritiObject } from '@/lib/engine/objects';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { useTapSelect } from '@/hooks/useTapSelect';
 
 export type RevealState = 'reveal' | 'recall';
 
@@ -43,6 +44,7 @@ export default function ObjectGrid({
   targetLabel,
 }: ObjectGridProps) {
   const tapEnabled = revealState === 'recall';
+  const tapSelect = useTapSelect();
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -71,14 +73,17 @@ export default function ObjectGrid({
               : 'ring-2 ring-warning bg-warning/20'
             : '';
 
+          const tap = tapSelect(() => onTileSelect(i), tapEnabled);
+
           return (
             <button
               key={i}
               type="button"
               disabled={!tapEnabled}
               aria-label={isOpen && obj ? obj.name.en : `Tile ${i + 1}`}
-              onClick={() => tapEnabled && onTileSelect(i)}
+              {...tap}
               style={{
+                ...tap.style,
                 // Larger than the app-wide touch-target floor: these tiles are
                 // the whole point of the game, reported as too small to
                 // comfortably see and tap.

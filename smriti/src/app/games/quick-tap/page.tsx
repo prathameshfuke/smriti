@@ -12,8 +12,10 @@ import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty'
 import { penalizedAccuracy, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { quickTapFaster } from '@/lib/games/pacing';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -25,16 +27,18 @@ interface LevelParams {
   targetPct: number;
 }
 
-/** Display speed, round length and target frequency, per the RVP/Double Decision table. */
+/** Display speed, round length and target frequency, per the RVP/Double Decision table.
+ * Display time is sped up ~10% (clinical feedback: this game felt sluggish) via
+ * `quickTapFaster` — the sole exception to every other game's slow-down. */
 const LEVELS: Record<number, LevelParams> = {
-  1: { displayMs: 2000, itemCount: 15, targetPct: 0.4 },
-  2: { displayMs: 1500, itemCount: 15, targetPct: 0.4 },
-  3: { displayMs: 1500, itemCount: 20, targetPct: 0.35 },
-  4: { displayMs: 1200, itemCount: 20, targetPct: 0.35 },
-  5: { displayMs: 1000, itemCount: 25, targetPct: 0.3 },
-  6: { displayMs: 800, itemCount: 25, targetPct: 0.3 },
-  7: { displayMs: 600, itemCount: 30, targetPct: 0.25 },
-  8: { displayMs: 500, itemCount: 30, targetPct: 0.25 },
+  1: { displayMs: quickTapFaster(2000), itemCount: 15, targetPct: 0.4 },
+  2: { displayMs: quickTapFaster(1500), itemCount: 15, targetPct: 0.4 },
+  3: { displayMs: quickTapFaster(1500), itemCount: 20, targetPct: 0.35 },
+  4: { displayMs: quickTapFaster(1200), itemCount: 20, targetPct: 0.35 },
+  5: { displayMs: quickTapFaster(1000), itemCount: 25, targetPct: 0.3 },
+  6: { displayMs: quickTapFaster(800), itemCount: 25, targetPct: 0.3 },
+  7: { displayMs: quickTapFaster(600), itemCount: 30, targetPct: 0.25 },
+  8: { displayMs: quickTapFaster(500), itemCount: 30, targetPct: 0.25 },
 };
 
 interface SequenceItem {
@@ -108,7 +112,7 @@ function QuickTapPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    void narrate(t('game.quickTap.instruction'), language, isOnline);
+    void narrate(t('game.quickTap.instruction'), language, isOnline, GAME_SPEECH_RATE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -265,7 +269,7 @@ function QuickTapPageInner() {
             </span>
             <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
             <BigButton label={t('game.start')} variant="primary" onClick={startRound} />
-            <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+            <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} onReady={startRound} />
           </div>
         ) : null}
 

@@ -10,16 +10,19 @@ import { OBJECTS, pickObjects, objectName, type SmritiObject } from '@/lib/engin
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { penalizedAccuracy, scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
-import { speak } from '@/lib/audio/speech';
+import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { slower } from '@/lib/games/pacing';
 
 const ITEM_COUNT_BY_LEVEL: Record<number, number> = { 1: 3, 2: 3, 3: 4, 4: 4, 5: 5, 6: 5 };
 const GRID_TOTAL_BY_LEVEL: Record<number, number> = { 1: 8, 2: 8, 3: 10, 4: 10, 5: 12, 6: 12 };
-const SHOW_SECONDS = 3;
+/** Slowed 20% (pacing.SLOWDOWN) per clinical feedback. */
+const SHOW_SECONDS = slower(3);
 /** Filled pause between memorizing and recall — long enough to be a real
  * delayed-recall test, short enough not to feel like the game stalled. */
 const DELAY_SECONDS = 12;
@@ -42,6 +45,7 @@ function WordStreamPageInner() {
   const router = useRouter();
   const { t, language } = useTranslation();
   const { isOnline } = useOfflineStatus();
+  const tapSelect = useTapSelect();
   const currentPatient = usePatientStore((s) => s.currentPatient);
   const activeSession = useGameStore((s) => s.activeSession);
   const startSession = useGameStore((s) => s.startSession);
@@ -89,7 +93,7 @@ function WordStreamPageInner() {
       setPhase('delay');
       return;
     }
-    speak(objectName(startItems[showIndex], language), language);
+    speak(objectName(startItems[showIndex], language), language, GAME_SPEECH_RATE);
     const timer = setTimeout(() => setShowIndex((i) => i + 1), SHOW_SECONDS * 1000);
     return () => clearTimeout(timer);
   }, [phase, startItems, showIndex, language]);
@@ -100,7 +104,7 @@ function WordStreamPageInner() {
   useEffect(() => {
     if (phase !== 'delay') return;
     setDelayRemaining(DELAY_SECONDS);
-    void narrate(t('game.wordStream.rememberLater'), language, isOnline);
+    void narrate(t('game.wordStream.rememberLater'), language, isOnline, GAME_SPEECH_RATE);
     const interval = setInterval(() => {
       setDelayRemaining((s) => {
         if (s <= 1) {
@@ -122,7 +126,7 @@ function WordStreamPageInner() {
 
   useEffect(() => {
     if (phase !== 'recall') return;
-    void narrate(t('game.wordStream.whichItems'), language, isOnline);
+    void narrate(t('game.wordStream.whichItems'), language, isOnline, GAME_SPEECH_RATE);
     const total = GRID_TOTAL_BY_LEVEL[level] ?? 8;
     const distractors = pickObjects(total - itemsToRecall.length, itemsToRecall);
     const all = [...itemsToRecall.map(objectFor), ...distractors];
@@ -228,11 +232,13 @@ function WordStreamPageInner() {
             <div className="grid grid-cols-3 gap-3">
               {gridItems.map((obj) => {
                 const isSelected = selected.has(obj.id);
+                const tap = tapSelect(() => toggle(obj.id));
                 return (
                   <button
                     key={obj.id}
                     type="button"
-                    onClick={() => toggle(obj.id)}
+                    {...tap}
+                    style={tap.style}
                     aria-pressed={isSelected}
                     className={
                       'flex flex-col items-center gap-1 rounded-card border-2 p-3 transition-all ' +

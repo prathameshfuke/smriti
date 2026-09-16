@@ -13,7 +13,9 @@ import { Button } from "@/components/ui/button";
 import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
 
@@ -38,6 +40,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const locale = useLocale();
     const language = isUILanguage(locale) ? locale : 'en';
     const { isOnline } = useOfflineStatus();
+    const tapSelect = useTapSelect();
     const containerRef = useRef<HTMLDivElement>(null);
 
     // Settings
@@ -181,7 +184,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const startGame = useCallback(() => {
         setPhase('watching');
         setMessage(t('start'));
-        void narrate(t('start'), language, isOnline);
+        void narrate(t('start'), language, isOnline, GAME_SPEECH_RATE);
         setRoundPoints(null);
         setRoundResult(null);
 
@@ -400,14 +403,16 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                     {phase !== 'idle' && fishes.map(fish => {
                         const isGlowing = phase === 'watching' && fish.isTarget;
                         const flipX = fish.vx < 0 ? -1 : 1;
+                        const tap = tapSelect(() => handleFishClick(fish.id), phase === 'selecting');
 
                         return (
                             <div
                                 key={fish.id}
                                 ref={el => { fishNodeRefs.current[fish.id] = el; }}
-                                onClick={() => handleFishClick(fish.id)}
+                                {...tap}
                                 className="absolute top-0 left-0 cursor-pointer"
                                 style={{
+                                    ...tap.style,
                                     transform: phase === 'selecting' || phase === 'completed'
                                         ? `translate(${fish.x - fishOffset}px, ${fish.y - fishOffset}px) scaleX(${flipX})`
                                         : undefined,

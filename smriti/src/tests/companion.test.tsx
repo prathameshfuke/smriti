@@ -26,7 +26,7 @@ vi.mock('@/lib/supabase/client', () => ({
   createBrowserClient: () => ({ auth: { getSession } }),
 }));
 
-vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
+vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 
 vi.mock('@/lib/auth/deviceTrust', () => ({
   getDeviceTrustToken: vi.fn().mockResolvedValue({

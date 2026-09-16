@@ -18,8 +18,12 @@ const SPEAK_FETCH_TIMEOUT_MS = 25_000;
  * `speechSynthesis`, silent for Assamese on most devices) on any cache
  * miss the API call can't fill: offline, missing key, non-2xx, timeout.
  * Never throws, mirroring every other audio path in this app.
+ *
+ * `rate` defaults to the normal 1.0 rate — pass {@link GAME_SPEECH_RATE}
+ * from game code only. This function is also used outside games (the AI
+ * companion, reminder labels), which must keep their normal pace.
  */
-export async function narrate(text: string, language: UILanguage, isOnline: boolean): Promise<void> {
+export async function narrate(text: string, language: UILanguage, isOnline: boolean, rate = 1): Promise<void> {
   if (!text) return;
   // Claimed before any await: a line requested later wins, and this one is
   // dropped if it is overtaken while its audio is still being looked up.
@@ -29,7 +33,7 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
     const cached = await findCachedSpeech(language, text);
     if (!isCurrent(token)) return;
     if (cached) {
-      playBase64Audio(cached.audioBase64, cached.audioFormat, text, language, token);
+      playBase64Audio(cached.audioBase64, cached.audioFormat, text, language, token, rate);
       return;
     }
   } catch {
@@ -40,7 +44,7 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
   // acquireTranscript): never spend a request — or the rate-limited
   // Bhashini quota — on a call already known to fail.
   if (!isOnline) {
-    if (isCurrent(token)) speak(text, language);
+    if (isCurrent(token)) speak(text, language, rate);
     return;
   }
 
@@ -58,8 +62,8 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
 
     // Cached even when overtaken, so the next time this line is asked for it plays at once.
     void cacheSpeech({ language, text, audioBase64: body.audioBase64, audioFormat: body.audioFormat });
-    playBase64Audio(body.audioBase64, body.audioFormat, text, language, token);
+    playBase64Audio(body.audioBase64, body.audioFormat, text, language, token, rate);
   } catch {
-    if (isCurrent(token)) speak(text, language);
+    if (isCurrent(token)) speak(text, language, rate);
   }
 }

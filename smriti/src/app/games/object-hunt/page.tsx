@@ -10,12 +10,13 @@ import SessionComplete from '@/components/games/SessionComplete';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
-import { speak } from '@/lib/audio/speech';
+import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { slower } from '@/lib/games/pacing';
 
 type Phase = 'instruction' | 'reveal' | 'recall' | 'round_complete' | 'session_complete';
 
@@ -26,18 +27,19 @@ interface LevelParams {
   revealSeconds: number;
 }
 
-/** Grid size, object count and per-tile reveal time for each of the 10 levels. */
+/** Grid size, object count and per-tile reveal time for each of the 10 levels.
+ * Reveal time slowed 20% (pacing.SLOWDOWN) per clinical feedback. */
 const LEVELS: Record<number, LevelParams> = {
-  1: { rows: 2, cols: 2, objectCount: 2, revealSeconds: 3 },
-  2: { rows: 2, cols: 2, objectCount: 3, revealSeconds: 3 },
-  3: { rows: 2, cols: 2, objectCount: 4, revealSeconds: 2.5 },
-  4: { rows: 2, cols: 3, objectCount: 3, revealSeconds: 2.5 },
-  5: { rows: 2, cols: 3, objectCount: 4, revealSeconds: 2 },
-  6: { rows: 2, cols: 3, objectCount: 6, revealSeconds: 2 },
-  7: { rows: 3, cols: 3, objectCount: 4, revealSeconds: 2 },
-  8: { rows: 3, cols: 3, objectCount: 6, revealSeconds: 1.5 },
-  9: { rows: 3, cols: 4, objectCount: 6, revealSeconds: 1.5 },
-  10: { rows: 3, cols: 4, objectCount: 8, revealSeconds: 1 },
+  1: { rows: 2, cols: 2, objectCount: 2, revealSeconds: slower(3) },
+  2: { rows: 2, cols: 2, objectCount: 3, revealSeconds: slower(3) },
+  3: { rows: 2, cols: 2, objectCount: 4, revealSeconds: slower(2.5) },
+  4: { rows: 2, cols: 3, objectCount: 3, revealSeconds: slower(2.5) },
+  5: { rows: 2, cols: 3, objectCount: 4, revealSeconds: slower(2) },
+  6: { rows: 2, cols: 3, objectCount: 6, revealSeconds: slower(2) },
+  7: { rows: 3, cols: 3, objectCount: 4, revealSeconds: slower(2) },
+  8: { rows: 3, cols: 3, objectCount: 6, revealSeconds: slower(1.5) },
+  9: { rows: 3, cols: 4, objectCount: 6, revealSeconds: slower(1.5) },
+  10: { rows: 3, cols: 4, objectCount: 8, revealSeconds: slower(1) },
 };
 
 const INSTRUCTION_SECONDS = 5;
@@ -45,9 +47,10 @@ const INSTRUCTION_SECONDS = 5;
  * How long the picture being asked about is shown on its own, before the
  * grid comes back without it. Issue #4: the picture stayed on screen above
  * the grid the whole time, so the patient could match by looking instead
- * of remembering — Memory Blocks hides its pattern the same way.
+ * of remembering — Memory Blocks hides its pattern the same way. Slowed a
+ * further 20% (pacing.SLOWDOWN) per clinical feedback.
  */
-const PROMPT_MS = 2000;
+const PROMPT_MS = slower(2000);
 /**
  * Several lines per star tier instead of one fixed line each — a round that
  * scores the same star count every time (common once a patient masters a
@@ -127,7 +130,7 @@ function ObjectHuntPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    void narrate(t('game.objectHunt.instruction'), language, isOnline);
+    void narrate(t('game.objectHunt.instruction'), language, isOnline, GAME_SPEECH_RATE);
     const timer = setTimeout(() => setPhase('reveal'), INSTRUCTION_SECONDS * 1000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,7 +164,7 @@ function ObjectHuntPageInner() {
       setTargetPos(0);
       setCorrectCount(0);
       setRevealedIndex(order[0]?.index ?? -1);
-      speak(order[0] ? objectName(order[0].object, language) : '', language);
+      speak(order[0] ? objectName(order[0].object, language) : '', language, GAME_SPEECH_RATE);
 
       interval = setInterval(() => {
         if (cancelled) return;
@@ -174,7 +177,7 @@ function ObjectHuntPageInner() {
           return;
         }
         setRevealedIndex(order[i].index);
-        speak(objectName(order[i].object, language), language);
+        speak(objectName(order[i].object, language), language, GAME_SPEECH_RATE);
       }, level.revealSeconds * 1000);
     });
 
@@ -196,7 +199,7 @@ function ObjectHuntPageInner() {
       setRevealedIndex(-1);
       setPrompting(true);
       answeringRef.current = false;
-      if (target) speak(`${t('game.objectHunt.whereWasThe')} ${objectName(target.object, language)}?`, language);
+      if (target) speak(`${t('game.objectHunt.whereWasThe')} ${objectName(target.object, language)}?`, language, GAME_SPEECH_RATE);
       promptTimer = setTimeout(() => {
         if (cancelled) return;
         setPrompting(false);
@@ -223,7 +226,7 @@ function ObjectHuntPageInner() {
     const responseTimeMs = Date.now() - roundStartedAt;
 
     setFlash({ index: isCorrect ? currentTarget.index : index, correct: isCorrect });
-    speak(isCorrect ? t('game.correct') : t('game.tryAgain'), language);
+    speak(isCorrect ? t('game.correct') : t('game.tryAgain'), language, GAME_SPEECH_RATE);
     if (isCorrect) setCorrectCount((c) => c + 1);
 
     if (currentPatient) {

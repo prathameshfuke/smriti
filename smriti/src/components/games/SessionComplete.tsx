@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import BigButton from '@/components/ui/BigButton';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import type { GameType } from '@/lib/supabase/types';
@@ -64,7 +65,7 @@ export default function SessionComplete({
   const [{ greetingKey, badge, confetti }] = useState(buildCelebration);
 
   useEffect(() => {
-    void narrate(message, language, isOnline);
+    void narrate(message, language, isOnline, GAME_SPEECH_RATE);
     // Speak once, when this screen appears.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -9,11 +9,14 @@ import { useTranslations, useLocale } from 'next-intl'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { useTimeout } from '@/hooks/useTimeout'
+import { useTapSelect } from '@/hooks/useTapSelect'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
-import { narrate } from '@/lib/audio/narrate'
+import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { isUILanguage } from '@/lib/i18n/languages'
 import { starsFromRate } from '@/lib/engine/scoring'
+import { slower } from '@/lib/games/pacing'
 
 interface Block {
     id: number
@@ -36,6 +39,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
     const locale = useLocale()
     const language = isUILanguage(locale) ? locale : 'en'
     const { isOnline } = useOfflineStatus()
+    const tapSelect = useTapSelect()
     const [gameState, setGameState] = useState<'idle' | 'showing' | 'guessing' | 'complete' | 'failed'>('idle')
     const [level, setLevel] = useState(START_LEVEL)
     const [startLevel, setStartLevel] = useState(START_LEVEL)
@@ -108,7 +112,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
     // original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== 'showing') return
-        void narrate(t('watchSequence'), language, isOnline)
+        void narrate(t('watchSequence'), language, isOnline, GAME_SPEECH_RATE)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState])
 
@@ -150,7 +154,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                 }))
             )
 
-            await wait(800)
+            await wait(slower(800))
 
             setBlocks((currentBlocks) =>
                 currentBlocks.map((block) => ({
@@ -159,7 +163,7 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                 }))
             )
 
-            await wait(200)
+            await wait(slower(200))
         }
 
         resetBlocks()
@@ -262,14 +266,17 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
 
             <div className="relative">
                 <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
-                    {blocks.map((block) => (
+                    {blocks.map((block) => {
+                        const tap = tapSelect(() => handleBlockClick(block.id), gameState === 'guessing')
+                        return (
                         <div
                             key={block.id}
-                            onClick={() => handleBlockClick(block.id)}
+                            {...tap}
                             // 96px floor in px, not min-h-24 (rem): an empty
                             // square tile has no text to fit, and a rem floor
                             // grew with Large text until three tiles no longer
                             // fit a 360px phone and the page scrolled sideways.
+                            style={tap.style}
                             className={cn(
                                 'aspect-square min-h-[96px] rounded-tile transition-all duration-150',
                                 'flex items-center justify-center',
@@ -281,7 +288,8 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                                 gameState !== 'guessing' && !block.isHighlighted && !block.isCorrect && !block.isError && 'opacity-75',
                             )}
                         />
-                    ))}
+                        );
+                    })}
                 </div>
 
                 {gameState === 'idle' && (

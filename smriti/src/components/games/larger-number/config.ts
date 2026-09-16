@@ -1,3 +1,5 @@
+import { slower } from '@/lib/games/pacing';
+
 export type DifficultySettings = {
   minNumber: number;
   maxNumber: number;
@@ -7,7 +9,7 @@ export type DifficultySettings = {
 };
 
 export const GAME_CONFIG = {
-  gameTime: 30_000, // 30 seconds
+  gameTime: slower(30_000), // 30 seconds, slowed 20% (pacing.SLOWDOWN) per clinical feedback
   initialDifficulty: {
     minNumber: 10,
     maxNumber: 99, // 限制最大数字为两位数
