@@ -15,13 +15,13 @@ function seededRandom(seed: number): () => number {
 /**
  * The Trail Making Test this game is based on (docs/04_GAME_DESIGN.md §2,
  * "Baat Milao") specifically calls for increasing *layout scatter* per
- * level — points numbered in reading order defeats the whole point of the
- * test, which is visual search, not just counting up. Point 1..N are
- * shuffled onto a fixed set of grid cells (not left in row-major order), and
- * jitter grows with level to approximate "Slight/Moderate/High scatter."
- * Seeded by level alone (not per-round) so the board stays learnable at a
- * given level, same as before — only which cell holds which number changes
- * across levels, not on every replay.
+ * level, starting from level 2 — level 1 is spec'd as "Linear arrangement"
+ * (the on-ramp round). From level 2 up, point 1..N are shuffled onto a
+ * fixed set of grid cells (not left in row-major order), and jitter grows
+ * with level to approximate "Slight/Moderate/High scatter." Seeded by level
+ * alone (not per-round) so the board stays learnable at a given level, same
+ * as before — only which cell holds which number changes across levels, not
+ * on every replay.
  */
 export function generatePointLayout(numPoints: number, level: number): PathPoint[] {
   const cols = Math.ceil(Math.sqrt(numPoints));
@@ -31,14 +31,17 @@ export function generatePointLayout(numPoints: number, level: number): PathPoint
 
   const rand = seededRandom(level * 104729 + numPoints);
   const cells = Array.from({ length: rows * cols }, (_, i) => i);
-  for (let i = cells.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rand() * (i + 1));
-    [cells[i], cells[j]] = [cells[j], cells[i]];
+  if (level > 1) {
+    for (let i = cells.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rand() * (i + 1));
+      [cells[i], cells[j]] = [cells[j], cells[i]];
+    }
   }
 
   // Jitter radius grows with level (max 8px, stays well inside the 60px
   // minimum spacing between cells) to read as increasingly scattered.
-  const jitterRange = Math.min(8, 2 + level);
+  // Level 1 stays perfectly linear, per the "Linear arrangement" spec.
+  const jitterRange = level === 1 ? 0 : Math.min(8, 2 + level);
 
   return Array.from({ length: numPoints }, (_, i) => {
     const cell = cells[i];

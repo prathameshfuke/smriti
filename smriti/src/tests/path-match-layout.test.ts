@@ -28,6 +28,22 @@ describe('Path Match point layout', () => {
     expect(rowMajorMatches).toBe(false);
   });
 
+  it('places level 1 points in linear row-major order, per the design doc\'s "Linear arrangement" spec (#19 follow-up)', () => {
+    // 4 points at level 1 -> a 2x2 grid, filled row-major: x increases across
+    // a row, then wraps back down at the start of the next row.
+    const points = generatePointLayout(4, 1);
+    const xs = points.map((p) => p.x);
+    const cols = Math.ceil(Math.sqrt(points.length));
+    for (let i = 1; i < xs.length; i += 1) {
+      const wrapped = i % cols === 0;
+      if (wrapped) {
+        expect(xs[i]).toBeLessThan(xs[i - 1]);
+      } else {
+        expect(xs[i]).toBeGreaterThan(xs[i - 1]);
+      }
+    }
+  });
+
   it('is deterministic for a given level, so a returning patient sees the same board', () => {
     const first = generatePointLayout(8, 4);
     const second = generatePointLayout(8, 4);

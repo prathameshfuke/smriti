@@ -14,6 +14,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Panel, { buttonClass } from '@/components/ui/Panel';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { db, SmritiDB } from '@/lib/db/schema';
+import { syncAllPatients } from '@/lib/db/sync';
 import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -188,6 +189,13 @@ export default function CaregiverSettingsPage() {
    * so the PIN's freshness check must not treat this session as still live.
    */
   const logOut = async () => {
+    // Best-effort flush so this device's currentDifficulty/progress reaches
+    // the server before the local copy is wiped below — otherwise the next
+    // login's server pull has nothing but a stale currentDifficulty to hand
+    // back, and the caregiver sees the patient's level reset (#19). Must run
+    // BEFORE signOut(): syncAllPatients() needs the still-live session to
+    // authenticate the request, and signOut() clears it.
+    await syncAllPatients().catch(() => {});
     await createBrowserClient().auth.signOut();
     await db.transaction('rw', db.caregivers, db.patients, db.reminderSchedules, async () => {
       await db.caregivers.clear();

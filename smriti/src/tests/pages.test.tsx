@@ -69,6 +69,11 @@ vi.mock('@/lib/supabase/client', () => ({
   }),
 }));
 
+const { syncAllPatients } = vi.hoisted(() => ({
+  syncAllPatients: vi.fn(() => Promise.resolve({ success: true })),
+}));
+vi.mock('@/lib/db/sync', () => ({ syncAllPatients }));
+
 /** null by default — most tests never touch the device-trust token. */
 let deviceTrustToken: unknown = null;
 vi.mock('@/lib/auth/deviceTrust', async (importOriginal) => {
@@ -115,6 +120,7 @@ beforeEach(async () => {
   replace.mockClear();
   getSession.mockReset();
   getSession.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } } });
+  syncAllPatients.mockClear();
   fromResult = { data: null, error: null };
   signInWithOtp.mockReset();
   signInWithOAuth.mockReset();
@@ -1055,6 +1061,32 @@ describe('Caregiver settings page', () => {
     await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/login'));
     expect(useSettingsStore.getState().caregiverPinHash).toBe(hash);
     expect(useSettingsStore.getState().caregiverSessionVerifiedAt).toBeNull();
+  });
+
+  it('flushes syncAllPatients() before signOut() on Log Out, so unsynced currentDifficulty reaches the server while the session is still valid (#19)', async () => {
+    signOut.mockResolvedValue({ error: null });
+    await db.caregivers.put({
+      id: 'c1',
+      authUserId: 'u1',
+      displayName: 'Test Caregiver',
+      role: 'family',
+      createdAt: new Date().toISOString(),
+    });
+    await db.patients.put(patient());
+    usePatientStore.setState({ currentPatient: patient() });
+
+    render(<CaregiverSettingsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /log out/i }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/login'));
+    expect(syncAllPatients).toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalled();
+    // Order matters: syncAllPatients needs the still-live session to
+    // authenticate its request — calling it after signOut() makes it a
+    // silent no-op (the exact regression this test guards against).
+    expect(syncAllPatients.mock.invocationCallOrder[0]).toBeLessThan(
+      signOut.mock.invocationCallOrder[0],
+    );
   });
 
   it('wipes local data and PIN when Delete All Data is confirmed with the correct PIN', async () => {
