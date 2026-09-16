@@ -266,8 +266,12 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
                         <div
                             key={block.id}
                             onClick={() => handleBlockClick(block.id)}
+                            // 96px floor in px, not min-h-24 (rem): an empty
+                            // square tile has no text to fit, and a rem floor
+                            // grew with Large text until three tiles no longer
+                            // fit a 360px phone and the page scrolled sideways.
                             className={cn(
-                                'aspect-square min-h-24 rounded-tile transition-all duration-150',
+                                'aspect-square min-h-[96px] rounded-tile transition-all duration-150',
                                 'flex items-center justify-center',
                                 'border border-line200',
                                 gameState === 'guessing' ? 'cursor-pointer bg-surface-muted' : 'cursor-not-allowed bg-surface-muted',

@@ -839,14 +839,16 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     </div>
                                 )}
 
-                            <div className="flex justify-center gap-4">
+                            {/* Wraps: the two translated answer buttons are wider than a
+                                320px screen side by side at Large text. */}
+                            <div className="flex flex-wrap justify-center gap-4">
                                 {settings.selectedTypes.includes("position") && (
                                     <Button
                                         onClick={() => handleResponse("position")}
                                         variant="ghost"
                                         style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
                                         className={cn(
-                                            "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                            "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isPositionHighlight &&
                                                 "hover:border-primary border-primary"
                                         )}
@@ -861,7 +863,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                         variant="ghost"
                                         style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
                                         className={cn(
-                                            "border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                            "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                             isAudioHighlight &&
                                                 "hover:border-primary border-primary"
                                         )}
@@ -1010,7 +1012,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                 </div>
                             </div>
                             <div className="space-y-4">
-                                <div className="flex justify-center gap-4">
+                                <div className="flex flex-wrap justify-center gap-4">
                                     <Button
                                         onClick={shareScore}
                                         variant="outline"
@@ -1032,7 +1034,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     <p className="text-patient-sm text-ink-muted mb-3 text-center">
                                         {t('continueTraining')}
                                     </p>
-                                    <div className="flex justify-center gap-2">
+                                    <div className="flex flex-wrap justify-center gap-2">
                                         <Button
                                             variant="ghost"
                                             style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}

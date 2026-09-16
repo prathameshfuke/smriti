@@ -49,17 +49,19 @@ export default function GameTile({
           src={illustrationSrc}
           alt=""
           role="presentation"
+          data-scalable-icon
           className="h-14 w-14 shrink-0 rounded-control object-contain"
         />
       ) : icon ? (
         <span
           aria-hidden="true"
+          data-scalable-icon
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-control bg-surface-muted text-primary"
         >
           {icon}
         </span>
       ) : null}
-      <span className="min-w-0 flex-1 leading-snug">{gameName}</span>
+      <span className="min-w-0 flex-1 break-words leading-snug">{gameName}</span>
       {difficultyLevel ? (
         <span className="flex shrink-0 gap-1.5" aria-hidden="true">
           {[1, 2, 3].map((level) => (

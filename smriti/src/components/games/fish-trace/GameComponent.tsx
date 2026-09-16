@@ -455,7 +455,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
             )}
 
             {/* Bottom Controls */}
-            <div className="h-24 shrink-0 flex items-center justify-center bg-transparent relative z-20">
+            {/* min-h, not h-24: the result stack (stars, score, Try again) is taller
+                than 96px and spilled over the board, worse at Large text. */}
+            <div className="min-h-24 py-2 shrink-0 flex items-center justify-center bg-transparent relative z-20">
                 <AnimatePresence mode="popLayout">
                     {phase === 'idle' && (
                         <motion.div

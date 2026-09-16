@@ -254,7 +254,7 @@ function StimulusScene({ trial }: { trial: Trial }) {
       <CityRoadBackground fieldLevel={trial.fieldLevel} />
 
       <div className="absolute left-1/2 top-1/2 z-20 flex h-20 w-20 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-slate-800 text-white shadow-xl ring-4 ring-sky-400/30">
-        <VehicleIcon className="h-12 w-12" strokeWidth={1.8} />
+        <VehicleIcon data-icon-fixed className="h-12 w-12" strokeWidth={1.8} />
       </div>
 
       {Array.from({ length: 8 }, (_, index) => {
@@ -312,7 +312,7 @@ function LocationResponse({
     <div className="relative min-h-[420px] overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:min-h-[520px] lg:min-h-[600px]">
       <CityRoadBackground fieldLevel={trial.fieldLevel} />
       <div className="absolute left-1/2 top-1/2 z-20 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-slate-800 text-white shadow-xl">
-        <LocateFixed className="h-9 w-9" />
+        <LocateFixed data-icon-fixed className="h-9 w-9" />
       </div>
 
       {Array.from({ length: 8 }, (_, index) => (
@@ -321,7 +321,9 @@ function LocationResponse({
           type="button"
           onClick={() => onSelect(index)}
           aria-label={t('locationLabel', { number: index + 1 })}
-          className="absolute z-30 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900/70 text-sm font-bold text-white shadow-lg transition duration-150 hover:scale-110 hover:border-amber-300 hover:bg-amber-400 hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
+          className="absolute z-30 flex h-[48px] w-[48px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900/70 text-[14px] font-bold text-white shadow-lg transition duration-150 hover:scale-110 hover:border-amber-300 hover:bg-amber-400 hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
+          // px, not rem: these sit on fixed positions around the board edge,
+          // and growing with Large text pushed the outer ones past the clip.
           style={positionStyle(index, trial.fieldLevel)}
         >
           <span className="motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-200">
@@ -329,7 +331,7 @@ function LocationResponse({
           </span>
         </button>
       ))}
-      <div className="absolute bottom-5 left-1/2 z-40 -translate-x-1/2 whitespace-nowrap rounded-full bg-slate-950/75 px-4 py-2 text-sm font-medium text-white backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
+      <div className="absolute bottom-5 left-1/2 z-40 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full bg-slate-950/75 px-4 py-2 text-center text-sm font-medium text-white backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
         {t('chooseLocation')}
       </div>
     </div>

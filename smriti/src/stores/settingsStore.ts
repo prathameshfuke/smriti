@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_LANGUAGE, type UILanguage } from '@/lib/i18n/languages';
 import { useCaregiverStore } from '@/stores/caregiverStore';
+import { DEFAULT_DISPLAY_SIZE, type DisplaySize } from '@/lib/a11y/sizing';
 
 /**
  * The caregiver PIN gates access to patient health data, so only a derived
@@ -148,6 +149,12 @@ interface SettingsState {
   activePatientId: string | null;
   /** Last tap anywhere in the app, for the shared-phone idle re-ask. */
   lastActivityAt: number | null;
+  /** Device-wide text size (see lib/a11y/sizing.ts). */
+  textSize: DisplaySize;
+  /** Device-wide icon size, independent of text size. */
+  iconSize: DisplaySize;
+  setTextSize: (size: DisplaySize) => void;
+  setIconSize: (size: DisplaySize) => void;
   setActivePatient: (patientId: string | null) => void;
   touchActivity: () => void;
   setLanguage: (language: UILanguage) => void;
@@ -191,7 +198,11 @@ export const useSettingsStore = create<SettingsState>()(
       pinCooldownUntil: null,
       activePatientId: null,
       lastActivityAt: null,
+      textSize: DEFAULT_DISPLAY_SIZE,
+      iconSize: DEFAULT_DISPLAY_SIZE,
 
+      setTextSize: (textSize) => set({ textSize }),
+      setIconSize: (iconSize) => set({ iconSize }),
       setActivePatient: (activePatientId) => set({ activePatientId, lastActivityAt: Date.now() }),
       touchActivity: () => set({ lastActivityAt: Date.now() }),
       setLanguage: (language) => set({ language }),

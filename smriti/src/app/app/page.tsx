@@ -184,7 +184,7 @@ function PinDialog({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 sm:items-center sm:p-4"
     >
-      <div className="flex w-full max-w-sm flex-col gap-5 rounded-t-card bg-surface-card p-6 shadow-xl sm:rounded-card">
+      <div className="flex max-h-full w-full max-w-sm flex-col gap-5 overflow-y-auto overscroll-contain rounded-t-card bg-surface-card p-6 shadow-xl sm:rounded-card">
         <div>
           <h2 className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">{t('home.pinTitle')}</h2>
           <p className="mt-1 text-caregiver-body text-ink-muted">{t('home.pinForCaregiver')}</p>
@@ -424,7 +424,7 @@ export default function HomePage() {
           aria-labelledby="family-note-title"
           className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 sm:items-center"
         >
-          <div className="w-full max-w-patient rounded-card bg-surface-card p-6 shadow-2xl sm:p-8">
+          <div className="max-h-full w-full max-w-patient overflow-y-auto overscroll-contain rounded-card bg-surface-card p-6 shadow-2xl sm:p-8">
             <p id="family-note-title" className="font-serif-display text-patient-heading font-medium leading-[1.1] text-ink">
               {t('home.messageForYou')}
             </p>

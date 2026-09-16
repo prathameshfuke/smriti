@@ -45,8 +45,12 @@ export default function WeekActivity({ days, dates, variant = 'mini' }: WeekActi
     );
   }
 
+  // Full "Mon"/"Today" labels need about 2 characters' width per column. On
+  // a narrow panel — a 320px phone, or Medium/Large text — seven of them no
+  // longer fit and ran into each other, so below 17rem (rem, so the threshold
+  // scales with the text size) the row switches to one-letter labels.
   return (
-    <figure>
+    <figure className="@container">
       <div role="img" aria-label={summary} className="grid h-36 grid-cols-7 items-end gap-2">
         {days.map((d, i) => {
           const isToday = i === days.length - 1;
@@ -73,7 +77,14 @@ export default function WeekActivity({ days, dates, variant = 'mini' }: WeekActi
             key={i}
             className={`text-patient-sm ${i === days.length - 1 ? 'font-bold text-ink' : 'text-ink-muted'}`}
           >
-            {i === days.length - 1 ? 'Today' : dates ? weekday(dates[i]) : ''}
+            {dates || i === days.length - 1 ? (
+              <>
+                <span className="@min-[17rem]:hidden">{dates ? weekday(dates[i]).charAt(0) : 'T'}</span>
+                <span className="hidden @min-[17rem]:inline">
+                  {i === days.length - 1 ? 'Today' : dates ? weekday(dates[i]) : ''}
+                </span>
+              </>
+            ) : null}
           </span>
         ))}
       </div>

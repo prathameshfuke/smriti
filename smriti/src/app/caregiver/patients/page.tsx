@@ -152,7 +152,7 @@ export default function CaregiverPatientsPage() {
           aria-labelledby="remove-patient-title"
           className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 p-4 sm:items-center"
         >
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-card bg-surface-card p-6 shadow-xl">
+          <div className="flex max-h-full w-full max-w-md flex-col gap-4 overflow-y-auto overscroll-contain rounded-card bg-surface-card p-6 shadow-xl">
             <h2 id="remove-patient-title" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
               Remove {confirming?.displayName ?? 'this patient'}?
             </h2>

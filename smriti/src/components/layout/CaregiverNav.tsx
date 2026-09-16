@@ -55,7 +55,12 @@ export default function CaregiverNav() {
             }
           >
             <Icon icon={ItemIcon} size={20} className="shrink-0" />
-            <span className="px-2 text-center text-xs leading-[1.1]">{label}</span>
+            {/* Clamped to two lines, which --caregiver-nav-h is sized for. At Large
+                text on a 320px phone a single long word may break mid-word
+                (overflow-wrap: anywhere) rather than spill into the next tab. */}
+            <span className="line-clamp-2 min-w-0 max-w-full px-1 text-center text-xs leading-[1.1] [overflow-wrap:anywhere]">
+              {label}
+            </span>
           </Link>
         );
       })}

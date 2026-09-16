@@ -163,14 +163,14 @@ export default function LandingPage() {
         aria-label="Main"
         className="sticky top-0 z-40 border-b border-line200 bg-paper50/95 backdrop-blur-sm"
       >
-        <div className="mx-auto flex h-18 max-w-6xl items-center justify-between px-5 md:px-8">
+        <div className="mx-auto flex min-h-18 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2 md:px-8">
           <span className="flex items-center gap-2.5 font-serif-display text-2xl font-medium">
             <Image src={appIcon} alt="" width={28} height={28} className="h-7 w-7" priority />
             SMRITI
           </span>
           <Link
             href="/login"
-            className="inline-flex min-h-12 items-center justify-center rounded-control bg-terra600 px-5 text-base font-bold text-paper50 transition-colors hover:bg-terra700"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-control bg-terra600 px-5 text-base font-bold text-paper50 transition-colors hover:bg-terra700"
           >
             Get started
           </Link>

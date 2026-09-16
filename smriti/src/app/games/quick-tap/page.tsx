@@ -260,7 +260,7 @@ function QuickTapPageInner() {
         {phase === 'instruction' && target ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink-muted">{t('game.quickTap.targetIs')}</p>
-            <span className="text-[96px] leading-none" aria-hidden="true">
+            <span data-scalable-icon className="text-[96px] leading-none" aria-hidden="true">
               {target.emoji}
             </span>
             <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
@@ -276,7 +276,7 @@ function QuickTapPageInner() {
                 {t('game.quickTap.itemOf', { n: Math.min(itemIndex + 1, sequence.length), total: sequence.length })}
               </p>
               {target ? (
-                <span className="shrink-0 text-[48px] leading-none" aria-hidden="true">
+                <span data-scalable-icon className="shrink-0 text-[48px] leading-none" aria-hidden="true">
                   {target.emoji}
                 </span>
               ) : null}

@@ -15,6 +15,7 @@ import confetti from 'canvas-confetti';
 import { narrate } from '@/lib/audio/narrate';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { isUILanguage } from '@/lib/i18n/languages';
+import { localizeDigits } from '@/lib/i18n/numerals';
 import { starsFromRate } from '@/lib/engine/scoring';
 
 type GameState = 'idle' | 'playing' | 'complete';
@@ -33,6 +34,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const t = useTranslations("games.largerNumber.gameUI");
     const locale = useLocale();
     const language = isUILanguage(locale) ? locale : 'en';
+    // Every number the patient sees or hears is written in the app language's
+    // own digits (৪২ / ४२), not only in English 0-9.
+    const num = useCallback((value: number | string) => localizeDigits(value, language), [language]);
     const { isOnline } = useOfflineStatus();
 
     const [gameState, setGameState] = useState<GameState>("idle");
@@ -280,8 +284,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     useEffect(() => {
         if (gameState !== "idle") return;
         void narrate(t("challenge", {
-            attempts: currentDifficulty.attempts,
-            accuracy: currentDifficulty.accuracy,
+            attempts: num(currentDifficulty.attempts),
+            accuracy: num(currentDifficulty.accuracy),
         }), language, isOnline);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
@@ -324,7 +328,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const renderDifficultyBadge = () => {
         return (
             <div className="px-3 py-1 rounded-full text-patient-sm font-medium flex items-center gap-1 bg-primary text-ink-inverse">
-                {t("level")} {difficultyLevel}
+                {t("level")} {num(difficultyLevel)}
             </div>
         );
     };
@@ -333,8 +337,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const getCurrentLevelTarget = () => {
         const difficulty = completedLevelDifficulty || currentDifficulty;
         return t("target", {
-            attempts: difficulty.attempts,
-            accuracy: difficulty.accuracy
+            attempts: num(difficulty.attempts),
+            accuracy: num(difficulty.accuracy)
         });
     };
 
@@ -347,15 +351,15 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         const nextAccuracy = GAME_CONFIG.calculateRequiredAccuracy(nextAttempts);
 
         return t("nextLevelTarget", {
-            attempts: nextAttempts,
-            accuracy: nextAccuracy
+            attempts: num(nextAttempts),
+            accuracy: num(nextAccuracy)
         });
     };
 
     return (
         <div className="space-y-8 max-w-lg mx-auto">
             <div
-                className="flex flex-col p-8"
+                className="flex flex-col p-4 sm:p-8"
                 ref={gameContainerRef}
                 style={{ scrollMarginTop: "90px" }}
             >
@@ -364,7 +368,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                     <div className="flex justify-end items-center mb-2">
                         <div className="flex items-center gap-1 text-patient-sm text-ink-muted">
                             <Clock className="w-4 h-4" />
-                            <span>{Math.ceil(timeLeft / 1000)}s</span>
+                            <span>{num(Math.ceil(timeLeft / 1000))}s</span>
                         </div>
                     </div>
                 )}
@@ -390,8 +394,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             <div className="mb-8 p-4 bg-surface-muted rounded-card">
                                 <h3 className="font-serif-display text-patient-body text-ink">
                                     {t("challenge", {
-                                        attempts: currentDifficulty.attempts,
-                                        accuracy: currentDifficulty.accuracy,
+                                        attempts: num(currentDifficulty.attempts),
+                                        accuracy: num(currentDifficulty.accuracy),
                                     })}
                                 </h3>
                             </div>
@@ -424,11 +428,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                         onClick={() => handleSelection(option)}
                                         rippleColor="bg-primary/20"
                                         className={cn(
-                                            "flex-1 aspect-square rounded-tile flex items-center justify-center text-3xl sm:text-5xl font-bold cursor-pointer",
+                                            // h-auto/px-2/min-w-0 override Button's h-12 px-5: the fixed height
+                                            // defeated aspect-square, and the rem padding made two tiles wider
+                                            // than a 320px screen at Large text.
+                                            "flex-1 min-w-0 h-auto px-2 aspect-square rounded-tile flex items-center justify-center text-3xl sm:text-5xl font-bold cursor-pointer",
                                             "bg-surface-card text-ink border-2 border-primary/40 hover:shadow-md",
                                         )}
                                     >
-                                        {option.value}
+                                        {num(option.value)}
                                     </RippleButton>
                                 ))}
                             </div>
@@ -465,15 +472,15 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                     <div className="mt-4 text-patient-body text-ink">
                                         <div>
                                             {t("totalAttempts")}:{" "}
-                                            {totalAttempts}
+                                            {num(totalAttempts)}
                                         </div>
                                         <div>
                                             {t("correctAnswers")}:{" "}
-                                            {correctAnswers}
+                                            {num(correctAnswers)}
                                         </div>
                                         <div>
                                             {t("accuracy")}:{" "}
-                                            {calculateAccuracy()}%
+                                            {num(calculateAccuracy())}%
                                         </div>
                                         <div className="text-patient-sm text-ink-muted mt-6">
                                             {getCurrentLevelTarget()}
@@ -548,8 +555,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                 isOpen={showShareModal}
                 onClose={() => setShowShareModal(false)}
                 title={t("challenge", {
-                    attempts: currentDifficulty.attempts,
-                    accuracy: currentDifficulty.accuracy,
+                    attempts: num(currentDifficulty.attempts),
+                    accuracy: num(currentDifficulty.accuracy),
                 })}
                 url={typeof window !== 'undefined' ? window.location.href : ''}
             />

@@ -37,7 +37,10 @@
     width: 100%;
     max-width: min(90vw, 500px);
     aspect-ratio: 1;
-    min-width: 300px;
+    /* Capped at the available width: a flat 300px plus the page's rem
+       padding overflowed a 320px phone (worse at Large text) and the whole
+       game screen scrolled sideways. */
+    min-width: min(300px, 100%);
 }
 
 /* @media (max-width: 640px) {

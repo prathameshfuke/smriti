@@ -87,21 +87,23 @@ export default function SessionComplete({
       </div>
 
       <div className="relative mx-auto flex w-full max-w-patient flex-col gap-6">
+        {/* Wraps, and the headline may shrink: at Large text a long Assamese
+            greeting beside the badge was wider than a 320px screen. */}
         <div
-          className="flex items-center gap-4"
+          className="flex flex-wrap items-center gap-4"
           style={{ animation: 'smriti-badge-pop 600ms ease-out 1 both' }}
         >
           <span className="text-6xl leading-none" aria-hidden="true">
             {badge}
           </span>
-          <p className="font-serif-display text-patient-heading font-semibold text-primary">{t(greetingKey)}</p>
+          <p className="min-w-0 break-words font-serif-display text-patient-heading font-semibold text-primary">{t(greetingKey)}</p>
         </div>
-        <div role="img" aria-label={t('game.starsLabel', { count: safeStars })} className="flex gap-2">
+        <div role="img" aria-label={t('game.starsLabel', { count: safeStars })} className="flex flex-wrap gap-2">
           {Array.from({ length: 5 }, (_, i) => (
             <Star key={i} filled={i < safeStars} />
           ))}
         </div>
-        <div>
+        <div className="min-w-0 break-words">
           <p className="font-serif-display text-patient-heading font-medium text-ink">
             {t('game.outOfCorrect', { count: correctCount, total: totalCount })}
           </p>

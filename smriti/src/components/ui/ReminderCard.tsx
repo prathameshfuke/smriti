@@ -79,7 +79,7 @@ export default function ReminderCard({ reminder, onAcknowledge, onSnooze, forNam
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="reminder-card-label"
-        className="w-full max-w-patient rounded-card bg-surface-card p-6 shadow-2xl sm:p-8"
+        className="max-h-full w-full max-w-patient overflow-y-auto overscroll-contain rounded-card bg-surface-card p-6 shadow-2xl sm:p-8"
       >
         {forName ? (
           <p className="mb-2 font-serif-display text-[1.75rem] font-medium leading-tight text-primary-dark">{forName}</p>

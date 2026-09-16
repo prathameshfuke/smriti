@@ -315,7 +315,7 @@ function ObjectHuntPageInner() {
               className="flex h-40 w-40 items-center justify-center rounded-card border-2 border-line200"
               style={{ backgroundColor: `${currentTarget.object.categoryColor}1A` }}
             >
-              <span className="text-[96px] leading-none" aria-hidden="true">
+              <span data-scalable-icon className="text-[96px] leading-none" aria-hidden="true">
                 {currentTarget.object.emoji}
               </span>
             </div>

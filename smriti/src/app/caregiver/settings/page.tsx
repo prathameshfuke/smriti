@@ -7,6 +7,7 @@ import { buildQueueItem } from '@/lib/db/syncQueue';
 import type { UILanguage } from '@/lib/i18n/languages';
 import { useRouter } from 'next/navigation';
 import LanguagePicker from '@/components/layout/LanguagePicker';
+import DisplaySizeSettings from '@/components/caregiver/DisplaySizeSettings';
 import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
 import PinDots from '@/components/ui/PinDots';
@@ -282,7 +283,7 @@ export default function CaregiverSettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-dashboard px-5 py-8 md:px-10 md:py-12">
-      <PageHeader title="Settings" description="Language, PIN and data for this device." />
+      <PageHeader title="Settings" description="Language, text size, PIN and data for this device." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <Panel
@@ -290,6 +291,13 @@ export default function CaregiverSettingsPage() {
           description="What they see and hear in SMRITI."
         >
           <LanguagePicker onSelect={(code) => void saveLanguageForPatient(code)} />
+        </Panel>
+
+        <Panel
+          title="Text and icon size"
+          description="Make words and pictures bigger on every screen of this phone."
+        >
+          <DisplaySizeSettings />
         </Panel>
 
         <Panel
@@ -335,7 +343,7 @@ export default function CaregiverSettingsPage() {
         </Panel>
 
         <Panel title="About SMRITI">
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-caregiver-body">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-caregiver-body [&_dd]:[overflow-wrap:anywhere]">
             <dt className="text-ink-muted">Version</dt>
             <dd className="text-ink">1.0.0-hackathon</dd>
             <dt className="text-ink-muted">Built for</dt>

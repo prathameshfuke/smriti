@@ -302,10 +302,12 @@ describe('LanguagePicker', () => {
 });
 
 describe('PatientNav', () => {
-  it('renders a 64px top bar with the screen title', () => {
+  it('renders an at-least-64px top bar with the screen title', () => {
     const { container } = render(<PatientNav title="Reminders" />);
     const bar = container.firstChild as HTMLElement;
-    expect(Number.parseInt(bar.style.height, 10)).toBe(64);
+    // A minimum, not a fixed height: at Large text the title wraps and the
+    // bar grows instead of the title overlapping the Back button.
+    expect(Number.parseInt(bar.style.minHeight, 10)).toBe(64);
     expect(screen.getByText('Reminders')).toBeInTheDocument();
   });
 
@@ -363,7 +365,10 @@ describe('CaregiverNav', () => {
     const css = readFileSync(resolve(__dirname, '../app/globals.css'), 'utf8');
     // Full inset (34px on iPhone) under a 64px bar read as a tall blank strip.
     expect(css).toMatch(/--caregiver-nav-pad:\s*max\(calc\(env\(safe-area-inset-bottom\) - 14px\), 4px\)/);
-    expect(css).toMatch(/--caregiver-nav-h:\s*calc\(56px \+ var\(--caregiver-nav-pad\)\)/);
+    // 56px at default sizes (9.6 + 20 + 26.4), scaled by the text/icon size settings.
+    expect(css).toMatch(
+      /--caregiver-nav-h:\s*calc\(9\.6px \+ 20px \* var\(--icon-scale\) \+ 1\.65rem \+ var\(--caregiver-nav-pad\)\)/,
+    );
   });
 });
 

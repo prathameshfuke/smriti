@@ -72,7 +72,12 @@ export function DialogContent({ className, children }: { className?: string; chi
       onClick={() => ctx.setOpen(false)}
     >
       <div
-        className={cn('w-full max-w-md rounded-card border border-line200 bg-white p-6 shadow-xl', className)}
+        className={cn(
+          // max-h + scroll: at Large text a long dialog (the N-Back tutorial)
+          // outgrew the screen and its Next/Close buttons were cut off.
+          'max-h-full w-full max-w-md overflow-y-auto overscroll-contain rounded-card border border-line200 bg-white p-6 shadow-xl',
+          className,
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="-mr-2 -mt-2 flex justify-end">

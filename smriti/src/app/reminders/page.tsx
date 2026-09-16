@@ -204,7 +204,7 @@ export default function RemindersPage() {
 
               <fieldset>
                 <legend className={labelClass}>Type</legend>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,9rem),1fr))] gap-3">
                   {(Object.keys(TYPE_LABEL) as ReminderType[]).map((t) => (
                     <button
                       key={t}

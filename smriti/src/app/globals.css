@@ -114,6 +114,53 @@
   }
 }
 
+/*
+ * Text and icon size settings (lib/a11y/sizing.ts — keep the numbers in
+ * step). Text scales the root font-size: every text size, padding and gap is
+ * rem-based, so containers grow with their text rather than letting it spill
+ * over its neighbours. A percentage (not px) keeps the phone's own font-size
+ * preference as the base.
+ *
+ * Icons use `zoom`, not `transform: scale`: zoom grows the layout box too, so
+ * a bigger icon pushes its label along instead of painting over it. Browsers
+ * without zoom simply keep icons at their normal size.
+ *   - svg.lucide: every Lucide icon (the class is added by lucide-react).
+ *   - [data-scalable-icon]: pictures and emoji used as icons (game tiles,
+ *     big game prompts).
+ *   - [data-icon-fixed]: opt-out for an icon whose container is a fixed-size
+ *     shape (a timer dial, a game board cell) that must not change size.
+ * The :not() guards stop an icon inside a scaled wrapper zooming twice.
+ */
+:root {
+  --text-scale: 1;
+  --icon-scale: 1;
+}
+html[data-text-size="md"] {
+  --text-scale: 1.125;
+}
+html[data-text-size="lg"] {
+  --text-scale: 1.25;
+}
+html[data-icon-size="md"] {
+  --icon-scale: 1.25;
+}
+html[data-icon-size="lg"] {
+  --icon-scale: 1.5;
+}
+html {
+  font-size: calc(100% * var(--text-scale));
+}
+/* caregiver-heading's 1.05 line-height assumes a title never wraps. At
+   Medium/Large text a long title (a patient's full name) can, and 1.05 lets
+   Fraunces' descenders touch the next line's capitals — open it up there only,
+   so the default look is unchanged. */
+html:not([data-text-size="sm"]) .text-caregiver-heading {
+  line-height: 1.15;
+}
+:where(svg.lucide, [data-scalable-icon]):not([data-icon-fixed], [data-icon-fixed] *, [data-scalable-icon] *) {
+  zoom: var(--icon-scale);
+}
+
 html {
   color-scheme: light;
   -webkit-text-size-adjust: 100%;
@@ -148,8 +195,12 @@ body {
  * Caregiver bottom nav (CaregiverNav) sizing, shared with the page clearance
  * below so the two can never drift apart.
  *
- * 56px holds a two-line label tab (1px border + 6px top + 20px icon + 2px
- * gap + 2 x 13.2px lines = 55.4px). Below that, the home-indicator zone is
+ * The tab content is a 1px border + 6px top + 20px icon + 2px gap + two
+ * 12px/1.1 label lines (55.4px at default sizes, rounded up to 56px). It is
+ * written in its parts rather than as a flat 56px so the bar grows with the
+ * text and icon size settings: the label lines are rem (the text scale) and
+ * the icon is multiplied by --icon-scale. Labels are held to two lines in
+ * CaregiverNav, so this is always tall enough. Below that, the home-indicator zone is
  * overlapped by 14px rather than stacked in full: a 34px iPhone inset under
  * the labels read as a tall blank strip. The iPhone indicator sits 8-13px
  * above the screen edge, so a 20px pad still keeps labels clear of it; a 0px
@@ -157,7 +208,7 @@ body {
  */
 :root {
   --caregiver-nav-pad: max(calc(env(safe-area-inset-bottom) - 14px), 4px);
-  --caregiver-nav-h: calc(56px + var(--caregiver-nav-pad));
+  --caregiver-nav-h: calc(9.6px + 20px * var(--icon-scale) + 1.65rem + var(--caregiver-nav-pad));
 }
 
 /*

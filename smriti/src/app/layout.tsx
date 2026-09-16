@@ -9,6 +9,8 @@ import { LanguageProvider } from "@/lib/i18n/provider";
 import Disclaimer from "@/components/layout/Disclaimer";
 import ActivityTracker from "@/components/layout/ActivityTracker";
 import AudioRouteReset from "@/components/layout/AudioRouteReset";
+import DisplaySizeSync from "@/components/layout/DisplaySizeSync";
+import { DEFAULT_DISPLAY_SIZE, DISPLAY_SIZE_BOOT_SCRIPT } from "@/lib/a11y/sizing";
 import "./globals.css";
 
 /**
@@ -77,11 +79,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${atkinsonHyperlegible.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} ${fraunces.variable} h-full antialiased`}
+      data-text-size={DEFAULT_DISPLAY_SIZE}
+      data-icon-size={DEFAULT_DISPLAY_SIZE}
+      // The boot script below rewrites both data attributes from saved
+      // settings before first paint; the DOM value is the correct one.
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: DISPLAY_SIZE_BOOT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>
           <ActivityTracker />
           <AudioRouteReset />
+          <DisplaySizeSync />
           <div className="flex flex-1 flex-col">{children}</div>
           <Disclaimer />
         </LanguageProvider>
