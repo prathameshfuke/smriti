@@ -1,6 +1,6 @@
 import { createBrowserClient } from '@/lib/supabase/client';
 import type { LocalCaregiver, LocalPatient, LocalReminderSchedule } from './schema';
-import type { Language, PatientLanguage } from '@/lib/supabase/types';
+import { toHHMM, type Language, type PatientLanguage } from '@/lib/supabase/types';
 
 const NETWORK_TIMEOUT_MS = 8_000;
 
@@ -152,7 +152,7 @@ export async function pullCaregiverProfile(authUserId: string): Promise<ProfileP
           patientId: r.patient_id,
           reminderType: r.reminder_type,
           label: r.label,
-          timeOfDay: r.time_of_day,
+          timeOfDay: toHHMM(r.time_of_day),
           daysOfWeek: r.days_of_week,
           isActive: r.is_active,
           updatedAt: r.updated_at,

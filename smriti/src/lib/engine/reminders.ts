@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { db, type LocalReminderAck, type LocalReminderSchedule } from '@/lib/db/schema';
 import { buildQueueItem } from '@/lib/db/syncQueue';
-import type { AckMethod } from '@/lib/supabase/types';
+import { toHHMM, type AckMethod } from '@/lib/supabase/types';
 import { localDateString } from './adherence';
 
 const HYDRATION_TIMES = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'];
@@ -73,7 +73,7 @@ export async function acknowledgeReminder(
   const scheduledAt = schedule
     ? // The patient's local date and wall-clock time, matching how adherence
       // keys an occurrence (reminder id + the date part of this string).
-      `${localDateString(now)}T${schedule.timeOfDay}:00.000Z`
+      `${localDateString(now)}T${toHHMM(schedule.timeOfDay)}:00.000Z`
     : now.toISOString();
 
   const ack: LocalReminderAck = {

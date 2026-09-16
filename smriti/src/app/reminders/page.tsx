@@ -15,7 +15,7 @@ import {
 } from '@/lib/engine/reminders';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import type { ReminderType } from '@/lib/supabase/types';
+import { toHHMM, type ReminderType } from '@/lib/supabase/types';
 
 const TYPE_LABEL: Record<ReminderType, string> = {
   medication: 'Medication',
@@ -137,7 +137,7 @@ export default function RemindersPage() {
     setEditingId(schedule.id);
     setType(schedule.reminderType);
     setLabel(schedule.label);
-    setTimeOfDay(schedule.timeOfDay);
+    setTimeOfDay(toHHMM(schedule.timeOfDay));
     setDays(ALL_DAYS.map((d) => schedule.daysOfWeek.includes(d)));
   };
 
@@ -168,7 +168,7 @@ export default function RemindersPage() {
                 const ack = ackByReminderId.get(s.id);
                 return (
                   <li key={s.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-4 px-5 py-4">
-                    <span className="font-serif-display text-[1.5rem] font-medium tabular-nums text-ink">{s.timeOfDay}</span>
+                    <span className="font-serif-display text-[1.5rem] font-medium tabular-nums text-ink">{toHHMM(s.timeOfDay)}</span>
                     <div className="min-w-0">
                       <p className="text-patient-body font-bold text-ink">{s.label}</p>
                       {ack?.acknowledgedAt ? (
@@ -313,7 +313,7 @@ export default function RemindersPage() {
                   {activeSchedules.map((s) => (
                     <li key={s.id} className="flex flex-col gap-1 px-5 py-4">
                       <p className="text-caregiver-body text-ink">
-                        <span className="font-bold tabular-nums">{s.timeOfDay}</span>
+                        <span className="font-bold tabular-nums">{toHHMM(s.timeOfDay)}</span>
                         <span className="text-ink-muted"> {TYPE_LABEL[s.reminderType]}</span>
                       </p>
                       <p className="text-caregiver-body font-bold text-ink">{s.label}</p>

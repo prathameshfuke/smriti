@@ -9,6 +9,7 @@ import {
   type LocalMemoryBankEntry,
 } from './schema';
 import { createBrowserClient } from '@/lib/supabase/client';
+import { toHHMM } from '@/lib/supabase/types';
 
 const SYNC_TIMEOUT_MS = 15_000;
 
@@ -217,7 +218,7 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
     patientId: row.patient_id,
     reminderType: row.reminder_type,
     label: row.label,
-    timeOfDay: row.time_of_day,
+    timeOfDay: toHHMM(row.time_of_day),
     daysOfWeek: row.days_of_week,
     isActive: row.is_active,
     updatedAt: row.updated_at,

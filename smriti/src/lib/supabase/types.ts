@@ -49,6 +49,11 @@ export type DateOnly = string;
 /** 24-hour wall-clock time, `HH:MM[:SS]` (TIME). */
 export type TimeOfDay = string;
 
+/** Postgres TIME comes back as `HH:MM:SS`; the app works in `HH:MM`. */
+export function toHHMM(time: TimeOfDay): string {
+  return time.slice(0, 5);
+}
+
 export type Caregiver = {
   id: string;
   auth_id: string;
