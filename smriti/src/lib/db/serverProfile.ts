@@ -74,7 +74,7 @@ export async function pushCaregiverProfile(
             time_of_day: r.timeOfDay,
             days_of_week: r.daysOfWeek,
             is_active: r.isActive,
-            ...(r.reminderType === 'appointment' ? toWireAppointmentFields({ ...r }) : {}),
+            ...toWireAppointmentFields({ ...r }),
           })),
         ),
         NETWORK_TIMEOUT_MS,

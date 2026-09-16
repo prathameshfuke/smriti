@@ -112,6 +112,13 @@ export default function RemindersPage() {
     setDayOfTouched(false);
   };
 
+  const changeType = (next: ReminderType) => {
+    setType(next);
+    // A saved appointment has no weekdays; turning it into a daily reminder
+    // with none selected would never fire.
+    if (next !== 'appointment' && !days.some(Boolean)) setDays(ALL_DAYS.map(() => true));
+  };
+
   const changeTime = (value: string) => {
     setTimeOfDay(value);
     if (!dayOfTouched && value) setDayOfTime(defaultDayOfTime(value));
@@ -223,8 +230,55 @@ export default function RemindersPage() {
   const todaysSchedules = schedules.filter(
     (s) => s.isActive && (isDatedAppointment(s) ? s.appointmentDate === todayStr : s.daysOfWeek.includes(today)),
   );
-  const activeSchedules = schedules.filter((s) => s.isActive);
+  const isPastAppointment = (s: LocalReminderSchedule) => isDatedAppointment(s) && (s.appointmentDate as string) < todayStr;
+  const activeSchedules = schedules.filter((s) => s.isActive && !isPastAppointment(s));
+  const pastAppointments = schedules
+    .filter((s) => s.isActive && isPastAppointment(s))
+    .sort((a, b) => (b.appointmentDate as string).localeCompare(a.appointmentDate as string));
   const ackByReminderId = new Map(todayAcks.map((a) => [a.reminderId, a]));
+
+  const renderSchedule = (s: LocalReminderSchedule) => (
+    <li key={s.id} className="flex flex-col gap-1 px-5 py-4">
+      <p className="text-caregiver-body text-ink">
+        {isDatedAppointment(s) ? (
+          <span className="font-bold">
+            {formatDayDate(s.appointmentDate as string)}, {formatTimeOfDay(s.timeOfDay)}
+          </span>
+        ) : (
+          <span className="font-bold tabular-nums">{toHHMM(s.timeOfDay)}</span>
+        )}
+        <span className="text-ink-muted"> {TYPE_LABEL[s.reminderType]}</span>
+      </p>
+      <p className="break-words text-caregiver-body font-bold text-ink">{s.label}</p>
+      {isDatedAppointment(s)
+        ? [s.facilityName, s.locationNotes, s.bringNotes]
+            .filter((text): text is string => Boolean(text))
+            .map((text, i) => (
+              <p key={i} className="whitespace-pre-line break-words text-caregiver-body text-ink">
+                {text}
+              </p>
+            ))
+        : null}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          aria-label={`Edit ${s.label}`}
+          onClick={() => editReminder(s)}
+          className={`${textActionClass} pr-3`}
+        >
+          Edit
+        </button>
+        <button
+          type="button"
+          aria-label={`Delete ${s.label}`}
+          onClick={() => void deleteReminder(s)}
+          className={`${textActionClass} px-3 text-ink-muted decoration-ink-muted/40 hover:text-danger`}
+        >
+          Delete
+        </button>
+      </div>
+    </li>
+  );
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-surface">
@@ -285,7 +339,7 @@ export default function RemindersPage() {
                       key={t}
                       type="button"
                       aria-pressed={type === t}
-                      onClick={() => setType(t)}
+                      onClick={() => changeType(t)}
                       className={
                         'min-h-14 rounded-control px-3 text-caregiver-body font-bold transition-colors ' +
                         (type === t
@@ -516,51 +570,21 @@ export default function RemindersPage() {
                 <p className="text-caregiver-body text-ink-muted">No reminders yet.</p>
               ) : (
                 <ul className="divide-y divide-line200 overflow-hidden rounded-card border border-line200 bg-surface-card">
-                  {activeSchedules.map((s) => (
-                    <li key={s.id} className="flex flex-col gap-1 px-5 py-4">
-                      <p className="text-caregiver-body text-ink">
-                        {isDatedAppointment(s) ? (
-                          <span className="font-bold">
-                            {formatDayDate(s.appointmentDate as string)}, {formatTimeOfDay(s.timeOfDay)}
-                          </span>
-                        ) : (
-                          <span className="font-bold tabular-nums">{toHHMM(s.timeOfDay)}</span>
-                        )}
-                        <span className="text-ink-muted"> {TYPE_LABEL[s.reminderType]}</span>
-                      </p>
-                      <p className="break-words text-caregiver-body font-bold text-ink">{s.label}</p>
-                      {isDatedAppointment(s)
-                        ? [s.facilityName, s.locationNotes, s.bringNotes]
-                            .filter((text): text is string => Boolean(text))
-                            .map((text, i) => (
-                              <p key={i} className="whitespace-pre-line break-words text-caregiver-body text-ink">
-                                {text}
-                              </p>
-                            ))
-                        : null}
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          aria-label={`Edit ${s.label}`}
-                          onClick={() => editReminder(s)}
-                          className={`${textActionClass} pr-3`}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          aria-label={`Delete ${s.label}`}
-                          onClick={() => void deleteReminder(s)}
-                          className={`${textActionClass} px-3 text-ink-muted decoration-ink-muted/40 hover:text-danger`}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                  {activeSchedules.map(renderSchedule)}
                 </ul>
               )}
             </section>
+
+            {pastAppointments.length > 0 ? (
+              <section aria-labelledby="past-appointments-heading" className="flex flex-col gap-3">
+                <h2 id="past-appointments-heading" className="font-serif-display text-[1.5rem] font-medium leading-tight text-ink">
+                  Past appointments
+                </h2>
+                <ul className="divide-y divide-line200 overflow-hidden rounded-card border border-line200 bg-surface-card">
+                  {pastAppointments.map(renderSchedule)}
+                </ul>
+              </section>
+            ) : null}
           </>
         ) : null}
       </main>

@@ -202,6 +202,9 @@ export default function CaregiverSettingsPage() {
     // companion Q&A, pulled family messages and generated quizzes. The next
     // caregiver to sign in on this device must not see them; the server
     // copies come back on the next pull, and quizzes are regenerated.
+    // Memory Bank entries, photos and telemetry stay: they can hold edits not
+    // synced yet, they are only ever read for the signed-in patient, and they
+    // are encrypted at rest (lib/db/crypto/fields.ts).
     await db.transaction(
       'rw',
       [db.caregivers, db.patients, db.reminderSchedules, db.aiConversationLog, db.familyMessages, db.reminiscenceQuizzes],

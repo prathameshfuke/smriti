@@ -234,7 +234,6 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
   };
 }
 
-
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
   const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries, scheduleQueue, profileQueue, profile] = await Promise.all([

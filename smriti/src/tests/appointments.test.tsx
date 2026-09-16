@@ -383,7 +383,7 @@ describe('sync wire mapping', () => {
     });
   });
 
-  it('adds no appointment columns to other reminder types, so an older database keeps accepting them', () => {
+  it('clears the appointment columns on other reminder types, so an appointment changed to another type still syncs', () => {
     const wire = toWireReminderSchedule({
       id: 'm',
       patientId: 'p1',
@@ -392,9 +392,18 @@ describe('sync wire mapping', () => {
       timeOfDay: '08:00',
       daysOfWeek: [1],
       isActive: true,
+      // Left over from when the row was an appointment.
+      appointmentDate: '2026-09-20',
+      facilityName: 'Tezpur CHC',
     });
-    expect(Object.keys(wire)).not.toContain('appointment_date');
-    expect(Object.keys(wire)).not.toContain('facility_name');
+    expect(wire).toMatchObject({
+      appointment_date: null,
+      facility_name: null,
+      location_notes: null,
+      bring_notes: null,
+      remind_day_before_time: null,
+      remind_day_of_time: null,
+    });
   });
 });
 

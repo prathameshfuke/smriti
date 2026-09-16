@@ -147,4 +147,65 @@ describe('Caregiver reminder form — appointment', () => {
     expect(row).toMatchObject({ label: 'Eye check-up', bringNotes: 'Old prescription', createdAt: '2026-09-01T00:00:00.000Z' });
     expect(await db.reminderSchedules.count()).toBe(1);
   });
+
+  it('drops the appointment details when an appointment is changed to another type', async () => {
+    await db.reminderSchedules.put({
+      id: 'appt1',
+      patientId: 'p1',
+      reminderType: 'appointment',
+      label: 'Eye check-up',
+      timeOfDay: '09:00',
+      daysOfWeek: [],
+      isActive: true,
+      updatedAt: new Date().toISOString(),
+      appointmentDate: futureDate(6),
+      facilityName: 'CHC',
+      remindDayOfTime: '07:00',
+    });
+    render(<RemindersPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Edit Eye check-up' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Medication' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+    await waitFor(async () => expect((await db.reminderSchedules.get('appt1'))?.reminderType).toBe('medication'));
+    const row = await db.reminderSchedules.get('appt1');
+    expect(row?.appointmentDate).toBeUndefined();
+    expect(row?.facilityName).toBeUndefined();
+    expect(row?.daysOfWeek.length).toBeGreaterThan(0);
+  });
+
+  it('lists past appointments apart from the active reminders', async () => {
+    await db.reminderSchedules.bulkPut([
+      {
+        id: 'past',
+        patientId: 'p1',
+        reminderType: 'appointment',
+        label: 'Old check-up',
+        timeOfDay: '09:00',
+        daysOfWeek: [],
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+        appointmentDate: futureDate(-3),
+      },
+      {
+        id: 'next',
+        patientId: 'p1',
+        reminderType: 'appointment',
+        label: 'Next check-up',
+        timeOfDay: '09:00',
+        daysOfWeek: [],
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+        appointmentDate: futureDate(3),
+      },
+    ]);
+    render(<RemindersPage />);
+
+    const past = await screen.findByRole('region', { name: 'Past appointments' });
+    expect(within(past).getByText('Old check-up')).toBeInTheDocument();
+    expect(within(past).getByRole('button', { name: 'Delete Old check-up' })).toBeInTheDocument();
+    const all = screen.getByRole('region', { name: 'All reminders' });
+    expect(within(all).queryByText('Old check-up')).not.toBeInTheDocument();
+    expect(within(all).getByText('Next check-up')).toBeInTheDocument();
+  });
 });

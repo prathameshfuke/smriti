@@ -123,14 +123,26 @@ export function toWireReminderSchedule(row: Row) {
     is_active: Boolean(pick(row, 'isActive', 'is_active')),
     updated_at: (pick(row, 'updatedAt', 'updated_at') as string | undefined) ?? new Date().toISOString(),
   };
-  // Appointment columns only on appointment rows: a database that has not had
-  // the "Appointment details" migration yet keeps accepting every other type.
-  if (base.reminder_type !== 'appointment') return base;
   return { ...base, ...toWireAppointmentFields(row) };
 }
 
-/** Appointment columns of a reminder row, camelCase or snake_case in, snake_case out; absent → null. */
+const NO_APPOINTMENT_FIELDS = {
+  appointment_date: null,
+  facility_name: null,
+  location_notes: null,
+  bring_notes: null,
+  remind_day_before_time: null,
+  remind_day_of_time: null,
+} as const;
+
+/**
+ * Appointment columns of a reminder row, camelCase or snake_case in, snake_case
+ * out; absent → null. Always null for other reminder types, so a reminder that
+ * used to be an appointment clears them on the server (MIGRATION 013's check
+ * rejects a non-appointment row that still has them).
+ */
 export function toWireAppointmentFields(row: Row) {
+  if (pick(row, 'reminderType', 'reminder_type') !== 'appointment') return { ...NO_APPOINTMENT_FIELDS };
   const value = (camel: string, snake: string) => (pick(row, camel, snake) as string | null | undefined) ?? null;
   return {
     appointment_date: value('appointmentDate', 'appointment_date'),

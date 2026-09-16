@@ -210,18 +210,66 @@ describe('encrypted local database', () => {
     expect(after?.wrappedKey).not.toEqual(before?.wrappedKey);
   });
 
-  it('clears a table it can no longer decrypt instead of failing every read', async () => {
+  it('drops only the rows it can no longer decrypt, keeping the rest of the table', async () => {
+    await db.patients.put(patient());
+    db.close();
+
+    // The key is lost, and a plain-text row (e.g. from an older build) sits
+    // next to the now unreadable one.
+    const raw = new Dexie(DB_NAME);
+    await raw.open();
+    await raw.table('keyring').delete(KEYRING_ID);
+    await raw.table('patients').put(patient({ id: 'p2', displayName: 'Hari' }));
+    raw.close();
+
+    db = new SmritiDB();
+    expect((await db.patients.toArray()).map((p) => p.displayName)).toEqual(['Hari']);
+    expect(isEncrypted((await rawRow('patients', 'p2'))?.displayName)).toBe(true);
+    await db.patients.put(patient());
+    expect((await db.patients.get('p1'))?.displayName).toBe('Maya Devi');
+  });
+
+  it('keeps queued sync rows that are still readable when the key has to be replaced', async () => {
     await db.patients.put(patient());
     db.close();
 
     const raw = new Dexie(DB_NAME);
     await raw.open();
-    await raw.table('keyring').delete(KEYRING_ID);
+    // A sealed key that no longer opens (corrupted), plus a queue row written
+    // in plain text before encryption existed.
+    const entry = await raw.table('keyring').get(KEYRING_ID);
+    await raw.table('keyring').put({ ...entry, wrappedKey: 'AAAA' }, KEYRING_ID);
+    await raw.table('syncQueue').put({
+      id: 'q1',
+      tableName: 'reminder_acks',
+      recordId: 'a1',
+      operation: 'insert',
+      payload: { id: 'a1' },
+      createdAt: '2026-09-16T10:00:00.000Z',
+      attempts: 0,
+    });
     raw.close();
 
     db = new SmritiDB();
     expect(await db.patients.count()).toBe(0);
-    await db.patients.put(patient());
-    expect((await db.patients.get('p1'))?.displayName).toBe('Maya Devi');
+    expect((await db.syncQueue.get('q1'))?.payload).toEqual({ id: 'a1' });
+    expect(isEncrypted((await rawRow('syncQueue', 'q1'))?.payload)).toBe(true);
+  });
+
+  it('gives two tabs opening at the same time one shared key', async () => {
+    db.close();
+    await SmritiDB.deleteDatabase();
+
+    const tabA = new SmritiDB();
+    const tabB = new SmritiDB();
+    try {
+      await Promise.all([tabA.open(), tabB.open()]);
+      await tabA.patients.put(patient());
+      expect((await tabB.patients.get('p1'))?.displayName).toBe('Maya Devi');
+    } finally {
+      tabA.close();
+      tabB.close();
+    }
+    db = new SmritiDB();
   });
 });

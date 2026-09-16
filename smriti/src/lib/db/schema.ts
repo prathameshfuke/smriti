@@ -341,8 +341,9 @@ export class SmritiDB extends Dexie {
       async (vipDb) => {
         this.storageKey = null;
         const keyring = vipDb.table<KeyringEntry, string>('keyring');
-        this.storageKey = (await loadOrCreateStorageKey(keyring)).key;
-        await migrateToEncrypted(vipDb, keyring, Object.keys(ENCRYPTED_FIELDS));
+        const { key } = await loadOrCreateStorageKey(vipDb, keyring);
+        this.storageKey = key;
+        await migrateToEncrypted(vipDb, keyring, ENCRYPTED_FIELDS, key);
       },
       true,
     );
