@@ -1,4 +1,7 @@
 import Dexie, { type Table } from 'dexie';
+import { ENCRYPTED_FIELDS } from '@/lib/db/crypto/fields';
+import { createEncryptionMiddleware } from '@/lib/db/crypto/middleware';
+import { type KeyringEntry, loadOrCreateStorageKey, migrateToEncrypted } from '@/lib/db/crypto/keys';
 import type { AckMethod, CaregiverRole, GameType, MemoryBankCategory, ReminderType } from '@/lib/supabase/types';
 
 /**
@@ -270,6 +273,11 @@ export class SmritiDB extends Dexie {
   /** Out-of-line keys (see `DeviceTrustToken`'s own doc comment) — always
    * read/written via an explicit key, never `db.deviceTrust.add()`. */
   deviceTrust!: Table<DeviceTrustToken, string>;
+  /** Out-of-line keys. Holds the sealed storage key — see lib/db/crypto/keys.ts. */
+  keyring!: Table<KeyringEntry, string>;
+
+  /** The unsealed field-encryption key. Memory only, loaded on every open. */
+  private storageKey: Uint8Array | null = null;
 
   constructor() {
     super(DB_NAME);
@@ -317,6 +325,27 @@ export class SmritiDB extends Dexie {
     this.version(6).stores({
       patientPhotos: 'patientId',
     });
+    // New store only. The sealed key for field-level encryption at rest.
+    this.version(7).stores({
+      keyring: '',
+    });
+
+    // Personal and health fields are encrypted before they reach IndexedDB
+    // (see lib/db/crypto/). The key is loaded in `ready`, which Dexie awaits
+    // before running any queued query, so nothing reads or writes early.
+    // Sticky, so it runs again whenever the database reopens — including
+    // after deleteDatabase(), which starts over with a fresh key.
+    this.use(createEncryptionMiddleware(ENCRYPTED_FIELDS, () => this.storageKey));
+    this.on(
+      'ready',
+      async (vipDb) => {
+        this.storageKey = null;
+        const keyring = vipDb.table<KeyringEntry, string>('keyring');
+        this.storageKey = (await loadOrCreateStorageKey(keyring)).key;
+        await migrateToEncrypted(vipDb, keyring, Object.keys(ENCRYPTED_FIELDS));
+      },
+      true,
+    );
   }
 
   /** Drops the backing store. Exposed for test isolation. */

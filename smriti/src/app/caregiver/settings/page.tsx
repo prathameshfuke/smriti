@@ -174,9 +174,9 @@ export default function CaregiverSettingsPage() {
    * Supabase alone left the local Dexie profile intact, so the caregiver
    * was let straight back in on the very next PIN entry — logout did
    * nothing a caregiver could observe. Game telemetry/session tables are
-   * untouched: this device's local caregiver+patient *profile* is what
-   * gets cleared, not played progress, which stays queued to sync once
-   * someone logs back in. A real re-login pulls the caregiver and patient
+   * untouched: this device's local caregiver+patient *profile* (plus the
+   * private caches listed below) is what gets cleared, not played progress,
+   * which stays queued to sync once someone logs back in. A real re-login pulls the caregiver and patient
    * back down from the server — this does not require re-entering patient
    * data, only `deleteAllData` below does.
    *
@@ -198,11 +198,22 @@ export default function CaregiverSettingsPage() {
     // authenticate the request, and signOut() clears it.
     await syncAllPatients().catch(() => {});
     await createBrowserClient().auth.signOut();
-    await db.transaction('rw', db.caregivers, db.patients, db.reminderSchedules, async () => {
-      await db.caregivers.clear();
-      await db.patients.clear();
-      await db.reminderSchedules.clear();
-    });
+    // Also the private caches that can't be synced but aren't progress either:
+    // companion Q&A, pulled family messages and generated quizzes. The next
+    // caregiver to sign in on this device must not see them; the server
+    // copies come back on the next pull, and quizzes are regenerated.
+    await db.transaction(
+      'rw',
+      [db.caregivers, db.patients, db.reminderSchedules, db.aiConversationLog, db.familyMessages, db.reminiscenceQuizzes],
+      async () => {
+        await db.caregivers.clear();
+        await db.patients.clear();
+        await db.reminderSchedules.clear();
+        await db.aiConversationLog.clear();
+        await db.familyMessages.clear();
+        await db.reminiscenceQuizzes.clear();
+      },
+    );
     useCaregiverStore.getState().setCurrentCaregiver(null);
     usePatientStore.setState({ currentPatient: null, allPatients: [] });
     useSettingsStore.setState({ caregiverSessionVerifiedAt: null });
