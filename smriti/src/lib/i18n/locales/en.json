@@ -18,6 +18,7 @@
     "pinTitle": "Enter caregiver PIN",
     "pinForCaregiver": "For the caregiver only.",
     "pinLocked": "Too many wrong tries. Try again in {seconds} seconds.",
+    "forgotPin": "Forgot PIN?",
     "messageForYou": "A message for you",
     "thankYou": "Thank you!",
     "noPatientTitle": "Nobody is set up on this phone",

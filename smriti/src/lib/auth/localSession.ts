@@ -110,6 +110,7 @@ export async function pullAndStoreServerProfile(
     if (pulled.reminders.length) await db.reminderSchedules.bulkPut(pulled.reminders);
   });
   useCaregiverStore.getState().setCurrentCaregiver(pulled.caregiver);
+  useSettingsStore.getState().clearPinIfDifferentCaregiver(pulled.caregiver.id);
   await usePatientStore.getState().loadPatients(pulled.caregiver.id);
   // The phone's own patient, never simply the account's first: signing in on
   // Hari's new phone used to select Maya because she was listed first. With

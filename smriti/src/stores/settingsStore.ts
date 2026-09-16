@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { DEFAULT_LANGUAGE, type UILanguage } from '@/lib/i18n/languages';
+import { useCaregiverStore } from '@/stores/caregiverStore';
 
 /**
  * The caregiver PIN gates access to patient health data, so only a derived
@@ -130,6 +131,11 @@ interface SettingsState {
   isFirstLaunch: boolean;
   /** `pbkdf2$<iterations>$<salt>$<digest>` — never the raw PIN. */
   caregiverPinHash: string | null;
+  /** Id of the caregiver `caregiverPinHash` was set for. The hash itself is
+   * device-global (this store isn't keyed per caregiver), so without this a
+   * second caregiver signing into the same device would silently unlock
+   * under the first caregiver's PIN — see `clearPinIfDifferentCaregiver`. */
+  caregiverPinOwnerId: string | null;
   /** Timestamp of the last confirmed-live caregiver login (magic-link
    * verify or onboarding) on this device. `null` until one has happened. */
   caregiverSessionVerifiedAt: number | null;
@@ -147,6 +153,12 @@ interface SettingsState {
   setLanguage: (language: UILanguage) => void;
   setPin: (pin: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<boolean>;
+  /** Call once the current caregiver's identity is known (after a real
+   * login pulls their profile). Wipes a leftover PIN set by a *different*
+   * caregiver on this device; leaves it alone for the same one — so a
+   * returning caregiver's PIN survives Log Out, but never carries over to
+   * whoever signs in next. */
+  clearPinIfDifferentCaregiver: (caregiverId: string) => void;
   markLaunched: () => void;
   /** Call right after a real login (magic-link verify, onboarding) succeeds. */
   markCaregiverSessionVerified: () => void;
@@ -173,6 +185,7 @@ export const useSettingsStore = create<SettingsState>()(
       language: DEFAULT_LANGUAGE,
       isFirstLaunch: true,
       caregiverPinHash: null,
+      caregiverPinOwnerId: null,
       caregiverSessionVerifiedAt: null,
       pinAttempts: 0,
       pinCooldownUntil: null,
@@ -183,9 +196,25 @@ export const useSettingsStore = create<SettingsState>()(
       touchActivity: () => set({ lastActivityAt: Date.now() }),
       setLanguage: (language) => set({ language }),
       setPin: async (pin) => {
-        set({ caregiverPinHash: await hashPin(pin) });
+        const ownerId = useCaregiverStore.getState().currentCaregiver?.id ?? null;
+        set({ caregiverPinHash: await hashPin(pin), caregiverPinOwnerId: ownerId });
       },
       verifyPin: (pin) => checkPin(pin, get().caregiverPinHash),
+      clearPinIfDifferentCaregiver: (caregiverId) => {
+        const { caregiverPinHash, caregiverPinOwnerId } = get();
+        // A null owner on an existing hash means this PIN predates
+        // `caregiverPinOwnerId` (an install that updated from before this
+        // field existed) — trusted once rather than forced through PIN setup
+        // again; every `setPin()` from here on always stamps an owner, so
+        // this only ever applies to that one pre-update hash.
+        if (caregiverPinHash === null || caregiverPinOwnerId === null || caregiverPinOwnerId === caregiverId) return;
+        set({
+          caregiverPinHash: null,
+          caregiverPinOwnerId: null,
+          pinAttempts: 0,
+          pinCooldownUntil: null,
+        });
+      },
       markLaunched: () => set({ isFirstLaunch: false }),
       markCaregiverSessionVerified: () => set({ caregiverSessionVerifiedAt: Date.now() }),
       isCaregiverSessionFresh: () => {

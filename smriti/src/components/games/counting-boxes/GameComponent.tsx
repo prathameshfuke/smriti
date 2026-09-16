@@ -108,41 +108,41 @@ const AnimationControllers: Record<string, AnimationController> = {
 };
 
 // 新的关卡配置
-const LEVEL_CONFIGS: LevelConfig[] = [
+export const LEVEL_CONFIGS: LevelConfig[] = [
     {
         blocksRange: [3, 4],
         pattern: ["corner"],
-        observer: [800, 1000],
+        observer: [2600, 3000],
         animation: [],
     },
     {
         blocksRange: [4, 6],
         pattern: ["line", "tower"],
-        observer: [700, 800],
+        observer: [2180, 2540],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [5, 7],
         pattern: ["cross", "tower"],
-        observer: [600, 800],
+        observer: [1760, 2080],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [7, 9],
         pattern: ["scattered", "tower"],
-        observer: [600, 800],
+        observer: [1340, 1620],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [3, 4],
         pattern: ["random_fill"],
-        observer: [250, 300],
+        observer: [920, 1160],
         animation: [],
     },
     {
         blocksRange: [20, 23],
         pattern: ["random_fill"],
-        observer: [300, 400],
+        observer: [500, 700],
         animation: [],
     },
 ];

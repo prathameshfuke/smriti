@@ -1044,6 +1044,19 @@ describe('Caregiver settings page', () => {
     expect(usePatientStore.getState().currentPatient).toBeNull();
   });
 
+  it('keeps the caregiver PIN on Log Out, so the same caregiver isn’t forced to set a new one on the next login (#15)', async () => {
+    signOut.mockResolvedValue({ error: null });
+    await useSettingsStore.getState().setPin('1234');
+    const hash = useSettingsStore.getState().caregiverPinHash;
+
+    render(<CaregiverSettingsPage />);
+    fireEvent.click(screen.getByRole('button', { name: /log out/i }));
+
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/caregiver/login'));
+    expect(useSettingsStore.getState().caregiverPinHash).toBe(hash);
+    expect(useSettingsStore.getState().caregiverSessionVerifiedAt).toBeNull();
+  });
+
   it('wipes local data and PIN when Delete All Data is confirmed with the correct PIN', async () => {
     signOut.mockResolvedValue({ error: null });
     await useSettingsStore.getState().setPin('1234');
