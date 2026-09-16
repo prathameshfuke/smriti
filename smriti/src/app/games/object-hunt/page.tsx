@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
@@ -41,6 +41,13 @@ const LEVELS: Record<number, LevelParams> = {
 };
 
 const INSTRUCTION_SECONDS = 5;
+/**
+ * How long the picture being asked about is shown on its own, before the
+ * grid comes back without it. Issue #4: the picture stayed on screen above
+ * the grid the whole time, so the patient could match by looking instead
+ * of remembering — Memory Blocks hides its pattern the same way.
+ */
+const PROMPT_MS = 2000;
 /**
  * Several lines per star tier instead of one fixed line each — a round that
  * scores the same star count every time (common once a patient masters a
@@ -103,6 +110,11 @@ function ObjectHuntPageInner() {
   const [correctCount, setCorrectCount] = useState(0);
   const [flash, setFlash] = useState<{ index: number; correct: boolean } | null>(null);
   const [roundStartedAt, setRoundStartedAt] = useState(0);
+  /** True while the target picture is shown alone, before the grid returns. */
+  const [prompting, setPrompting] = useState(false);
+  // Blocks a second tap while one answer is still being settled. Without it
+  // a double tap answered the same target twice and skipped the next one.
+  const answeringRef = useRef(false);
 
   const level = LEVELS[difficulty.currentLevel] ?? LEVELS[1];
   const totalTiles = level.rows * level.cols;
@@ -178,14 +190,22 @@ function ObjectHuntPageInner() {
     if (phase !== 'recall') return;
     const target = targetOrder[targetPos];
     let cancelled = false;
+    let promptTimer: ReturnType<typeof setTimeout> | undefined;
     queueMicrotask(() => {
       if (cancelled) return;
       setRevealedIndex(-1);
-      setRoundStartedAt(Date.now());
+      setPrompting(true);
+      answeringRef.current = false;
       if (target) speak(`${t('game.objectHunt.whereWasThe')} ${objectName(target.object, language)}?`, language);
+      promptTimer = setTimeout(() => {
+        if (cancelled) return;
+        setPrompting(false);
+        setRoundStartedAt(Date.now());
+      }, PROMPT_MS);
     });
     return () => {
       cancelled = true;
+      if (promptTimer) clearTimeout(promptTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, targetPos]);
@@ -193,7 +213,11 @@ function ObjectHuntPageInner() {
   const currentTarget = targetOrder[targetPos];
 
   const onTileSelect = async (index: number) => {
-    if (!currentTarget || !currentPatient) return;
+    // A missing patient profile used to return here too, which silently
+    // ignored every tap on devices without one loaded (issue #4: "choosing
+    // the box is not working"). Only the logging below needs a patient.
+    if (!currentTarget || prompting || answeringRef.current) return;
+    answeringRef.current = true;
 
     const isCorrect = index === currentTarget.index;
     const responseTimeMs = Date.now() - roundStartedAt;
@@ -202,17 +226,25 @@ function ObjectHuntPageInner() {
     speak(isCorrect ? t('game.correct') : t('game.tryAgain'), language);
     if (isCorrect) setCorrectCount((c) => c + 1);
 
-    await logEvent({
-      sessionId: activeSession?.id ?? '',
-      patientId: currentPatient.id,
-      gameType: 'object_hunt',
-      difficultyLevel: difficulty.currentLevel,
-      roundNumber: round,
-      isCorrect,
-      responseTimeMs,
-      eventTimestamp: new Date().toISOString(),
-      metadata: { targetObjectId: currentTarget.object.id, tappedIndex: index },
-    });
+    if (currentPatient) {
+      try {
+        await logEvent({
+          sessionId: activeSession?.id ?? '',
+          patientId: currentPatient.id,
+          gameType: 'object_hunt',
+          difficultyLevel: difficulty.currentLevel,
+          roundNumber: round,
+          isCorrect,
+          responseTimeMs,
+          eventTimestamp: new Date().toISOString(),
+          metadata: { targetObjectId: currentTarget.object.id, tappedIndex: index },
+        });
+      } catch (err) {
+        // A failed local write (e.g. IndexedDB blocked on the device) must
+        // never freeze the game on this target.
+        console.error('SMRITI: object hunt event not saved', err);
+      }
+    }
 
     const pauseMs = isCorrect ? 1000 : 800;
     setTimeout(() => {
@@ -276,7 +308,24 @@ function ObjectHuntPageInner() {
           </div>
         ) : null}
 
-        {(phase === 'reveal' || phase === 'recall') && currentTarget ? (
+        {phase === 'recall' && prompting && currentTarget ? (
+          <div data-testid="object-hunt-prompt" className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+            <p className="text-patient-body text-ink-muted">{t('game.objectHunt.rememberThis')}</p>
+            <div
+              className="flex h-40 w-40 items-center justify-center rounded-card border-2 border-line200"
+              style={{ backgroundColor: `${currentTarget.object.categoryColor}1A` }}
+            >
+              <span className="text-[96px] leading-none" aria-hidden="true">
+                {currentTarget.object.emoji}
+              </span>
+            </div>
+            <p className="font-serif-display text-patient-heading text-ink">
+              {objectName(currentTarget.object, language)}
+            </p>
+          </div>
+        ) : null}
+
+        {(phase === 'reveal' || (phase === 'recall' && !prompting)) && currentTarget ? (
           <ObjectGrid
             objects={tiles}
             totalTiles={totalTiles}
@@ -285,6 +334,7 @@ function ObjectHuntPageInner() {
             revealedTileIndex={revealedIndex}
             correctTileIndex={currentTarget.index}
             targetObject={currentTarget.object}
+            targetLabel={`${t('game.objectHunt.whereWasThe')} ${objectName(currentTarget.object, language)}?`}
             flashIndex={flash?.index}
             flashCorrect={flash?.correct}
           />

@@ -67,3 +67,18 @@ describe('Path Match point layout', () => {
     }
   });
 });
+
+describe('Path Match layout variants (issue #4)', () => {
+  it('gives a different board for a different variant at the same level', () => {
+    expect(generatePointLayout(8, 4, 1)).not.toEqual(generatePointLayout(8, 4, 2));
+  });
+
+  it('gives a different level 1 board across variants while staying linear', () => {
+    const boards = [0, 1, 2, 3].map((v) => JSON.stringify(generatePointLayout(4, 1, v)));
+    expect(new Set(boards).size).toBe(4);
+    // Linear: consecutive points in a row sit side by side (same y).
+    const mirrored = generatePointLayout(4, 1, 1);
+    expect(mirrored[0].y).toBe(mirrored[1].y);
+    expect(mirrored[0].x).toBeGreaterThan(mirrored[1].x);
+  });
+});

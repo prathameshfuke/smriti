@@ -28,10 +28,10 @@ describe('Counting Boxes LEVEL_CONFIGS observer curve', () => {
     }
   });
 
-  it('tapers from roughly 3000ms at level 1 to roughly 500ms at level 6', () => {
-    const [, firstMax] = LEVEL_CONFIGS[0].observer;
+  it('stays slow enough to count: ~5s at level 1, never under 2s at level 6 (issue #4)', () => {
+    const [firstMin] = LEVEL_CONFIGS[0].observer;
     const [lastMin] = LEVEL_CONFIGS[LEVEL_CONFIGS.length - 1].observer;
-    expect(firstMax).toBeGreaterThanOrEqual(2500);
-    expect(lastMin).toBeLessThanOrEqual(600);
+    expect(firstMin).toBeGreaterThanOrEqual(5000);
+    expect(lastMin).toBeGreaterThanOrEqual(2000);
   });
 });

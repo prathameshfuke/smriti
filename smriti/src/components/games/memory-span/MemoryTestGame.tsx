@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { useTranslations, useLocale } from 'next-intl';
 import { Trophy, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { narrate } from '@/lib/audio/narrate';
+import { speak } from '@/lib/audio/speech';
+import { matchSpokenWords, useVoiceInput } from '@/lib/audio/voiceInput';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
@@ -33,6 +35,13 @@ export interface MemoryTestGameProps {
   onComplete?: (score: number) => void;
 }
 
+/** Gap between words when reading the list aloud. */
+const WORD_READ_MS = 1800;
+
+/** Word tiles: fixed 2 columns on phones, and text wraps inside the tile
+ * instead of spilling out of it (issue #4: "umbrella" overflowed its box). */
+const WORD_GRID_CLASS = 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 max-w-3xl mx-auto';
+
 export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const t = useTranslations('games.freeShortTermMemoryTest');
   const locale = useLocale();
@@ -48,6 +57,54 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const [demographics, setDemographics] = useState<Demographics>({ ageGroup: '', gender: '' });
   const [results, setResults] = useState<GameResults | null>(null);
   const [startTime, setStartTime] = useState(0);
+  /** Index of the word being read aloud, or -1. */
+  const [speakingIndex, setSpeakingIndex] = useState(-1);
+  const readTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [heard, setHeard] = useState('');
+
+  const stopReading = useCallback(() => {
+    readTimersRef.current.forEach(clearTimeout);
+    readTimersRef.current = [];
+    setSpeakingIndex(-1);
+  }, []);
+
+  useEffect(() => stopReading, [stopReading]);
+
+  /** Reads every word aloud one at a time, highlighting the tile being read. */
+  const readWordsAloud = useCallback(() => {
+    stopReading();
+    currentWords.forEach((word, i) => {
+      readTimersRef.current.push(
+        setTimeout(() => {
+          setSpeakingIndex(i);
+          speak(word, language);
+        }, i * WORD_READ_MS),
+      );
+    });
+    readTimersRef.current.push(setTimeout(() => setSpeakingIndex(-1), currentWords.length * WORD_READ_MS));
+  }, [currentWords, language, stopReading]);
+
+  // Spoken answers fill the next empty boxes with the words recognised.
+  const onSpokenText = useCallback(
+    (text: string) => {
+      setHeard(text);
+      const matched = matchSpokenWords(text, currentWords);
+      setUserInputs((prev) => {
+        const next = [...prev];
+        const already = new Set(next.map((v) => v.trim().toLowerCase()));
+        for (const word of matched) {
+          if (already.has(word.toLowerCase())) continue;
+          const slot = next.findIndex((v) => v.trim() === '');
+          if (slot === -1) break;
+          next[slot] = word;
+          already.add(word.toLowerCase());
+        }
+        return next;
+      });
+    },
+    [currentWords],
+  );
+  const voice = useVoiceInput(language, isOnline, onSpokenText);
 
   // Generate words on client side to avoid hydration mismatch
   useEffect(() => {
@@ -69,11 +126,13 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const stars = results ? starsFromRate(results.score / 100) : 1;
 
   const proceedToRecall = useCallback(() => {
+    stopReading();
     setGameState('recall');
     setStartTime(Date.now());
-  }, []);
+  }, [stopReading]);
 
   const submitRecall = useCallback(() => {
+    voice.stop();
     const timeSpent = (Date.now() - startTime) / 1000;
     const userWords = userInputs
       .map((input: string) => input.toLowerCase().trim())
@@ -100,7 +159,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
     });
 
     setGameState('setup');
-  }, [userInputs, currentWords, startTime]);
+  }, [userInputs, currentWords, startTime, voice]);
 
   const calculatePercentile = useCallback((score: number, ageGroup: string, gender: string) => {
     // Simplified percentile calculation based on research approximations
@@ -159,6 +218,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
     setDemographics({ ageGroup: '', gender: '' });
     setResults(null);
     setStartTime(0);
+    setHeard('');
   }, [wordBank]);
 
   // Show loading state until words are generated
@@ -187,14 +247,27 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-3xl mx-auto">
+              <div>
+                <Button
+                  variant="outline"
+                  onClick={speakingIndex >= 0 ? stopReading : readWordsAloud}
+                  className="rounded-tile px-6 text-patient-body"
+                  data-testid="memory-span-read-aloud"
+                >
+                  {speakingIndex >= 0 ? t('voice.stopReading') : `🔊 ${t('voice.hearWords')}`}
+                </Button>
+              </div>
+
+              <div className={WORD_GRID_CLASS}>
                 {currentWords.map((phrase, index) => (
                   <div
                     key={index}
-                    className="group p-4 bg-surface-card rounded-tile text-center font-medium hover:shadow-md transition-all duration-200 hover:scale-105 border border-line200"
-                    style={{ animationDelay: `${index * 100}ms` }}
+                    className={
+                      'flex min-h-[4.5rem] min-w-0 items-center justify-center rounded-tile border px-2 py-3 text-center font-medium transition-all duration-200 ' +
+                      (speakingIndex === index ? 'border-primary bg-primary/10 shadow-md' : 'border-line200 bg-surface-card')
+                    }
                   >
-                    <span className="text-patient-body text-ink">
+                    <span className="min-w-0 text-patient-body leading-tight text-ink [overflow-wrap:anywhere]">
                       {phrase}
                     </span>
                   </div>
@@ -228,13 +301,40 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                 <div className="text-center">
                   <Label className="text-patient-body font-medium text-ink">{t('recall.inputLabel')}</Label>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-w-3xl mx-auto">
+                {voice.supported ? (
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      onClick={voice.status === 'listening' ? voice.stop : () => void voice.start()}
+                      disabled={voice.status === 'transcribing'}
+                      size="lg"
+                      className={
+                        'rounded-full px-8 py-3 text-patient-body ' +
+                        (voice.status === 'listening' ? 'animate-pulse motion-reduce:animate-none' : '')
+                      }
+                      data-testid="memory-span-mic"
+                    >
+                      {voice.status === 'listening' ? `⏹ ${t('voice.stopListening')}` : `🎤 ${t('voice.sayWords')}`}
+                    </Button>
+                    <p role="status" aria-live="polite" className="min-h-[1.5rem] text-patient-sm text-ink-muted">
+                      {voice.status === 'listening'
+                        ? t('voice.listening')
+                        : voice.status === 'transcribing'
+                          ? t('voice.transcribing')
+                          : voice.status === 'error'
+                            ? t('voice.error')
+                            : heard
+                              ? t('voice.heard', { text: heard })
+                              : ''}
+                    </p>
+                  </div>
+                ) : null}
+                <div className={WORD_GRID_CLASS}>
                   {userInputs.map((input, index) => (
                     <Input
                       key={index}
                       value={input}
                       onChange={(e) => updateUserInput(index, e.target.value)}
-                      className="text-center h-12 rounded-tile bg-surface-card border border-line200 hover:shadow-md transition-all duration-200 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="min-w-0 text-center text-patient-body h-14 rounded-tile bg-surface-card border border-line200 hover:shadow-md transition-all duration-200 focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
                       style={{ animationDelay: `${index * 50}ms` }}
                     />
                   ))}

@@ -228,3 +228,34 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Session-complete celebration (issue #4): a short one-shot confetti fall
+   and a gentle badge pop. Plays once, never loops, and the reduced-motion
+   block above collapses it to a static frame. */
+@keyframes smriti-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(70vh) rotate(540deg);
+  }
+}
+
+@keyframes smriti-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

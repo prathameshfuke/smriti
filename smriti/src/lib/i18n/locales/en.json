@@ -30,7 +30,8 @@
     "objectHunt": {
       "name": "Object Hunt",
       "instruction": "Remember where each picture is hidden. Tap a tile to look.",
-      "whereWasThe": "Where was the"
+      "whereWasThe": "Where was the",
+      "rememberThis": "Remember this picture"
     },
     "wordStream": {
       "name": "Market List",
@@ -143,6 +144,37 @@
         "0": "Wonderful! You remembered everything!",
         "1": "Perfect memory!",
         "2": "Amazing! Every one correct!"
+      }
+    },
+    "extraTaps": "{count} extra taps on other pictures",
+    "celebrate": {
+      "0": "Hooray! You did it!",
+      "1": "Wonderful! Session complete!",
+      "2": "Well played! Great to see you today!"
+    },
+    "tutorial": {
+      "howToPlay": "How to play",
+      "title": "How to play",
+      "stepOf": "Step {n} of {total}",
+      "next": "Next",
+      "back": "Back",
+      "gotIt": "Got it, let's play!",
+      "quickTap": {
+        "step1": "First you see one picture. Remember it — this is the picture to catch.",
+        "step2": "Then pictures appear one at a time in the middle of the screen.",
+        "step3": "When you see your picture, tap the screen quickly.",
+        "step4": "For any other picture, don't tap. Tapping other pictures takes points away."
+      },
+      "pathMatch": {
+        "step1": "Numbered circles are spread across the screen.",
+        "step2": "Tap circle 1, then circle 2. A line joins them.",
+        "step3": "Keep going in order — 3, 4, 5 — until every circle is joined.",
+        "step4": "In higher levels there is a timer. Take your time; accuracy matters most."
+      },
+      "countingBoxes": {
+        "step1": "A stack of boxes appears for a few seconds.",
+        "step2": "Count every box, including the ones stacked behind or on top.",
+        "step3": "When the boxes disappear, enter how many you counted."
       }
     }
   },

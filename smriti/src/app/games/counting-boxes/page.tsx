@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PatientNav from '@/components/layout/PatientNav';
+import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
 import GameComponent from '@/components/games/counting-boxes/GameComponent';
 import { COUNTING_BOXES_MESSAGES } from '@/components/games/counting-boxes/messages';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
@@ -87,6 +88,9 @@ function CountingBoxesPageInner() {
         }}
       />
       <main className="flex flex-1 flex-col">
+        <div className="flex justify-center px-4 pt-4">
+          <GameTutorial gameId="counting_boxes" steps={TUTORIALS.counting_boxes} />
+        </div>
         <NextIntlClientProvider locale={language} messages={COUNTING_BOXES_MESSAGES[language as keyof typeof COUNTING_BOXES_MESSAGES] ?? COUNTING_BOXES_MESSAGES.en}>
           <GameComponent onComplete={onComplete} />
         </NextIntlClientProvider>

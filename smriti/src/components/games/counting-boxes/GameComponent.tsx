@@ -52,7 +52,8 @@ const AnimationControllers: Record<string, AnimationController> = {
         name: 'flyIn',
         execute: (cubesGroup: THREE.Group, scene: THREE.Scene, onComplete: () => void) => {
             // 从左上角飞到右下角的动画
-            const duration = 3000;
+            // Slowed from 3000ms so moving blocks can be followed and counted.
+            const duration = 5000;
             const startTime = Date.now();
             const startPosition = { x: -12, y: 8, z: 8 };
             const endPosition = { x: 12, y: -8, z: -8 };
@@ -108,41 +109,43 @@ const AnimationControllers: Record<string, AnimationController> = {
 };
 
 // 新的关卡配置
+// Observation windows roughly doubled (issue #4: "should have slower
+// speed"). Level 1 now gives ~5s to count; the hardest level still ~2s.
 export const LEVEL_CONFIGS: LevelConfig[] = [
     {
         blocksRange: [3, 4],
         pattern: ["corner"],
-        observer: [2600, 3000],
+        observer: [5000, 5600],
         animation: [],
     },
     {
         blocksRange: [4, 6],
         pattern: ["line", "tower"],
-        observer: [2180, 2540],
+        observer: [4400, 4900],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [5, 7],
         pattern: ["cross", "tower"],
-        observer: [1760, 2080],
+        observer: [3800, 4200],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [7, 9],
         pattern: ["scattered", "tower"],
-        observer: [1340, 1620],
+        observer: [3200, 3600],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [3, 4],
         pattern: ["random_fill"],
-        observer: [920, 1160],
+        observer: [2600, 3000],
         animation: [],
     },
     {
         blocksRange: [20, 23],
         pattern: ["random_fill"],
-        observer: [500, 700],
+        observer: [2000, 2400],
         animation: [],
     },
 ];

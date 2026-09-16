@@ -9,7 +9,7 @@ import SessionComplete from '@/components/games/SessionComplete';
 import { OBJECTS, pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
-import { scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
+import { penalizedAccuracy, scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
 import { speak } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -153,7 +153,7 @@ function WordStreamPageInner() {
     setPhase('result');
 
     const total = itemsToRecall.length || score.hits + score.misses || 1;
-    const accuracy = (score.hits / total) * 100;
+    const accuracy = penalizedAccuracy(score.hits, score.falseAlarms, total) * 100;
     const next = adjustDifficulty(difficulty, 'word_stream', accuracy, useGameStore.getState().sessionEvents);
     setDifficulty(next);
     if (currentPatient) {
@@ -169,7 +169,7 @@ function WordStreamPageInner() {
         isCorrect: score.misses === 0 && score.falseAlarms === 0,
         responseTimeMs: null,
         eventTimestamp: new Date().toISOString(),
-        metadata: { ...score, original: itemsToRecall, selected: [...selected] },
+        metadata: { ...score, accuracy, original: itemsToRecall, selected: [...selected] },
       });
     }
   };
@@ -257,9 +257,10 @@ function WordStreamPageInner() {
           <SessionComplete
             gameType="word_stream"
             stars={starsFromRate(
-              result.hits / (itemsToRecall.length || result.hits + result.misses || 1),
+              penalizedAccuracy(result.hits, result.falseAlarms, itemsToRecall.length || result.hits + result.misses || 1),
             )}
             correctCount={result.hits}
+            wrongCount={result.falseAlarms}
             totalCount={itemsToRecall.length || result.hits + result.misses}
             onGoHome={goHome}
           />

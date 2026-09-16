@@ -6,9 +6,10 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
+import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
-import { scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
+import { penalizedAccuracy, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -152,17 +153,23 @@ function QuickTapPageInner() {
     const isHit = item.isTarget && tapped;
     const isFalseAlarm = !item.isTarget && tapped;
 
-    await logEvent({
-      sessionId: activeSession?.id ?? '',
-      patientId: currentPatient.id,
-      gameType: 'quick_tap',
-      difficultyLevel: difficulty.currentLevel,
-      roundNumber: round,
-      isCorrect: isHit,
-      responseTimeMs: null,
-      eventTimestamp: new Date().toISOString(),
-      metadata: { objectId: item.object.id, isTarget: item.isTarget, tapped, isFalseAlarm },
-    });
+    try {
+      await logEvent({
+        sessionId: activeSession?.id ?? '',
+        patientId: currentPatient.id,
+        gameType: 'quick_tap',
+        difficultyLevel: difficulty.currentLevel,
+        roundNumber: round,
+        isCorrect: isHit,
+        responseTimeMs: null,
+        eventTimestamp: new Date().toISOString(),
+        metadata: { objectId: item.object.id, isTarget: item.isTarget, tapped, isFalseAlarm },
+      });
+    } catch (err) {
+      // Callers advance to the next item only after this resolves; a
+      // rejected write must not freeze the round on one picture.
+      console.error('SMRITI: quick tap event not saved', err);
+    }
   };
 
   useEffect(() => {
@@ -205,7 +212,9 @@ function QuickTapPageInner() {
 
   const summary = scoreQuickTapRound(sequence.map((s) => ({ isTarget: s.isTarget, tapped: s.tapped })));
   const totalTargets = sequence.filter((s) => s.isTarget).length;
-  const hitRate = totalTargets > 0 ? summary.hits / totalTargets : 0;
+  // Wrong taps (false alarms) take points back, so tapping every picture
+  // no longer scores full marks (issue #4).
+  const hitRate = penalizedAccuracy(summary.hits, summary.falseAlarms, totalTargets);
   const stars = starsFromRate(hitRate);
 
   const keepGoing = () => {
@@ -256,6 +265,7 @@ function QuickTapPageInner() {
             </span>
             <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
             <BigButton label={t('game.start')} variant="primary" onClick={startRound} />
+            <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
           </div>
         ) : null}
 
@@ -305,6 +315,9 @@ function QuickTapPageInner() {
             <p className="font-serif-display text-patient-heading text-ink">
               {t('game.quickTap.hits', { count: summary.hits })}
             </p>
+            <p className="text-patient-body text-ink-muted" data-testid="quick-tap-extra">
+              {t('game.extraTaps', { count: summary.falseAlarms })}
+            </p>
             <BigButton label={t('game.anotherRound')} variant="primary" onClick={keepGoing} />
             <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
@@ -316,6 +329,7 @@ function QuickTapPageInner() {
             stars={stars}
             correctCount={summary.hits}
             totalCount={totalTargets}
+            wrongCount={summary.falseAlarms}
             onGoHome={goHome}
           />
         ) : null}

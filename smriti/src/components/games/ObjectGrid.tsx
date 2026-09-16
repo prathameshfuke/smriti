@@ -18,6 +18,8 @@ export interface ObjectGridProps {
   /** Index just tapped right/wrong, briefly flashed, then cleared by the caller. */
   flashIndex?: number;
   flashCorrect?: boolean;
+  /** Recall-phase question text, shown instead of the target picture. */
+  targetLabel?: string;
 }
 
 function columnsFor(totalTiles: number): string {
@@ -38,22 +40,20 @@ export default function ObjectGrid({
   targetObject,
   flashIndex,
   flashCorrect,
+  targetLabel,
 }: ObjectGridProps) {
   const tapEnabled = revealState === 'recall';
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div
-        className="flex flex-col items-center gap-1 rounded-tile border border-line200 bg-surface-card p-4"
-        style={{ backgroundColor: `${targetObject.categoryColor}1A` }}
-      >
-        <span className="text-4xl" aria-hidden="true">
-          {targetObject.emoji}
-        </span>
-        <span className="text-patient-body font-semibold text-ink">
-          {targetObject.name.en}
-        </span>
-      </div>
+      {/* No picture above the grid in either phase (issue #4): during
+          reveal the tiles themselves show it, and during recall showing it
+          would let the patient match by sight instead of from memory. */}
+      {tapEnabled ? (
+        <p className="text-center font-serif-display text-patient-heading text-ink" data-testid="object-grid-question">
+          {targetLabel ?? targetObject.name.en}
+        </p>
+      ) : null}
 
       <div className={`grid ${columnsFor(totalTiles)} gap-4`}>
         {Array.from({ length: totalTiles }).map((_, i) => {

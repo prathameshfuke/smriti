@@ -7,6 +7,7 @@ import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import PathCanvas from '@/components/games/PathCanvas';
 import SessionComplete from '@/components/games/SessionComplete';
+import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
@@ -69,10 +70,14 @@ function PathMatchPageInner() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [playStartedAt, setPlayStartedAt] = useState(0);
 
+  // Random per page visit so the same level never replays the same board
+  // across sessions or rounds (issue #4: "shows the same level").
+  const [sessionVariant] = useState(() => Math.floor(Math.random() * 1000));
+
   const level = LEVELS[difficulty.currentLevel] ?? LEVELS[1];
   const points = useMemo(
-    () => generatePointLayout(level.numPoints, difficulty.currentLevel),
-    [level.numPoints, difficulty.currentLevel],
+    () => generatePointLayout(level.numPoints, difficulty.currentLevel, sessionVariant + round),
+    [level.numPoints, difficulty.currentLevel, sessionVariant, round],
   );
 
   useEffect(() => {
@@ -236,6 +241,7 @@ function PathMatchPageInner() {
               ))}
             </div>
             <BigButton label={t('game.start')} variant="primary" onClick={startPlaying} />
+            <GameTutorial gameId="path_match" steps={TUTORIALS.path_match} />
           </div>
         ) : null}
 

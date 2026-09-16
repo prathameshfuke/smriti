@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { GAME_CONFIG } from "./config";
 import { cn } from "@/lib/utils";
 import { PlayCircle, Share2, Volume2, Square } from "lucide-react";
-import { Howl } from "howler";
+import { Howl, Howler } from "howler";
 import { useInterval } from "@/hooks/useInterval";
 import { useTimeout } from "@/hooks/useTimeout";
 import confetti from "canvas-confetti";
@@ -19,7 +19,7 @@ import { submitScoreToLeaderboard } from "@/lib/leaderboard";
 import { narrate } from "@/lib/audio/narrate";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { isUILanguage } from "@/lib/i18n/languages";
-import { starsFromRate } from "@/lib/engine/scoring";
+import { penalizedAccuracy, starsFromRate } from "@/lib/engine/scoring";
 import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
 import {
     getProgressInsights,
@@ -35,6 +35,8 @@ import {
 // 定义游戏状态类型
 // 游戏状态：空闲、进行中、已完成
 type GameState = "idle" | "playing" | "complete";
+
+const TUTORIAL_SEEN_KEY = "smriti.tutorialSeen.n_back";
 // 试验刺激类型：位置和字母
 type TrialStimuli = { position: number; letter: string };
 // 用户响应类型：位置匹配和音频匹配
@@ -68,10 +70,38 @@ function isCorrectTrialResult(result: TrialResult) {
     );
 }
 
-function getOverallStats(results: TrialResult[]) {
+/**
+ * One score for stars, the "Overall performance" line and difficulty.
+ * Previously stars counted silent non-match trials as correct (so doing
+ * nothing earned ~2 stars) while the on-screen overall only counted matches
+ * caught (0%) — the two disagreed on the same screen (issue #4). Now: matches
+ * caught minus false alarms, over matches shown, floored at 0.
+ */
+function getOverallStats(results: TrialResult[], selectedTypes: ("position" | "audio")[] = ["position", "audio"]) {
     const correctResponses = results.filter(isCorrectTrialResult).length;
+    let hits = 0;
+    let matches = 0;
+    let falseAlarms = 0;
+    for (const r of results) {
+        if (selectedTypes.includes("position")) {
+            if (r.isPositionMatch) {
+                matches += 1;
+                if (r.response.positionMatch === true) hits += 1;
+            } else if (r.response.positionMatch === true) falseAlarms += 1;
+        }
+        if (selectedTypes.includes("audio")) {
+            if (r.isAudioMatch) {
+                matches += 1;
+                if (r.response.audioMatch === true) hits += 1;
+            } else if (r.response.audioMatch === true) falseAlarms += 1;
+        }
+    }
     const overallAccuracy =
-        results.length > 0 ? Math.round((correctResponses / results.length) * 100) : 0;
+        matches > 0
+            ? Math.round(penalizedAccuracy(hits, falseAlarms, matches) * 100)
+            : results.length > 0
+                ? Math.round(Math.max(0, 1 - falseAlarms / results.length) * 100)
+                : 0;
 
     return {
         correctResponses,
@@ -197,6 +227,10 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     const [isLoading, setIsLoading] = useState(false);
     const [showShareModal, setShowShareModal] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
+    /** Brief "Correct" / "Not quite" shown under the buttons after a tap. */
+    const [feedback, setFeedback] = useState<{ type: "position" | "audio"; correct: boolean } | null>(null);
+    const feedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const tileOffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [progressCard, setProgressCard] = useState<ProgressCardData | null>(null);
     
     // 添加一个状态来存储当前游戏会话的字母集
@@ -257,7 +291,8 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     // Floored 1-5 star rating for the results screen, from this session's
     // overall accuracy across every trial (same figure used for onComplete
     // and the progress-share card) — never reads as a zero-star session.
-    const nBackStars = starsFromRate(getOverallStats(results).overallAccuracy / 100);
+    const overallScore = getOverallStats(results, settings.selectedTypes).overallAccuracy;
+    const nBackStars = starsFromRate(overallScore / 100);
 
     // Narrate the challenge instructions aloud whenever the idle/start screen
     // is shown — this is the game's instruction moment, mirroring how the
@@ -281,6 +316,16 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
             difficulty: settings.selectedNBack >= 3 ? 'hard' : settings.selectedNBack >= 2 ? 'medium' : 'easy'
         });
         
+        // Mobile browsers keep Web Audio suspended until resumed inside a tap;
+        // the letters play later from a timer, so without this some phones
+        // never made a sound (issue #4).
+        try {
+            const ctx = (Howler as unknown as { ctx?: AudioContext }).ctx;
+            if (ctx && ctx.state !== "running") void ctx.resume();
+        } catch {
+            // No Web Audio: Howler falls back to HTML5 audio.
+        }
+
         setIsLoading(true);
         setGameState("idle");
         setCurrentTrial(0);
@@ -317,6 +362,19 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
 
     // 修改handleResponse方法
     const handleResponse = useCallback((type: "position" | "audio") => {
+        // Tapping used to only flash the button border, with no sign of
+        // whether the answer was right — it read as "the buttons do nothing"
+        // (issue #4). Judge the tap against N steps back, once per trial.
+        const key = type === "position" ? "positionMatch" : "audioMatch";
+        const current = trialHistory[trialHistory.length - 1];
+        const nBack = trialHistory[trialHistory.length - 1 - settings.selectedNBack];
+        if (current && currentResponse[key] === null) {
+            const isMatch = !!nBack && (type === "position" ? current.position === nBack.position : current.letter === nBack.letter);
+            setFeedback({ type, correct: isMatch });
+            if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+            feedbackTimerRef.current = setTimeout(() => setFeedback(null), 900);
+        }
+
         // 设置高亮状态
         if (type === "position") {
             setIsPositionHighlight(true);
@@ -340,7 +398,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
             
             return updatedResponse;
         });
-    }, []);
+    }, [trialHistory, currentResponse, settings.selectedNBack]);
 
     const evaluateResponse = useCallback((response: Response) => {
         const newResult = buildTrialResult(
@@ -358,7 +416,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     // 分享分数
     const shareScore = useCallback(() => {
         // 计算当前分数和准确率
-        const { correctResponses, overallAccuracy } = getOverallStats(results);
+        const { correctResponses, overallAccuracy } = getOverallStats(results, settings.selectedTypes);
         
         // 追踪分享事件
         analytics.social.share({
@@ -372,6 +430,11 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
         }
     }, [progressCard, results]);
     
+
+    useEffect(() => () => {
+        if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
+        if (tileOffTimerRef.current) clearTimeout(tileOffTimerRef.current);
+    }, []);
 
     // 添加键盘快捷键支持
     useEffect(() => {
@@ -396,6 +459,17 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
         };
 
         const tutorialButton = document.getElementById('tutorial-trigger-howtoplay');
+        // First visit on this device: open the walk-through automatically.
+        // Nothing on the page rendered that trigger id, so the tutorial was
+        // unreachable before (issue #4 asked for one).
+        try {
+            if (!window.localStorage.getItem(TUTORIAL_SEEN_KEY)) {
+                window.localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
+                queueMicrotask(() => setShowTutorial(true));
+            }
+        } catch {
+            // Storage blocked: the "How to play" button still opens it.
+        }
         if (tutorialButton) {
             tutorialButton.addEventListener('click', handleTutorialClick);
         }
@@ -483,7 +557,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
         // 计算游戏统计数据
         const gameDuration = gameStartTime > 0 ? Date.now() - gameStartTime : 0;
         const clearDurationMs = Math.max(0, Math.round(gameDuration - GAME_CONFIG.trials.startDelay));
-        const { correctResponses, overallAccuracy } = getOverallStats(finalResults);
+        const { correctResponses, overallAccuracy } = getOverallStats(finalResults, settings.selectedTypes);
         
         // 追踪游戏完成事件
         analytics.game.complete({
@@ -616,6 +690,14 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
         // 更新界面状态 - 只在需要时显示位置刺激
         if (settings.selectedTypes.includes("position")) {
             setActivePosition(finalStimuli.position);  // 显示位置刺激
+            // Turn the tile off before the next trial. It used to stay lit the
+            // whole interval, so the same square twice in a row looked like
+            // nothing had happened and the game seemed stuck.
+            if (tileOffTimerRef.current) clearTimeout(tileOffTimerRef.current);
+            tileOffTimerRef.current = setTimeout(
+                () => setActivePosition(null),
+                Math.max(500, settings.trialInterval - 700)
+            );
         } else {
             setActivePosition(null); // 不显示位置刺激
         }
@@ -686,6 +768,14 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
 
 
                             <div className="space-y-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowTutorial(true)}
+                                    style={{ minHeight: TOUCH_TARGET_MIN_PX }}
+                                    className="w-full rounded-tile text-patient-body focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                >
+                                    {t('howToPlay')}
+                                </Button>
                                 <ShimmerButton
                                     onClick={startGame}
                                     disabled={isLoading}
@@ -786,6 +876,17 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                     </Button>
                                 )}
                             </div>
+                            <p
+                                role="status"
+                                aria-live="polite"
+                                data-testid="n-back-feedback"
+                                className={cn(
+                                    "mt-4 min-h-[1.75rem] text-patient-body font-semibold",
+                                    feedback?.correct ? "text-success" : "text-warning"
+                                )}
+                            >
+                                {feedback ? (feedback.correct ? `✓ ${t('correct')}` : t('incorrect')) : ""}
+                            </p>
                         </div>
                     ) : (
                         <div className="text-center py-8">
@@ -820,14 +921,11 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                             </h3>
                                             <div className="flex flex-col items-center">
                                                 <div className="text-3xl font-bold text-ink">
-                                                    {t('accuracy', {
-                                                        correct: accuracy.position.correct,
-                                                        total: accuracy.position.total
-                                                    })}
+                                                    {accuracy.position.correct}/{accuracy.position.total}
                                                 </div>
                                                 <div className="text-patient-sm text-ink-muted">
-                                                    {t('accuracyPercent', {
-                                                        percent: accuracy.position.total > 0
+                                                    {t('accuracy')}{' '}{t('accuracyPercent', {
+                                                        value: accuracy.position.total > 0
                                                             ? Math.round(
                                                                 (accuracy.position.correct /
                                                                     accuracy.position.total) *
@@ -859,18 +957,15 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                             )}
                                         >
                                             <h3 className="font-semibold text-primary">
-                                                {t('sound')}
+                                                {t('audio')}
                                             </h3>
                                             <div className="flex flex-col items-center">
                                                 <div className="text-3xl font-bold text-ink">
-                                                    {t('accuracy', {
-                                                        correct: accuracy.audio.correct,
-                                                        total: accuracy.audio.total
-                                                    })}
+                                                    {accuracy.audio.correct}/{accuracy.audio.total}
                                                 </div>
                                                 <div className="text-patient-sm text-ink-muted">
-                                                    {t('accuracyPercent', {
-                                                        percent: accuracy.audio.total > 0
+                                                    {t('accuracy')}{' '}{t('accuracyPercent', {
+                                                        value: accuracy.audio.total > 0
                                                             ? Math.round(
                                                                 (accuracy.audio.correct /
                                                                     accuracy.audio.total) *
@@ -901,19 +996,8 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                                                 <span className="font-medium">
                                                     {t('overallPerformance')}
                                                 </span>
-                                                <span className="font-bold">
-                                                    {Math.round(
-                                                        ((accuracy.position
-                                                            .correct +
-                                                            accuracy.audio
-                                                                .correct) /
-                                                        (accuracy.position
-                                                            .total +
-                                                            accuracy.audio
-                                                                .total || 1)) *
-                                                        100
-                                                    )}
-                                                    %
+                                                <span className="font-bold" data-testid="n-back-overall">
+                                                    {t('accuracyPercent', { value: overallScore })}
                                                 </span>
                                             </div>
                                         )}
