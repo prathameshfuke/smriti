@@ -6,13 +6,16 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
+import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
 import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
-import { scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
+import { penalizedAccuracy, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { quickTapFaster } from '@/lib/games/pacing';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -24,16 +27,18 @@ interface LevelParams {
   targetPct: number;
 }
 
-/** Display speed, round length and target frequency, per the RVP/Double Decision table. */
+/** Display speed, round length and target frequency, per the RVP/Double Decision table.
+ * Display time is sped up ~10% (clinical feedback: this game felt sluggish) via
+ * `quickTapFaster` — the sole exception to every other game's slow-down. */
 const LEVELS: Record<number, LevelParams> = {
-  1: { displayMs: 2000, itemCount: 15, targetPct: 0.4 },
-  2: { displayMs: 1500, itemCount: 15, targetPct: 0.4 },
-  3: { displayMs: 1500, itemCount: 20, targetPct: 0.35 },
-  4: { displayMs: 1200, itemCount: 20, targetPct: 0.35 },
-  5: { displayMs: 1000, itemCount: 25, targetPct: 0.3 },
-  6: { displayMs: 800, itemCount: 25, targetPct: 0.3 },
-  7: { displayMs: 600, itemCount: 30, targetPct: 0.25 },
-  8: { displayMs: 500, itemCount: 30, targetPct: 0.25 },
+  1: { displayMs: quickTapFaster(2000), itemCount: 15, targetPct: 0.4 },
+  2: { displayMs: quickTapFaster(1500), itemCount: 15, targetPct: 0.4 },
+  3: { displayMs: quickTapFaster(1500), itemCount: 20, targetPct: 0.35 },
+  4: { displayMs: quickTapFaster(1200), itemCount: 20, targetPct: 0.35 },
+  5: { displayMs: quickTapFaster(1000), itemCount: 25, targetPct: 0.3 },
+  6: { displayMs: quickTapFaster(800), itemCount: 25, targetPct: 0.3 },
+  7: { displayMs: quickTapFaster(600), itemCount: 30, targetPct: 0.25 },
+  8: { displayMs: quickTapFaster(500), itemCount: 30, targetPct: 0.25 },
 };
 
 interface SequenceItem {
@@ -107,7 +112,7 @@ function QuickTapPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
-    void narrate(t('game.quickTap.instruction'), language, isOnline);
+    void narrate(t('game.quickTap.instruction'), language, isOnline, GAME_SPEECH_RATE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
@@ -152,17 +157,23 @@ function QuickTapPageInner() {
     const isHit = item.isTarget && tapped;
     const isFalseAlarm = !item.isTarget && tapped;
 
-    await logEvent({
-      sessionId: activeSession?.id ?? '',
-      patientId: currentPatient.id,
-      gameType: 'quick_tap',
-      difficultyLevel: difficulty.currentLevel,
-      roundNumber: round,
-      isCorrect: isHit,
-      responseTimeMs: null,
-      eventTimestamp: new Date().toISOString(),
-      metadata: { objectId: item.object.id, isTarget: item.isTarget, tapped, isFalseAlarm },
-    });
+    try {
+      await logEvent({
+        sessionId: activeSession?.id ?? '',
+        patientId: currentPatient.id,
+        gameType: 'quick_tap',
+        difficultyLevel: difficulty.currentLevel,
+        roundNumber: round,
+        isCorrect: isHit,
+        responseTimeMs: null,
+        eventTimestamp: new Date().toISOString(),
+        metadata: { objectId: item.object.id, isTarget: item.isTarget, tapped, isFalseAlarm },
+      });
+    } catch (err) {
+      // Callers advance to the next item only after this resolves; a
+      // rejected write must not freeze the round on one picture.
+      console.error('SMRITI: quick tap event not saved', err);
+    }
   };
 
   useEffect(() => {
@@ -205,7 +216,9 @@ function QuickTapPageInner() {
 
   const summary = scoreQuickTapRound(sequence.map((s) => ({ isTarget: s.isTarget, tapped: s.tapped })));
   const totalTargets = sequence.filter((s) => s.isTarget).length;
-  const hitRate = totalTargets > 0 ? summary.hits / totalTargets : 0;
+  // Wrong taps (false alarms) take points back, so tapping every picture
+  // no longer scores full marks (issue #4).
+  const hitRate = penalizedAccuracy(summary.hits, summary.falseAlarms, totalTargets);
   const stars = starsFromRate(hitRate);
 
   const keepGoing = () => {
@@ -251,11 +264,12 @@ function QuickTapPageInner() {
         {phase === 'instruction' && target ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
             <p className="text-patient-body text-ink-muted">{t('game.quickTap.targetIs')}</p>
-            <span className="text-[96px] leading-none" aria-hidden="true">
+            <span data-scalable-icon className="text-[96px] leading-none" aria-hidden="true">
               {target.emoji}
             </span>
             <p className="font-serif-display text-patient-heading text-ink">{objectName(target, language)}</p>
             <BigButton label={t('game.start')} variant="primary" onClick={startRound} />
+            <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} onReady={startRound} />
           </div>
         ) : null}
 
@@ -266,7 +280,7 @@ function QuickTapPageInner() {
                 {t('game.quickTap.itemOf', { n: Math.min(itemIndex + 1, sequence.length), total: sequence.length })}
               </p>
               {target ? (
-                <span className="shrink-0 text-[48px] leading-none" aria-hidden="true">
+                <span data-scalable-icon className="shrink-0 text-[48px] leading-none" aria-hidden="true">
                   {target.emoji}
                 </span>
               ) : null}
@@ -305,6 +319,9 @@ function QuickTapPageInner() {
             <p className="font-serif-display text-patient-heading text-ink">
               {t('game.quickTap.hits', { count: summary.hits })}
             </p>
+            <p className="text-patient-body text-ink-muted" data-testid="quick-tap-extra">
+              {t('game.extraTaps', { count: summary.falseAlarms })}
+            </p>
             <BigButton label={t('game.anotherRound')} variant="primary" onClick={keepGoing} />
             <BigButton label={t('game.finishSession')} variant="secondary" onClick={finishSession} />
           </div>
@@ -316,6 +333,7 @@ function QuickTapPageInner() {
             stars={stars}
             correctCount={summary.hits}
             totalCount={totalTargets}
+            wrongCount={summary.falseAlarms}
             onGoHome={goHome}
           />
         ) : null}

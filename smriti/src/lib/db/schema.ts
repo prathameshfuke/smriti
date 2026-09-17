@@ -1,4 +1,7 @@
 import Dexie, { type Table } from 'dexie';
+import { ENCRYPTED_FIELDS } from '@/lib/db/crypto/fields';
+import { createEncryptionMiddleware } from '@/lib/db/crypto/middleware';
+import { type KeyringEntry, loadOrCreateStorageKey, migrateToEncrypted } from '@/lib/db/crypto/keys';
 import type { AckMethod, CaregiverRole, GameType, MemoryBankCategory, ReminderType } from '@/lib/supabase/types';
 
 /**
@@ -78,6 +81,23 @@ export interface LocalReminderSchedule {
   /** When the reminder was first set up. Adherence never counts days before
    * it. Absent on rows saved by older builds, which fall back to `updatedAt`. */
   createdAt?: string;
+  /*
+   * Appointment-only fields (see lib/engine/appointments.ts). For a dated
+   * appointment `timeOfDay` is the appointment time and `daysOfWeek` is `[]`.
+   * Not indexed, so no Dexie version bump. Absent on every other type.
+   */
+  /** `YYYY-MM-DD`, the patient's local calendar day. */
+  appointmentDate?: string;
+  /** Free text: "the CHC", "Dr. Borah". */
+  facilityName?: string;
+  /** Free text: how to get there. */
+  locationNotes?: string;
+  /** Free text: documents or items to bring. */
+  bringNotes?: string;
+  /** `HH:MM` on the day before; absent = no day-before prompt. */
+  remindDayBeforeTime?: string;
+  /** `HH:MM` on the day, at or before the appointment; absent = no day-of prompt. */
+  remindDayOfTime?: string;
 }
 
 export interface LocalReminderAck {
@@ -253,6 +273,11 @@ export class SmritiDB extends Dexie {
   /** Out-of-line keys (see `DeviceTrustToken`'s own doc comment) — always
    * read/written via an explicit key, never `db.deviceTrust.add()`. */
   deviceTrust!: Table<DeviceTrustToken, string>;
+  /** Out-of-line keys. Holds the sealed storage key — see lib/db/crypto/keys.ts. */
+  keyring!: Table<KeyringEntry, string>;
+
+  /** The unsealed field-encryption key. Memory only, loaded on every open. */
+  private storageKey: Uint8Array | null = null;
 
   constructor() {
     super(DB_NAME);
@@ -300,6 +325,28 @@ export class SmritiDB extends Dexie {
     this.version(6).stores({
       patientPhotos: 'patientId',
     });
+    // New store only. The sealed key for field-level encryption at rest.
+    this.version(7).stores({
+      keyring: '',
+    });
+
+    // Personal and health fields are encrypted before they reach IndexedDB
+    // (see lib/db/crypto/). The key is loaded in `ready`, which Dexie awaits
+    // before running any queued query, so nothing reads or writes early.
+    // Sticky, so it runs again whenever the database reopens — including
+    // after deleteDatabase(), which starts over with a fresh key.
+    this.use(createEncryptionMiddleware(ENCRYPTED_FIELDS, () => this.storageKey));
+    this.on(
+      'ready',
+      async (vipDb) => {
+        this.storageKey = null;
+        const keyring = vipDb.table<KeyringEntry, string>('keyring');
+        const { key } = await loadOrCreateStorageKey(vipDb, keyring);
+        this.storageKey = key;
+        await migrateToEncrypted(vipDb, keyring, ENCRYPTED_FIELDS, key);
+      },
+      true,
+    );
   }
 
   /** Drops the backing store. Exposed for test isolation. */

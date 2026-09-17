@@ -256,7 +256,7 @@ export default function DualNBackClearLeaderboard() {
                                             <div className="flex items-center gap-2">
                                                 <span>{entry.playerName}</span>
                                                 {isMe && (
-                                                    <span className="text-[10px] uppercase bg-primary text-ink-inverse px-1.5 py-0.5 rounded-control font-bold">
+                                                    <span className="text-[0.625rem] uppercase bg-primary text-ink-inverse px-1.5 py-0.5 rounded-control font-bold">
                                                         {t('you')}
                                                     </span>
                                                 )}

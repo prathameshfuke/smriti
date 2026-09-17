@@ -3,7 +3,7 @@
 ---
 
 ## Base URL
-- **Production:** `https://smriti-app.vercel.app/api`
+- **Production:** `https://smriti-backup.vercel.app/api`
 - **Development:** `http://localhost:3000/api`
 
 ## Authentication

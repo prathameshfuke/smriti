@@ -1,4 +1,5 @@
 import { useRef, useCallback } from 'react';
+import { slower, SLOWDOWN } from '@/lib/games/pacing';
 
 export type GamePhase = 'idle' | 'watching' | 'tracking' | 'selecting' | 'completed';
 
@@ -14,14 +15,15 @@ export interface Fish {
     isWrongSelection: boolean;
 }
 
-/** Compute difficulty parameters from a level number */
+/** Compute difficulty parameters from a level number. Speed slowed and both
+ * timing windows extended 20% (pacing.SLOWDOWN) per clinical feedback. */
 export function getLevelParams(level: number) {
     return {
         fishCount: Math.min(4 + level, 20),                              // 5,6,7…grows by 1 per level
         targetCount: Math.min(Math.max(1, 1 + Math.floor(level / 3)), 6), // grows every 3 levels
-        speed: Math.min(0.8 + level * 0.1, 3.0),                         // gentler speed ramp
-        glowDuration: 3500,                                               // fixed observation time
-        trackDuration: Math.min(3000 + level * 500, 10000),               // longer = harder (more time to lose track)
+        speed: Math.min(0.8 + level * 0.1, 3.0) / SLOWDOWN,              // gentler speed ramp
+        glowDuration: slower(3500),                                       // fixed observation time
+        trackDuration: slower(Math.min(3000 + level * 500, 10000)),       // longer = harder (more time to lose track)
     };
 }
 

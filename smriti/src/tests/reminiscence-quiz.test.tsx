@@ -32,7 +32,7 @@ vi.mock('@/lib/ai/llm-client', async (importOriginal) => {
   return { ...actual, callLLM: vi.fn() };
 });
 
-vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
+vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 vi.mock('@/lib/i18n/provider', () => ({
   useTranslation: () => ({
     t: (key: string, vars?: Record<string, string | number>) =>

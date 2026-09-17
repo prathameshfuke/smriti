@@ -1,6 +1,7 @@
 'use client';
 
 import type { SmritiObject } from '@/lib/engine/objects';
+import { useTapSelect } from '@/hooks/useTapSelect';
 
 export interface MemoryTile {
   object: SmritiObject;
@@ -35,11 +36,14 @@ function columnsFor(totalTiles: number): string {
 const TILE_MIN_PX = 92;
 
 export default function MemoryGrid({ tiles, faceUpIndices, onTileSelect, inputLocked }: MemoryGridProps) {
+  const tapSelect = useTapSelect();
+
   return (
     <div className={`grid ${columnsFor(tiles.length)} gap-4`}>
       {tiles.map((tile, i) => {
         const isFaceUp = tile.matched || faceUpIndices.includes(i);
         const disabled = tile.matched || inputLocked || faceUpIndices.includes(i);
+        const tap = tapSelect(() => onTileSelect(i), !disabled);
 
         return (
           <button
@@ -47,8 +51,9 @@ export default function MemoryGrid({ tiles, faceUpIndices, onTileSelect, inputLo
             type="button"
             disabled={disabled}
             aria-label={isFaceUp ? tile.object.name.en : `Card ${i + 1}`}
-            onClick={() => onTileSelect(i)}
+            {...tap}
             style={{
+              ...tap.style,
               minHeight: TILE_MIN_PX,
               minWidth: TILE_MIN_PX,
               backgroundColor: isFaceUp ? `${tile.object.categoryColor}33` : undefined,

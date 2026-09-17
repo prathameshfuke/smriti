@@ -58,6 +58,16 @@ export function computeDPrime(
   return (hitRate - 0.5) * 5.55 - (falseAlarmRate - 0.5) * 5.55;
 }
 
+/**
+ * Hit rate with each wrong pick taking one correct pick back, floored at 0.
+ * Plain hits/total let a patient tap everything and still score 100%
+ * (issue #4: wrong options in Market List / Quick Tap had no effect).
+ */
+export function penalizedAccuracy(hits: number, falseAlarms: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.max(0, Math.min(1, (hits - falseAlarms) / total));
+}
+
 /** Converts a 0-1 success rate into a 1-5 star rating; never rounds down to 0. */
 export function starsFromRate(rate: number): number {
   return Math.max(1, Math.min(5, Math.round(rate * 5)));

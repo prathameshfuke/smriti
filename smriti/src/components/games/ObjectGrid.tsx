@@ -2,6 +2,7 @@
 
 import type { SmritiObject } from '@/lib/engine/objects';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { useTapSelect } from '@/hooks/useTapSelect';
 
 export type RevealState = 'reveal' | 'recall';
 
@@ -18,6 +19,8 @@ export interface ObjectGridProps {
   /** Index just tapped right/wrong, briefly flashed, then cleared by the caller. */
   flashIndex?: number;
   flashCorrect?: boolean;
+  /** Recall-phase question text, shown instead of the target picture. */
+  targetLabel?: string;
 }
 
 function columnsFor(totalTiles: number): string {
@@ -38,22 +41,21 @@ export default function ObjectGrid({
   targetObject,
   flashIndex,
   flashCorrect,
+  targetLabel,
 }: ObjectGridProps) {
   const tapEnabled = revealState === 'recall';
+  const tapSelect = useTapSelect();
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div
-        className="flex flex-col items-center gap-1 rounded-tile border border-line200 bg-surface-card p-4"
-        style={{ backgroundColor: `${targetObject.categoryColor}1A` }}
-      >
-        <span className="text-4xl" aria-hidden="true">
-          {targetObject.emoji}
-        </span>
-        <span className="text-patient-body font-semibold text-ink">
-          {targetObject.name.en}
-        </span>
-      </div>
+      {/* No picture above the grid in either phase (issue #4): during
+          reveal the tiles themselves show it, and during recall showing it
+          would let the patient match by sight instead of from memory. */}
+      {tapEnabled ? (
+        <p className="text-center font-serif-display text-patient-heading text-ink" data-testid="object-grid-question">
+          {targetLabel ?? targetObject.name.en}
+        </p>
+      ) : null}
 
       <div className={`grid ${columnsFor(totalTiles)} gap-4`}>
         {Array.from({ length: totalTiles }).map((_, i) => {
@@ -71,14 +73,17 @@ export default function ObjectGrid({
               : 'ring-2 ring-warning bg-warning/20'
             : '';
 
+          const tap = tapSelect(() => onTileSelect(i), tapEnabled);
+
           return (
             <button
               key={i}
               type="button"
               disabled={!tapEnabled}
               aria-label={isOpen && obj ? obj.name.en : `Tile ${i + 1}`}
-              onClick={() => tapEnabled && onTileSelect(i)}
+              {...tap}
               style={{
+                ...tap.style,
                 // Larger than the app-wide touch-target floor: these tiles are
                 // the whole point of the game, reported as too small to
                 // comfortably see and tap.

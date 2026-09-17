@@ -48,6 +48,21 @@ export function DialogTrigger({
 
 export function DialogContent({ className, children }: { className?: string; children: React.ReactNode }) {
   const ctx = React.useContext(DialogContext);
+  const open = !!ctx?.open;
+  const setOpen = ctx?.setOpen;
+
+  // Escape closes, like any modal. Without it (and without the close button
+  // below) the only way out was tapping the dimmed backdrop, which patients
+  // did not discover — the N-Back tutorial looked like a trap.
+  React.useEffect(() => {
+    if (!open || !setOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+
   if (!ctx?.open) return null;
   return (
     <div
@@ -57,9 +72,24 @@ export function DialogContent({ className, children }: { className?: string; chi
       onClick={() => ctx.setOpen(false)}
     >
       <div
-        className={cn('w-full max-w-md rounded-card border border-line200 bg-white p-6 shadow-xl', className)}
+        className={cn(
+          // max-h + scroll: at Large text a long dialog (the N-Back tutorial)
+          // outgrew the screen and its Next/Close buttons were cut off.
+          'max-h-full w-full max-w-md overflow-y-auto overscroll-contain rounded-card border border-line200 bg-white p-6 shadow-xl',
+          className,
+        )}
         onClick={(e) => e.stopPropagation()}
       >
+        <div className="-mr-2 -mt-2 flex justify-end">
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={() => ctx.setOpen(false)}
+            className="flex h-12 w-12 items-center justify-center rounded-full text-2xl text-ink-muted hover:bg-surface-muted focus-visible:outline focus-visible:outline-4 focus-visible:outline-primary"
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </div>
         {children}
       </div>
     </div>

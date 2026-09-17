@@ -163,14 +163,14 @@ export default function LandingPage() {
         aria-label="Main"
         className="sticky top-0 z-40 border-b border-line200 bg-paper50/95 backdrop-blur-sm"
       >
-        <div className="mx-auto flex h-18 max-w-6xl items-center justify-between px-5 md:px-8">
+        <div className="mx-auto flex min-h-18 max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-2 md:px-8">
           <span className="flex items-center gap-2.5 font-serif-display text-2xl font-medium">
             <Image src={appIcon} alt="" width={28} height={28} className="h-7 w-7" priority />
             SMRITI
           </span>
           <Link
             href="/login"
-            className="inline-flex min-h-12 items-center justify-center rounded-control bg-terra600 px-5 text-base font-bold text-paper50 transition-colors hover:bg-terra700"
+            className="inline-flex min-h-12 shrink-0 items-center justify-center whitespace-nowrap rounded-control bg-terra600 px-5 text-base font-bold text-paper50 transition-colors hover:bg-terra700"
           >
             Get started
           </Link>
@@ -321,18 +321,11 @@ export default function LandingPage() {
             <p className="mt-3 max-w-[40ch] text-base leading-relaxed text-paper50/75">
               SMRITI supports cognitive engagement. It does not diagnose or treat dementia.
             </p>
-            <a
-              href="https://github.com/prathameshfuke/smriti/blob/main/LICENSE"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex min-h-10 items-center text-base text-paper50/80 underline decoration-paper50/30 underline-offset-4 hover:text-paper50"
-            >
-              MIT License
-            </a>
+            <p className="mt-2 text-base text-paper50/80">Proprietary software. All rights reserved.</p>
           </div>
         </div>
         <p className="mx-auto mt-12 max-w-6xl border-t border-paper50/15 pt-6 text-sm text-paper50/65">
-          © 2026 SMRITI. Made with Bhashini (MeitY) and LGBRIMH Tezpur.
+          © 2026 SMRITI. All rights reserved. Made with Bhashini (MeitY) and LGBRIMH Tezpur.
         </p>
       </footer>
     </main>

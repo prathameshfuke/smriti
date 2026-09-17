@@ -306,7 +306,7 @@ When a new screen needs a pattern not covered here: match the nearest existing c
 
 ## Implementation Log (new icon assets wired in)
 
-- **Source**: `appassests/` (24 PNGs, 512×512, user-supplied). Inspected every one, matched by filename to its slot, and wired each in.
+- **Source**: `appassests/` (24 PNGs, 512×512, user-supplied). Inspected every one, matched by filename to its slot, and wired each in. The source folder was later removed: every file is an exact copy of the one in `public/images/`.
 - **15 game illustrations** (`game-*.png`) exactly matched every existing `game-*.svg` slot by name. Copied into `public/images/`, removed the old SVGs, and updated every reference (`app/app/page.tsx`'s `GAMES` array, the landing page's game grid and its patient-home preview) from `.svg` to `.png`. `GameTile`/`illustrationSrc` already took a plain path string, so no component change was needed.
 - **4 reminder-type icons** (`activity`, `appointment`, `hydration`, `medication.png`) replaced the emoji in `REMINDER_ICON` (`components/ui/ReminderCard.tsx`), used only by Routine Recall's picture cards (the reminder overlay itself stayed emoji-free per the earlier redesign pass). Copied to `public/images/reminders/`.
 - **5 single-purpose icons**, matched to the one place each name unambiguously describes:

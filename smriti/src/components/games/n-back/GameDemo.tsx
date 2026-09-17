@@ -9,6 +9,7 @@ import { Volume2, Square, CheckCircle, XCircle, Brain, ChevronLeft, ChevronRight
 import { Howl } from "howler";
 import { useTranslations, useLocale } from "next-intl";
 import { analytics } from "@/lib/analytics";
+import { useTapSelect } from "@/hooks/useTapSelect";
 
 // 互动教程序列：1-back逻辑，与实际游戏一致
 const TUTORIAL_SEQUENCE = [
@@ -58,7 +59,8 @@ interface GameDemoProps {
 export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps) {
     const t = useTranslations('games.dualNBack.gameUI.tutorial');
     const locale = useLocale();
-    
+    const tapSelect = useTapSelect();
+
     const [currentStep, setCurrentStep] = useState(0);
     const [userResponse, setUserResponse] = useState<{ position: boolean; audio: boolean }>({
         position: false,
@@ -346,7 +348,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                     {isWaitingForUser && (
                         <div className="flex justify-center gap-4">
                             <Button
-                                onClick={() => handleUserClick('position')}
+                                {...tapSelect(() => handleUserClick('position'), !userResponse.position)}
                                 variant={userResponse.position ? "default" : "outline"}
                                 className={cn(
                                     "flex items-center gap-2 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
@@ -364,7 +366,7 @@ export default function GameDemo({ isOpen, onClose, onComplete }: GameDemoProps)
                                 )}
                             </Button>
                             <Button
-                                onClick={() => handleUserClick('audio')}
+                                {...tapSelect(() => handleUserClick('audio'), !userResponse.audio)}
                                 variant={userResponse.audio ? "default" : "outline"}
                                 className={cn(
                                     "flex items-center gap-2 rounded-tile text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",

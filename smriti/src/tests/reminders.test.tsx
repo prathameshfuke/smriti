@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { db, type LocalReminderSchedule } from '@/lib/db/schema';
+import { toHHMM } from '@/lib/supabase/types';
 import {
   generateDefaultHydrationSchedule,
   getRemindersDueNow,
@@ -193,5 +194,12 @@ describe('playAudio', () => {
     expect(() => playAudio('', 'Time for your medicine', 'en')).not.toThrow();
 
     Object.defineProperty(window, 'speechSynthesis', { value: original, configurable: true });
+  });
+});
+
+describe('toHHMM', () => {
+  it('trims seconds from Postgres TIME values', () => {
+    expect(toHHMM('08:00:00')).toBe('08:00');
+    expect(toHHMM('14:30')).toBe('14:30');
   });
 });

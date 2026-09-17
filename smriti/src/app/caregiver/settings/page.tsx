@@ -7,6 +7,8 @@ import { buildQueueItem } from '@/lib/db/syncQueue';
 import type { UILanguage } from '@/lib/i18n/languages';
 import { useRouter } from 'next/navigation';
 import LanguagePicker from '@/components/layout/LanguagePicker';
+import DisplaySizeSettings from '@/components/caregiver/DisplaySizeSettings';
+import ZoomLockSettings from '@/components/caregiver/ZoomLockSettings';
 import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
 import PinDots from '@/components/ui/PinDots';
@@ -14,6 +16,7 @@ import PageHeader from '@/components/ui/PageHeader';
 import Panel, { buttonClass } from '@/components/ui/Panel';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { db, SmritiDB } from '@/lib/db/schema';
+import { syncAllPatients } from '@/lib/db/sync';
 import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -172,9 +175,9 @@ export default function CaregiverSettingsPage() {
    * Supabase alone left the local Dexie profile intact, so the caregiver
    * was let straight back in on the very next PIN entry — logout did
    * nothing a caregiver could observe. Game telemetry/session tables are
-   * untouched: this device's local caregiver+patient *profile* is what
-   * gets cleared, not played progress, which stays queued to sync once
-   * someone logs back in. A real re-login pulls the caregiver and patient
+   * untouched: this device's local caregiver+patient *profile* (plus the
+   * private caches listed below) is what gets cleared, not played progress,
+   * which stays queued to sync once someone logs back in. A real re-login pulls the caregiver and patient
    * back down from the server — this does not require re-entering patient
    * data, only `deleteAllData` below does.
    *
@@ -188,12 +191,33 @@ export default function CaregiverSettingsPage() {
    * so the PIN's freshness check must not treat this session as still live.
    */
   const logOut = async () => {
+    // Best-effort flush so this device's currentDifficulty/progress reaches
+    // the server before the local copy is wiped below — otherwise the next
+    // login's server pull has nothing but a stale currentDifficulty to hand
+    // back, and the caregiver sees the patient's level reset (#19). Must run
+    // BEFORE signOut(): syncAllPatients() needs the still-live session to
+    // authenticate the request, and signOut() clears it.
+    await syncAllPatients().catch(() => {});
     await createBrowserClient().auth.signOut();
-    await db.transaction('rw', db.caregivers, db.patients, db.reminderSchedules, async () => {
-      await db.caregivers.clear();
-      await db.patients.clear();
-      await db.reminderSchedules.clear();
-    });
+    // Also the private caches that can't be synced but aren't progress either:
+    // companion Q&A, pulled family messages and generated quizzes. The next
+    // caregiver to sign in on this device must not see them; the server
+    // copies come back on the next pull, and quizzes are regenerated.
+    // Memory Bank entries, photos and telemetry stay: they can hold edits not
+    // synced yet, they are only ever read for the signed-in patient, and they
+    // are encrypted at rest (lib/db/crypto/fields.ts).
+    await db.transaction(
+      'rw',
+      [db.caregivers, db.patients, db.reminderSchedules, db.aiConversationLog, db.familyMessages, db.reminiscenceQuizzes],
+      async () => {
+        await db.caregivers.clear();
+        await db.patients.clear();
+        await db.reminderSchedules.clear();
+        await db.aiConversationLog.clear();
+        await db.familyMessages.clear();
+        await db.reminiscenceQuizzes.clear();
+      },
+    );
     useCaregiverStore.getState().setCurrentCaregiver(null);
     usePatientStore.setState({ currentPatient: null, allPatients: [] });
     useSettingsStore.setState({ caregiverSessionVerifiedAt: null });
@@ -274,7 +298,7 @@ export default function CaregiverSettingsPage() {
 
   return (
     <main className="mx-auto w-full max-w-dashboard px-5 py-8 md:px-10 md:py-12">
-      <PageHeader title="Settings" description="Language, PIN and data for this device." />
+      <PageHeader title="Settings" description="Language, text size, PIN and data for this device." />
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
         <Panel
@@ -282,6 +306,20 @@ export default function CaregiverSettingsPage() {
           description="What they see and hear in SMRITI."
         >
           <LanguagePicker onSelect={(code) => void saveLanguageForPatient(code)} />
+        </Panel>
+
+        <Panel
+          title="Text and icon size"
+          description="Make words and pictures bigger on every screen of this phone."
+        >
+          <DisplaySizeSettings />
+        </Panel>
+
+        <Panel
+          title="Zoom"
+          description="Stop the screen zooming by accident while sliding or tapping."
+        >
+          <ZoomLockSettings />
         </Panel>
 
         <Panel
@@ -327,7 +365,7 @@ export default function CaregiverSettingsPage() {
         </Panel>
 
         <Panel title="About SMRITI">
-          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-caregiver-body">
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 text-caregiver-body [&_dd]:[overflow-wrap:anywhere]">
             <dt className="text-ink-muted">Version</dt>
             <dd className="text-ink">1.0.0-hackathon</dd>
             <dt className="text-ink-muted">Built for</dt>

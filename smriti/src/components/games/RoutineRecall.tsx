@@ -4,6 +4,7 @@ import { useTranslation } from '@/lib/i18n/provider';
 import { useEffect, useMemo, useState } from 'react';
 import { REMINDER_ICON } from '@/components/ui/ReminderCard';
 import { BIG_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import {
   getRoutineRecallSequence,
   isCorrectOrder,
@@ -34,6 +35,7 @@ type Phase = 'loading' | 'insufficient' | 'playing' | 'done';
  */
 export default function RoutineRecall({ patientId, sequenceLength, onComplete }: RoutineRecallProps) {
   const { t } = useTranslation();
+  const tapHandlers = useTapSelect();
   const [phase, setPhase] = useState<Phase>('loading');
   const [correctSequence, setCorrectSequence] = useState<RoutineRecallItem[]>([]);
   const [displayOrder, setDisplayOrder] = useState<RoutineRecallItem[]>([]);
@@ -110,13 +112,14 @@ export default function RoutineRecall({ patientId, sequenceLength, onComplete }:
         {(phase === 'playing' ? remaining : displayOrder).map((item) => {
           const icon = REMINDER_ICON[item.reminderType];
           const placed = phase === 'done' && submitted.includes(item.ackId);
+          const tapProps = tapHandlers(() => tap(item.ackId), phase === 'playing');
           return (
             <button
               key={item.ackId}
               type="button"
-              onClick={() => tap(item.ackId)}
               disabled={phase !== 'playing'}
-              style={{ minHeight: BIG_TARGET_MIN_PX }}
+              {...tapProps}
+              style={{ ...tapProps.style, minHeight: BIG_TARGET_MIN_PX }}
               className={
                 'flex flex-col items-center justify-center gap-2 rounded-tile border-2 ' +
                 `${icon.bg} ` +
