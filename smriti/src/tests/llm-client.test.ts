@@ -119,9 +119,12 @@ describe('callChat', () => {
     expect(sent.response_format).toEqual({ type: 'json_object' });
   });
 
-  it('tries the smaller Groq model, then OpenRouter without JSON mode, and returns null text when all fail', async () => {
+  it('tries the smaller Groq model, then free OpenRouter slugs, and returns null text when all fail', async () => {
     const fetchMock = mockFetchSequence([
       { ok: false, status: 503 },
+      { ok: false, status: 429 },
+      // Free OpenRouter capacity is shared and answers 429 often, so the
+      // second free slug has to be tried too.
       { ok: false, status: 429 },
       { ok: true, body: groqSuccessBody('hello') },
     ]);
@@ -129,11 +132,26 @@ describe('callChat', () => {
     const { callChat } = await import('@/lib/ai/llm-client');
 
     const result = await callChat({ messages: [{ role: 'user', content: 'hi' }], json: true });
-    expect(result.model).toBe('openrouter/meta-llama/llama-3.1-8b-instruct');
+    expect(result.model).toBe('openrouter/google/gemma-4-31b-it:free');
     expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe('openai/gpt-oss-20b');
-    expect(JSON.parse(fetchMock.mock.calls[2][1].body).response_format).toBeUndefined();
+    // Every OpenRouter model tried is a free slug: a paid one 402s on this account.
+    for (const call of fetchMock.mock.calls.slice(2)) {
+      expect(JSON.parse(call[1].body).model).toMatch(/:free$/);
+      expect(JSON.parse(call[1].body).response_format).toBeUndefined();
+    }
 
     vi.stubGlobal('fetch', mockFetchSequence([{ ok: false, status: 500 }]));
     expect(await callChat({ messages: [{ role: 'user', content: 'hi' }] })).toEqual({ text: null, model: 'none' });
+  });
+
+  it('spends the reply and its verification on different Groq models, so each keeps its own free-tier budget', async () => {
+    const fetchMock = mockFetchSequence([{ ok: true, body: groqSuccessBody('{"supported":true}') }]);
+    vi.stubGlobal('fetch', fetchMock);
+    const { callChat, GROQ_SMALL_MODEL, GROQ_CHAT_MODELS } = await import('@/lib/ai/llm-client');
+
+    await callChat({ messages: [{ role: 'user', content: 'check' }], models: [GROQ_SMALL_MODEL], json: true });
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).model).toBe(GROQ_SMALL_MODEL);
+    expect(GROQ_CHAT_MODELS[0]).not.toBe(GROQ_SMALL_MODEL);
   });
 });

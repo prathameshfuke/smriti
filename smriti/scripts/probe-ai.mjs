@@ -17,7 +17,9 @@ const DHRUVA_URL = 'https://dhruva-api.bhashini.gov.in/services/inference/pipeli
 const PIPELINE_ID = '64392f96daac500b55c543cd';
 
 const GROQ_MODEL = process.env.PROBE_GROQ_MODEL ?? 'openai/gpt-oss-20b';
-const OPENROUTER_MODEL = process.env.PROBE_OPENROUTER_MODEL ?? 'meta-llama/llama-3.1-8b-instruct';
+// Free tier: only `:free` slugs are usable without credits (a paid slug
+// answers 402), and free capacity is shared, so a 429 here is normal.
+const OPENROUTER_MODEL = process.env.PROBE_OPENROUTER_MODEL ?? 'qwen/qwen3.8-27b:free';
 
 const results = [];
 
@@ -31,6 +33,9 @@ async function timed(name, fn) {
   }
 }
 
+/** Response headers of the last postJson call, for the rate-limit read-out. */
+let lastHeaders = null;
+
 async function postJson(url, headers, body, timeoutMs = 20_000) {
   const res = await fetch(url, {
     method: 'POST',
@@ -38,6 +43,7 @@ async function postJson(url, headers, body, timeoutMs = 20_000) {
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   });
+  lastHeaders = res.headers;
   let json = null;
   try {
     json = await res.json();
@@ -62,7 +68,7 @@ function chatBody(model, extra = {}) {
   };
 }
 
-function describeChat(json) {
+function describeChat(json, headers) {
   const choice = json?.choices?.[0];
   const content = choice?.message?.content ?? '';
   return {
@@ -75,6 +81,13 @@ function describeChat(json) {
           reasoning: json.usage.completion_tokens_details?.reasoning_tokens,
         }
       : undefined,
+    // Free-tier budget left for this model, straight from the provider.
+    limits: headers
+      ? {
+          requests: `${headers.get('x-ratelimit-remaining-requests') ?? '?'}/${headers.get('x-ratelimit-limit-requests') ?? '?'}`,
+          tokensPerMin: `${headers.get('x-ratelimit-remaining-tokens') ?? '?'}/${headers.get('x-ratelimit-limit-tokens') ?? '?'}`,
+        }
+      : undefined,
   };
 }
 
@@ -82,7 +95,7 @@ if (process.env.GROQ_API_KEY) {
   const auth = { Authorization: `Bearer ${process.env.GROQ_API_KEY}` };
   // Exactly what llm-client.ts sends today.
   await timed(`groq ${GROQ_MODEL} (current: max_tokens 300)`, async () =>
-    describeChat(await postJson(GROQ_URL, auth, chatBody(GROQ_MODEL, { max_tokens: 300, temperature: 0.3 }))),
+    describeChat(await postJson(GROQ_URL, auth, chatBody(GROQ_MODEL, { max_tokens: 300, temperature: 0.3 })), lastHeaders),
   );
   await timed(`groq ${GROQ_MODEL} (reasoning low, json_object)`, async () =>
     describeChat(
@@ -96,6 +109,7 @@ if (process.env.GROQ_API_KEY) {
           response_format: { type: 'json_object' },
         }),
       ),
+      lastHeaders,
     ),
   );
   await timed('groq models list', async () => {
