@@ -5,9 +5,10 @@ import { useTranslations, useLocale } from 'next-intl';
 import BigButton from '@/components/ui/BigButton';
 import SessionComplete from '@/components/games/SessionComplete';
 import { starsFromRate } from '@/lib/engine/scoring';
-import { speak } from '@/lib/audio/speech';
+import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import type { LocalReminiscenceQuiz } from '@/lib/db/schema';
 
 export interface ReminiscenceQuizGameProps {
@@ -30,6 +31,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
   const t = useTranslations('games.reminiscenceQuiz.gameUI');
   const locale = useLocale();
   const language = isUILanguage(locale) ? locale : 'en';
+  const tapSelect = useTapSelect();
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
@@ -44,7 +46,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
     setSelected(i);
     const isCorrect = i === question.correctIndex;
     if (isCorrect) setCorrectCount((c) => c + 1);
-    speak(isCorrect ? t('correct') : t('tryTogether'), language);
+    speak(isCorrect ? t('correct') : t('tryTogether'), language, GAME_SPEECH_RATE);
   };
 
   const advance = () => {
@@ -92,13 +94,14 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
                 : isChosen
                   ? 'ring-4 ring-primary/40'
                   : 'opacity-60';
+          const tap = tapSelect(() => selectOption(i), selected === null);
           return (
             <button
               key={option}
               type="button"
-              onClick={() => selectOption(i)}
               disabled={selected !== null}
-              style={{ minHeight: TOUCH_TARGET_MIN_PX }}
+              {...tap}
+              style={{ ...tap.style, minHeight: TOUCH_TARGET_MIN_PX }}
               className={`rounded-tile border border-line200 bg-white px-4 text-patient-body font-semibold text-ink ${revealClass}`}
             >
               {option}

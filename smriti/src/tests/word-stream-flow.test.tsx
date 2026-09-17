@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/games/word-stream',
 }));
 
-vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
+vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 
 const patient = (): LocalPatient => ({
   id: 'p1',
@@ -55,13 +55,14 @@ describe('Word Stream full round, single continuous visit', () => {
         </I18nProvider>,
       );
 
-      // SHOW phase: 3 items at level 1, 3s each. Advanced one item at a time
-      // (rather than one big jump) so each setTimeout's state update gets a
-      // full render + effect cycle to schedule the next one before fake
-      // timers are asked to look further ahead.
+      // SHOW phase: 3 items at level 1, 3s each slowed 20% (pacing.SLOWDOWN,
+      // src/lib/games/pacing.ts) to 4s. Advanced one item at a time (rather
+      // than one big jump) so each setTimeout's state update gets a full
+      // render + effect cycle to schedule the next one before fake timers
+      // are asked to look further ahead.
       for (let i = 0; i < 4; i += 1) {
         await act(async () => {
-          await vi.advanceTimersByTimeAsync(3001);
+          await vi.advanceTimersByTimeAsync(4001);
         });
       }
 

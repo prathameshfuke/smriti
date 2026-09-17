@@ -9,11 +9,13 @@ import { useTranslations, useLocale } from 'next-intl';
 import { Trophy, RotateCcw } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { narrate } from '@/lib/audio/narrate';
-import { speak } from '@/lib/audio/speech';
+import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { matchSpokenWords, useVoiceInput } from '@/lib/audio/voiceInput';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
+import { slower } from '@/lib/games/pacing';
 
 type GameState = 'instruction' | 'presentation' | 'recall' | 'setup' | 'results';
 
@@ -35,8 +37,8 @@ export interface MemoryTestGameProps {
   onComplete?: (score: number) => void;
 }
 
-/** Gap between words when reading the list aloud. */
-const WORD_READ_MS = 1800;
+/** Gap between words when reading the list aloud. Slowed 20% (pacing.SLOWDOWN) per clinical feedback. */
+const WORD_READ_MS = slower(1800);
 
 /** Word tiles: fixed 2 columns on phones, and text wraps inside the tile
  * instead of spilling out of it (issue #4: "umbrella" overflowed its box). */
@@ -47,6 +49,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const locale = useLocale();
   const language = isUILanguage(locale) ? locale : 'en';
   const { isOnline } = useOfflineStatus();
+  const tapSelect = useTapSelect();
 
   // Get word bank from translations
   const wordBank = t.raw('wordBank') as string[];
@@ -77,7 +80,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
       readTimersRef.current.push(
         setTimeout(() => {
           setSpeakingIndex(i);
-          speak(word, language);
+          speak(word, language, GAME_SPEECH_RATE);
         }, i * WORD_READ_MS),
       );
     });
@@ -119,7 +122,7 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   // original games speak their instruction text on entry.
   useEffect(() => {
     if (gameState !== 'presentation') return;
-    void narrate(`${t('memorizeTheseWords')} ${t('studyAtYourPace')}`, language, isOnline);
+    void narrate(`${t('memorizeTheseWords')} ${t('studyAtYourPace')}`, language, isOnline, GAME_SPEECH_RATE);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState]);
 
@@ -377,15 +380,18 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                          { value: "26-45", label: t('setup.age26to45'), emoji: "" },
                          { value: "46-65", label: t('setup.age46to65'), emoji: "⭐" },
                          { value: "65+", label: t('setup.age65plus'), emoji: "" }
-                       ].map((age) => (
+                       ].map((age) => {
+                        const tap = tapSelect(() => setDemographics({ ...demographics, ageGroup: age.value }));
+                        return (
                         <div
                           key={age.value}
+                          {...tap}
+                          style={tap.style}
                           className={`relative cursor-pointer group transition-all duration-200 ${
                             demographics.ageGroup === age.value
                               ? 'scale-105'
                               : 'hover:scale-102'
                           }`}
-                          onClick={() => setDemographics({ ...demographics, ageGroup: age.value })}
                         >
                           <div className={`
                             p-4 rounded-tile border-2 text-center transition-all duration-200
@@ -403,7 +409,8 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -415,15 +422,18 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                         { value: "male", label: t('setup.male'), emoji: "" },
                         { value: "female", label: t('setup.female'), emoji: "" },
                         { value: "other", label: t('setup.other'), emoji: "" }
-                      ].map((gender) => (
+                      ].map((gender) => {
+                        const tap = tapSelect(() => setDemographics({ ...demographics, gender: gender.value as Demographics['gender'] }));
+                        return (
                         <div
                           key={gender.value}
+                          {...tap}
+                          style={tap.style}
                           className={`relative cursor-pointer group transition-all duration-200 ${
                             demographics.gender === gender.value
                               ? 'scale-105'
                               : 'hover:scale-102'
                           }`}
-                          onClick={() => setDemographics({ ...demographics, gender: gender.value as Demographics['gender'] })}
                         >
                           <div className={`
                             p-4 rounded-tile border-2 text-center transition-all duration-200
@@ -441,7 +451,8 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
                             </div>
                           )}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

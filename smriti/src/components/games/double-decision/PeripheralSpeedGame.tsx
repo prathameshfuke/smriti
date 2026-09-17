@@ -27,9 +27,12 @@ import {
 import { cn } from '@/lib/utils'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
 import { starsFromRate } from '@/lib/engine/scoring'
-import { narrate } from '@/lib/audio/narrate'
+import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
+import { useTapSelect } from '@/hooks/useTapSelect'
 import { isUILanguage } from '@/lib/i18n/languages'
+import { slower } from '@/lib/games/pacing'
 import {
   DOUBLE_DECISION_MAX_DISPLAY_MS,
   DOUBLE_DECISION_MIN_DISPLAY_MS,
@@ -71,10 +74,13 @@ interface GameSettings {
   startingFieldLevel: number
 }
 
-const INITIAL_DISPLAY_MS = 1200
-const MASK_DURATION_MS = 120
+// Starting pace slowed 20% (pacing.SLOWDOWN) per clinical feedback — the
+// adaptive MIN/MAX staircase bounds in lib/double-decision-score.ts are left
+// alone since they also drive the scoring formula.
+const INITIAL_DISPLAY_MS = slower(1200)
+const MASK_DURATION_MS = slower(120)
 /** Slowed-down, fixed-difficulty single trial shown before the real activity — added per the app's tutorial requirement, not part of the original game. */
-const PRACTICE_DISPLAY_MS = 3000
+const PRACTICE_DISPLAY_MS = slower(3000)
 const BEST_ACCURACY_KEY = 'doubleDecisionBestAccuracy'
 const BEST_RATING_KEY = 'doubleDecisionBestRating'
 const DEFAULT_SETTINGS: GameSettings = {
@@ -307,6 +313,7 @@ function LocationResponse({
   onSelect: (position: number) => void
 }) {
   const t = useTranslations('games.doubleDecision.gameUI')
+  const tapSelect = useTapSelect()
 
   return (
     <div className="relative min-h-[420px] overflow-hidden motion-safe:animate-in motion-safe:fade-in motion-safe:duration-200 sm:min-h-[520px] lg:min-h-[600px]">
@@ -315,22 +322,25 @@ function LocationResponse({
         <LocateFixed data-icon-fixed className="h-9 w-9" />
       </div>
 
-      {Array.from({ length: 8 }, (_, index) => (
-        <button
-          key={index}
-          type="button"
-          onClick={() => onSelect(index)}
-          aria-label={t('locationLabel', { number: index + 1 })}
-          className="absolute z-30 flex h-[48px] w-[48px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900/70 text-[14px] font-bold text-white shadow-lg transition duration-150 hover:scale-110 hover:border-amber-300 hover:bg-amber-400 hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
-          // px, not rem: these sit on fixed positions around the board edge,
-          // and growing with Large text pushed the outer ones past the clip.
-          style={positionStyle(index, trial.fieldLevel)}
-        >
-          <span className="motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-200">
-            {index + 1}
-          </span>
-        </button>
-      ))}
+      {Array.from({ length: 8 }, (_, index) => {
+        const tap = tapSelect(() => onSelect(index))
+        return (
+          <button
+            key={index}
+            type="button"
+            {...tap}
+            aria-label={t('locationLabel', { number: index + 1 })}
+            className="absolute z-30 flex h-[48px] w-[48px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white bg-slate-900/70 text-[14px] font-bold text-white shadow-lg transition duration-150 hover:scale-110 hover:border-amber-300 hover:bg-amber-400 hover:text-slate-900 active:scale-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
+            // px, not rem: these sit on fixed positions around the board edge,
+            // and growing with Large text pushed the outer ones past the clip.
+            style={{ ...tap.style, ...positionStyle(index, trial.fieldLevel) }}
+          >
+            <span className="motion-safe:animate-in motion-safe:zoom-in-75 motion-safe:duration-200">
+              {index + 1}
+            </span>
+          </button>
+        )
+      })}
       <div className="absolute bottom-5 left-1/2 z-40 w-max max-w-[calc(100%-1.5rem)] -translate-x-1/2 rounded-full bg-slate-950/75 px-4 py-2 text-center text-sm font-medium text-white backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-300">
         {t('chooseLocation')}
       </div>
@@ -455,6 +465,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
   const locale = useLocale()
   const language = isUILanguage(locale) ? locale : 'en'
   const { isOnline } = useOfflineStatus()
+  const tapSelect = useTapSelect()
   const [phase, setPhase] = useState<Phase>('intro')
   const [isPracticeRun, setIsPracticeRun] = useState(false)
   const [trialIndex, setTrialIndex] = useState(0)
@@ -693,7 +704,7 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
   // speak their instruction text on entry.
   useEffect(() => {
     if (phase !== 'intro') return
-    void narrate(`${t('title')}. ${t('intro')}`, language, isOnline)
+    void narrate(`${t('title')}. ${t('intro')}`, language, isOnline, GAME_SPEECH_RATE)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
@@ -814,14 +825,21 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
             {t('chooseVehicle')}
           </h3>
           <div className="grid w-full max-w-lg grid-cols-2 gap-4">
+            {/* tapSelect's factory reads its internal press-tracking refs synchronously,
+                same as the reference ObjectGrid/MemoryGrid usage; flagged here only because
+                this component already fails full compilation (pre-existing setState-in-effect
+                warnings elsewhere in this file), which makes the linter conservative. */}
+            {/* eslint-disable-next-line react-hooks/refs */}
             {trial.vehicleOptions.map((id) => {
               const Icon = VEHICLE_ICONS[id]
+              const tap = tapSelect(() => chooseVehicle(id))
 
               return (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => chooseVehicle(id)}
+                  {...tap}
+                  style={tap.style}
                   className="group flex min-h-36 flex-col items-center justify-center gap-3 rounded-tile border border-line200 bg-surface-card transition duration-150 hover:-translate-y-1 hover:shadow-md active:scale-[0.98] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2"
                 >
                   <Icon

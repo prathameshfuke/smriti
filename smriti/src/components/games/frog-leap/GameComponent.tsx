@@ -13,9 +13,11 @@ import { Input } from '@/components/ui/input';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import { submitScoreToLeaderboard } from '@/lib/leaderboard';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
+import { slower } from '@/lib/games/pacing';
 import {
     GamePhase,
     PadPosition,
@@ -197,8 +199,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const calcJumpDuration = useCallback((distance: number) => {
         const MIN_DIST = 10;
         const MAX_DIST = 80;
-        const MIN_DUR = 400;
-        const MAX_DUR = 1200;
+        // Slowed 20% (pacing.SLOWDOWN) per clinical feedback.
+        const MIN_DUR = slower(400);
+        const MAX_DUR = slower(1200);
         const t = Math.max(0, Math.min(1, (distance - MIN_DIST) / (MAX_DIST - MIN_DIST)));
         return Math.round(MIN_DUR + t * (MAX_DUR - MIN_DUR));
     }, []);
@@ -243,13 +246,14 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                 Math.pow((pads.find(p => p.id === seq[i])?.px ?? 0) - (pads.find(p => p.id === seq[i - 1])?.px ?? 0), 2) +
                 Math.pow((pads.find(p => p.id === seq[i])?.py ?? 0) - (pads.find(p => p.id === seq[i - 1])?.py ?? 0), 2)
             );
-            // Duration: 400ms–1200ms based on distance
+            // Duration: 400ms–1200ms based on distance, slowed 20%
+            // (pacing.SLOWDOWN) per clinical feedback.
             const t = Math.max(0, Math.min(1, (dist - 10) / 70));
-            jumpDurations.push(Math.round(400 + t * 800));
+            jumpDurations.push(slower(Math.round(400 + t * 800)));
         }
         // Each demo step: jump duration + small pause (200ms)
-        const PAUSE_BETWEEN = 200;
-        const totalDemoTime = jumpDurations.reduce((sum, d) => sum + d + PAUSE_BETWEEN, 0) + 1500;
+        const PAUSE_BETWEEN = slower(200);
+        const totalDemoTime = jumpDurations.reduce((sum, d) => sum + d + PAUSE_BETWEEN, 0) + slower(1500);
         setProgressTotal(totalDemoTime);
         setProgressStart(Date.now());
         setProgressElapsed(0);
@@ -257,9 +261,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         // After a brief pause, start demo
         setTimeout(() => {
             setMessage(t('watch'));
-            void narrate(`${params.jumpCount} ${t('watch')}`, language, isOnline);
+            void narrate(`${params.jumpCount} ${t('watch')}`, language, isOnline, GAME_SPEECH_RATE);
             playDemo(seq, pads, jumpDurations);
-        }, 1500);
+        }, slower(1500));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [t, language, isOnline]);
 
@@ -269,8 +273,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         let i = 1;
         // Highlight the starting pad briefly
         setHighlightedPadId(seq[0]);
-        setTimeout(() => setHighlightedPadId(null), 400);
-        const PAUSE_BETWEEN = 200;
+        setTimeout(() => setHighlightedPadId(null), slower(400));
+        const PAUSE_BETWEEN = slower(200);
 
         const step = () => {
             if (i < seq.length) {
@@ -295,10 +299,10 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                     setPlayerIndex(1); // player needs to click from index 1
                     setStartTime(Date.now());
                     setProgressTotal(0);
-                }, 500);
+                }, slower(500));
             }
         };
-        const firstDur = durations[0] || 600;
+        const firstDur = durations[0] || slower(600);
         setTimeout(step, firstDur + PAUSE_BETWEEN);
     };
 

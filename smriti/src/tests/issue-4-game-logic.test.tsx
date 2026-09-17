@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/games/object-hunt',
 }));
-vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
+vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 vi.mock('@/lib/audio/narrate', () => ({ narrate: vi.fn().mockResolvedValue(undefined) }));
 
 describe('penalizedAccuracy (Market List / Quick Tap / N-Back scoring)', () => {
@@ -145,16 +145,18 @@ describe('Object Hunt recall taps (issue #4)', () => {
       </I18nProvider>,
     );
 
-    // Instruction (5s) + level 1 reveal: 2 objects × 3s + 500ms, then recall.
-    for (const ms of [5001, 10, 3000, 3000, 510, 10]) {
+    // Instruction (5s) + level 1 reveal: 2 objects × 3s slowed 20%
+    // (pacing.SLOWDOWN, src/lib/games/pacing.ts) to 4s, + 500ms, then recall.
+    for (const ms of [5001, 10, 4000, 4000, 510, 10]) {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(ms);
       });
     }
     expect(screen.getByTestId('object-hunt-prompt')).toBeInTheDocument();
 
+    // PROMPT_MS is 2000ms slowed 20% to 2400ms.
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(2100);
+      await vi.advanceTimersByTimeAsync(2410);
     });
     expect(screen.queryByTestId('object-hunt-prompt')).not.toBeInTheDocument();
     expect(screen.getByTestId('object-grid-question')).toBeInTheDocument();

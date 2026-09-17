@@ -8,6 +8,7 @@ import { PlayCircle, Share2, Volume2, Square } from "lucide-react";
 import { Howl, Howler } from "howler";
 import { useInterval } from "@/hooks/useInterval";
 import { useTimeout } from "@/hooks/useTimeout";
+import { useTapSelect } from "@/hooks/useTapSelect";
 import confetti from "canvas-confetti";
 import { ShimmerButton } from "@/components/magicui/shimmer-button";
 import { ProgressShareModal } from "@/components/ui/ProgressShareModal";
@@ -17,6 +18,7 @@ import GameDemo from "./GameDemo";
 import { analytics } from "@/lib/analytics";
 import { submitScoreToLeaderboard } from "@/lib/leaderboard";
 import { narrate } from "@/lib/audio/narrate";
+import { GAME_SPEECH_RATE } from "@/lib/audio/speech";
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { isUILanguage } from "@/lib/i18n/languages";
 import { penalizedAccuracy, starsFromRate } from "@/lib/engine/scoring";
@@ -208,7 +210,8 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     const { isOnline } = useOfflineStatus();
 
     const { settings, updateSettings } = useGameSettings();
-    
+    const tapSelect = useTapSelect();
+
     // 原useGameLogic中的状态
     const [gameState, setGameState] = useState<GameState>("idle");
     const [currentTrial, setCurrentTrial] = useState(0); // 当前试验次数
@@ -299,7 +302,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     // app's original games speak their instruction text on entry.
     useEffect(() => {
         if (gameState !== "idle") return;
-        void narrate(`${t('challenge', { level: settings.selectedNBack })}. ${t('improveMemorySubtitle')}`, language, isOnline);
+        void narrate(`${t('challenge', { level: settings.selectedNBack })}. ${t('improveMemorySubtitle')}`, language, isOnline, GAME_SPEECH_RATE);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 
@@ -842,41 +845,53 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
                             {/* Wraps: the two translated answer buttons are wider than a
                                 320px screen side by side at Large text. */}
                             <div className="flex flex-wrap justify-center gap-4">
-                                {settings.selectedTypes.includes("position") && (
-                                    <Button
-                                        onClick={() => handleResponse("position")}
-                                        variant="ghost"
-                                        style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
-                                        className={cn(
-                                            "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                                            isPositionHighlight &&
-                                                "hover:border-primary border-primary"
-                                        )}
-                                    >
-                                        <Square className="w-4 h-4 mr-1 bg-primary" />
-                                        {t('positionMatch')}
-                                    </Button>
-                                )}
-                                {settings.selectedTypes.includes("audio") && (
-                                    <Button
-                                        onClick={() => handleResponse("audio")}
-                                        variant="ghost"
-                                        style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
-                                        className={cn(
-                                            "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                                            isAudioHighlight &&
-                                                "hover:border-primary border-primary"
-                                        )}
-                                    >
-                                        <Volume2
-                                            className={cn(
-                                                "w-4 h-4 mr-1",
-                                                isAudioPlaying && "animate-pulse"
-                                            )}
-                                        />
-                                        {t('soundMatch')}
-                                    </Button>
-                                )}
+                                {(["position", "audio"] as const)
+                                    .filter((type) => settings.selectedTypes.includes(type))
+                                    // tapSelect's factory reads its internal press-tracking refs
+                                    // synchronously, same as the reference ObjectGrid/MemoryGrid usage;
+                                    // flagged here only because this component already fails full
+                                    // compilation (pre-existing startNextTrial/endGame hoisting order
+                                    // below), which makes the linter conservative.
+                                    // eslint-disable-next-line react-hooks/refs
+                                    .map((type) => {
+                                        const tap = tapSelect(() => handleResponse(type));
+                                        return type === "position" ? (
+                                            <Button
+                                                key={type}
+                                                {...tap}
+                                                variant="ghost"
+                                                style={{ ...tap.style, minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
+                                                className={cn(
+                                                    "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                                    isPositionHighlight &&
+                                                        "hover:border-primary border-primary"
+                                                )}
+                                            >
+                                                <Square className="w-4 h-4 mr-1 bg-primary" />
+                                                {t('positionMatch')}
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                key={type}
+                                                {...tap}
+                                                variant="ghost"
+                                                style={{ ...tap.style, minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
+                                                className={cn(
+                                                    "h-auto border-2 rounded-full shadow-none text-patient-sm focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                                    isAudioHighlight &&
+                                                        "hover:border-primary border-primary"
+                                                )}
+                                            >
+                                                <Volume2
+                                                    className={cn(
+                                                        "w-4 h-4 mr-1",
+                                                        isAudioPlaying && "animate-pulse"
+                                                    )}
+                                                />
+                                                {t('soundMatch')}
+                                            </Button>
+                                        );
+                                    })}
                             </div>
                             <p
                                 role="status"

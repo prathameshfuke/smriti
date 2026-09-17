@@ -321,18 +321,11 @@ export default function LandingPage() {
             <p className="mt-3 max-w-[40ch] text-base leading-relaxed text-paper50/75">
               SMRITI supports cognitive engagement. It does not diagnose or treat dementia.
             </p>
-            <a
-              href="https://github.com/prathameshfuke/smriti/blob/main/LICENSE"
-              target="_blank"
-              rel="noreferrer"
-              className="mt-2 inline-flex min-h-10 items-center text-base text-paper50/80 underline decoration-paper50/30 underline-offset-4 hover:text-paper50"
-            >
-              MIT License
-            </a>
+            <p className="mt-2 text-base text-paper50/80">Proprietary software. All rights reserved.</p>
           </div>
         </div>
         <p className="mx-auto mt-12 max-w-6xl border-t border-paper50/15 pt-6 text-sm text-paper50/65">
-          © 2026 SMRITI. Made with Bhashini (MeitY) and LGBRIMH Tezpur.
+          © 2026 SMRITI. All rights reserved. Made with Bhashini (MeitY) and LGBRIMH Tezpur.
         </p>
       </footer>
     </main>

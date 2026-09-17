@@ -11,8 +11,10 @@ import { ShareModal } from '@/components/ui/ShareModal';
 import { useTranslations, useLocale } from 'next-intl';
 import { useInterval } from '@/hooks/useInterval';
 import { useTimeout } from '@/hooks/useTimeout';
+import { useTapSelect } from '@/hooks/useTapSelect';
 import confetti from 'canvas-confetti';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { localizeDigits } from '@/lib/i18n/numerals';
@@ -38,6 +40,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     // own digits (৪২ / ४२), not only in English 0-9.
     const num = useCallback((value: number | string) => localizeDigits(value, language), [language]);
     const { isOnline } = useOfflineStatus();
+    const tapSelect = useTapSelect();
 
     const [gameState, setGameState] = useState<GameState>("idle");
     const [timeLeft, setTimeLeft] = useState<number>(GAME_CONFIG.gameTime);
@@ -286,7 +289,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
         void narrate(t("challenge", {
             attempts: num(currentDifficulty.attempts),
             accuracy: num(currentDifficulty.accuracy),
-        }), language, isOnline);
+        }), language, isOnline, GAME_SPEECH_RATE);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 
@@ -422,10 +425,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                             </div>
 
                             <div className="flex gap-4 sm:gap-8 w-full max-w-md">
-                                {options.map((option) => (
+                                {options.map((option) => {
+                                    const tap = tapSelect(() => handleSelection(option));
+                                    return (
                                     <RippleButton
                                         key={`button-${option.position}`}
-                                        onClick={() => handleSelection(option)}
+                                        {...tap}
+                                        style={tap.style}
                                         rippleColor="bg-primary/20"
                                         className={cn(
                                             // h-auto/px-2/min-w-0 override Button's h-12 px-5: the fixed height
@@ -437,7 +443,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                                     >
                                         {num(option.value)}
                                     </RippleButton>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </>
                     ) : (

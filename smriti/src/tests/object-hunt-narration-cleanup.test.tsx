@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({
 }));
 
 const { speakMock } = vi.hoisted(() => ({ speakMock: vi.fn() }));
-vi.mock('@/lib/audio/speech', () => ({ speak: speakMock }));
+vi.mock('@/lib/audio/speech', () => ({ speak: speakMock, GAME_SPEECH_RATE: 0.9 }));
 vi.mock('@/lib/audio/narrate', () => ({ narrate: vi.fn().mockResolvedValue(undefined) }));
 
 const patient = (): LocalPatient => ({
@@ -109,8 +109,9 @@ describe('Object Hunt — narration does not survive an unmount mid-microtask', 
 
       // Reach 'reveal' and let its own microtask/interval run normally so
       // the round actually advances toward 'recall'. Level 1: objectCount 2,
-      // revealSeconds 3s — instruction (5s) + two 3s reveal ticks + the 500ms
-      // hand-off to recall.
+      // revealSeconds 3s slowed 20% (pacing.SLOWDOWN, src/lib/games/pacing.ts)
+      // to 4s — instruction (5s) + two 4s reveal ticks + the 500ms hand-off
+      // to recall.
       await act(async () => {
         await vi.advanceTimersByTimeAsync(5001);
       });
@@ -118,7 +119,7 @@ describe('Object Hunt — narration does not survive an unmount mid-microtask', 
 
       capture = true;
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(3000 + 3000 + 500 + 10);
+        await vi.advanceTimersByTimeAsync(4000 + 4000 + 500 + 10);
       });
       expect(pending.length).toBeGreaterThan(0);
 

@@ -16,6 +16,11 @@ const LANG_TAG: Record<UILanguage, string> = {
   ne: 'ne',
 };
 
+/** Slowed 10% on clinical advice: normal-speed narration reads as too fast
+ * for patients still learning a game's instructions. Games-only — pass
+ * explicitly to `speak`/`narrate`, never made the default. */
+export const GAME_SPEECH_RATE = 0.9;
+
 /**
  * Speaks a string aloud via the Web Speech API, guarded to no-op wherever
  * it's unavailable — jsdom in tests, and any browser without it. Callers
@@ -32,8 +37,13 @@ const LANG_TAG: Record<UILanguage, string> = {
  * exists this stays silent rather than speaking the line in the wrong
  * language — the on-screen text is the fallback (spec: "Audio is
  * unavailable on this device. You can read the instruction below.").
+ *
+ * `rate` defaults to the normal 1.0 speaking rate — pass {@link GAME_SPEECH_RATE}
+ * from game code only. This is a shared utility also used outside games
+ * (reminders, the AI companion, family-message readback), which must keep
+ * their normal pace.
  */
-export function speak(text: string, language: UILanguage = 'en'): void {
+export function speak(text: string, language: UILanguage = 'en', rate = 1): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   claimChannel();
@@ -45,6 +55,7 @@ export function speak(text: string, language: UILanguage = 'en'): void {
   if (!voice && language !== 'en') return;
 
   const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = rate;
   if (voice) {
     utterance.voice = voice;
     utterance.lang = voice.lang;

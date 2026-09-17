@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import type { LocalMemoryBankEntry } from '@/lib/db/schema';
 
-vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn() }));
+vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 vi.mock('@/lib/i18n/provider', () => ({
   useTranslation: () => ({
     t: (key: string, vars?: Record<string, string | number>) =>

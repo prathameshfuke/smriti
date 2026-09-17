@@ -12,9 +12,11 @@ import { useTranslations, useLocale } from 'next-intl';
 import './styles.css';
 import confetti from 'canvas-confetti';
 import { narrate } from '@/lib/audio/narrate';
+import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { isUILanguage } from '@/lib/i18n/languages';
 import { starsFromRate } from '@/lib/engine/scoring';
+import { slower } from '@/lib/games/pacing';
 
 type GameState = 'start' | 'observing' | 'input' | 'result' | 'gameOver' | 'animating';
 
@@ -52,8 +54,9 @@ const AnimationControllers: Record<string, AnimationController> = {
         name: 'flyIn',
         execute: (cubesGroup: THREE.Group, scene: THREE.Scene, onComplete: () => void) => {
             // 从左上角飞到右下角的动画
-            // Slowed from 3000ms so moving blocks can be followed and counted.
-            const duration = 5000;
+            // Slowed from 3000ms so moving blocks can be followed and counted,
+            // then slowed a further 20% (pacing.SLOWDOWN) per clinical feedback.
+            const duration = slower(5000);
             const startTime = Date.now();
             const startPosition = { x: -12, y: 8, z: 8 };
             const endPosition = { x: 12, y: -8, z: -8 };
@@ -110,42 +113,42 @@ const AnimationControllers: Record<string, AnimationController> = {
 
 // 新的关卡配置
 // Observation windows roughly doubled (issue #4: "should have slower
-// speed"). Level 1 now gives ~5s to count; the hardest level still ~2s.
+// speed"), then slowed a further 20% (pacing.SLOWDOWN) per clinical feedback.
 export const LEVEL_CONFIGS: LevelConfig[] = [
     {
         blocksRange: [3, 4],
         pattern: ["corner"],
-        observer: [5000, 5600],
+        observer: [slower(5000), slower(5600)],
         animation: [],
     },
     {
         blocksRange: [4, 6],
         pattern: ["line", "tower"],
-        observer: [4400, 4900],
+        observer: [slower(4400), slower(4900)],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [5, 7],
         pattern: ["cross", "tower"],
-        observer: [3800, 4200],
+        observer: [slower(3800), slower(4200)],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [7, 9],
         pattern: ["scattered", "tower"],
-        observer: [3200, 3600],
+        observer: [slower(3200), slower(3600)],
         animation: ["flyIn", ""],
     },
     {
         blocksRange: [3, 4],
         pattern: ["random_fill"],
-        observer: [2600, 3000],
+        observer: [slower(2600), slower(3000)],
         animation: [],
     },
     {
         blocksRange: [20, 23],
         pattern: ["random_fill"],
-        observer: [2000, 2400],
+        observer: [slower(2000), slower(2400)],
         animation: [],
     },
 ];
@@ -670,7 +673,7 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     // 朗读指示 - 每次进入观察阶段时读出指示语，与原始游戏的语音提示保持一致
     useEffect(() => {
         if (gameState !== 'observing') return;
-        void narrate(t('observing'), language, isOnline);
+        void narrate(t('observing'), language, isOnline, GAME_SPEECH_RATE);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [gameState]);
 

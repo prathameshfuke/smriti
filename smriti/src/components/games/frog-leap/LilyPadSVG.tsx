@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useTapSelect } from '@/hooks/useTapSelect';
 
 interface LilyPadSVGProps {
     size?: number;
@@ -21,17 +22,21 @@ export function LilyPadSVG({
     onClick,
     className = '',
 }: LilyPadSVGProps) {
+    const tapSelect = useTapSelect();
     let glowFilter = 'none';
     if (isHighlighted) glowFilter = 'drop-shadow(0 0 12px rgba(255, 215, 0, 0.8))';
     if (isCorrect) glowFilter = 'drop-shadow(0 0 10px rgba(34, 197, 94, 0.8))';
     if (isWrong) glowFilter = 'drop-shadow(0 0 10px rgba(239, 68, 68, 0.8))';
     if (isActive) glowFilter = 'drop-shadow(0 0 10px rgba(255, 255, 255, 0.85))';
 
+    const tap = tapSelect(() => onClick?.(), !!onClick);
+
     return (
         <div
-            onClick={onClick}
+            {...tap}
             className={`transition-all duration-300 cursor-pointer ${className}`}
             style={{
+                ...tap.style,
                 width: size,
                 height: size,
                 filter: glowFilter,

@@ -178,7 +178,8 @@
         "step1": "A stack of boxes appears for a few seconds.",
         "step2": "Count every box, including the ones stacked behind or on top.",
         "step3": "When the boxes disappear, enter how many you counted."
-      }
+      },
+      "iAmReady": "I'm ready!"
     }
   },
   "reminder": {

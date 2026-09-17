@@ -6,6 +6,8 @@
  * Difficulty scales by adding more pads and longer/more complex routes.
  */
 
+import { slower } from '@/lib/games/pacing';
+
 export type GamePhase = 'idle' | 'watching' | 'playing' | 'success' | 'fail';
 
 /** Difficulty preset multipliers */
@@ -44,13 +46,14 @@ export interface LevelParams {
  * Get level parameters.
  * Pads: 4 at level 1, +1 every 2 levels, max 10
  * Jumps: 2 at level 1, +1 per level, max 9
- * Speed: 1200ms at level 1, ×0.94 per level, min 500ms
+ * Speed: 1200ms at level 1, ×0.94 per level, min 500ms — then slowed a
+ * further 20% (pacing.SLOWDOWN) per clinical feedback.
  */
 export function getLevelParams(level: number): LevelParams {
     return {
         padCount: Math.min(4 + Math.floor((level - 1) / 2), 10),
         jumpCount: Math.min(1 + level, 9),
-        jumpDelay: Math.max(Math.round(1200 * Math.pow(0.94, level - 1)), 500),
+        jumpDelay: slower(Math.max(Math.round(1200 * Math.pow(0.94, level - 1)), 500)),
     };
 }
 

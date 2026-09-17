@@ -11,6 +11,7 @@ import ActivityTracker from "@/components/layout/ActivityTracker";
 import AudioRouteReset from "@/components/layout/AudioRouteReset";
 import DisplaySizeSync from "@/components/layout/DisplaySizeSync";
 import { DEFAULT_DISPLAY_SIZE, DISPLAY_SIZE_BOOT_SCRIPT } from "@/lib/a11y/sizing";
+import { ZOOM_LOCK_BOOT_SCRIPT } from "@/lib/a11y/zoomLock";
 import "./globals.css";
 
 /**
@@ -70,7 +71,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   // Zoom stays enabled: low vision is the norm in this cohort, and locking
-  // scale would fail WCAG 1.4.4.
+  // scale here (maximumScale / userScalable) would fail WCAG 1.4.4 for every
+  // device. Accidental zoom (double-tap from a shaky tap, mis-read pinch
+  // while dragging) is instead handled in globals.css via `touch-action`:
+  // double-tap-zoom is blocked unconditionally, and pinch-zoom is blocked
+  // only on devices a caregiver opts into "Zoom lock" in Settings (see
+  // lib/a11y/zoomLock.ts) — a per-device choice, not a global restriction.
   viewportFit: "cover",
 };
 
@@ -81,12 +87,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${atkinsonHyperlegible.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} ${fraunces.variable} h-full antialiased`}
       data-text-size={DEFAULT_DISPLAY_SIZE}
       data-icon-size={DEFAULT_DISPLAY_SIZE}
-      // The boot script below rewrites both data attributes from saved
+      data-zoom-locked="false"
+      // The boot scripts below rewrite these data attributes from saved
       // settings before first paint; the DOM value is the correct one.
       suppressHydrationWarning
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_SIZE_BOOT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: ZOOM_LOCK_BOOT_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>
