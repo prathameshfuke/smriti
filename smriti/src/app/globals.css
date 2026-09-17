@@ -165,6 +165,18 @@ html {
   color-scheme: light;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /*
+   * `manipulation` drops double-tap-to-zoom (and the 300ms tap delay) —
+   * always accidental, never a real zoom intent, so this applies
+   * unconditionally with no opt-out. Two-finger pinch-zoom is untouched:
+   * removing it would repeat the WCAG 1.4.4 mistake the viewport export
+   * above already avoids. `pan-x pan-y` further removes pinch-zoom too, for
+   * caregivers who opt a patient into full zoom lock (see zoomLock.ts).
+   */
+  touch-action: manipulation;
+}
+html[data-zoom-locked="true"] {
+  touch-action: pan-x pan-y;
 }
 
 body {

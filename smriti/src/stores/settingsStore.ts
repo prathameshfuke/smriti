@@ -153,8 +153,13 @@ interface SettingsState {
   textSize: DisplaySize;
   /** Device-wide icon size, independent of text size. */
   iconSize: DisplaySize;
+  /** Device-wide zoom lock (see lib/a11y/zoomLock.ts). Off by default so
+   * pinch-zoom stays available — WCAG 1.4.4, same reasoning as layout.tsx's
+   * viewport export. A caregiver opts a specific device into it. */
+  zoomLocked: boolean;
   setTextSize: (size: DisplaySize) => void;
   setIconSize: (size: DisplaySize) => void;
+  setZoomLocked: (locked: boolean) => void;
   setActivePatient: (patientId: string | null) => void;
   touchActivity: () => void;
   setLanguage: (language: UILanguage) => void;
@@ -200,9 +205,11 @@ export const useSettingsStore = create<SettingsState>()(
       lastActivityAt: null,
       textSize: DEFAULT_DISPLAY_SIZE,
       iconSize: DEFAULT_DISPLAY_SIZE,
+      zoomLocked: false,
 
       setTextSize: (textSize) => set({ textSize }),
       setIconSize: (iconSize) => set({ iconSize }),
+      setZoomLocked: (zoomLocked) => set({ zoomLocked }),
       setActivePatient: (activePatientId) => set({ activePatientId, lastActivityAt: Date.now() }),
       touchActivity: () => set({ lastActivityAt: Date.now() }),
       setLanguage: (language) => set({ language }),

@@ -8,6 +8,7 @@ import type { UILanguage } from '@/lib/i18n/languages';
 import { useRouter } from 'next/navigation';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import DisplaySizeSettings from '@/components/caregiver/DisplaySizeSettings';
+import ZoomLockSettings from '@/components/caregiver/ZoomLockSettings';
 import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
 import PinDots from '@/components/ui/PinDots';
@@ -312,6 +313,13 @@ export default function CaregiverSettingsPage() {
           description="Make words and pictures bigger on every screen of this phone."
         >
           <DisplaySizeSettings />
+        </Panel>
+
+        <Panel
+          title="Zoom"
+          description="Stop the screen zooming by accident while sliding or tapping."
+        >
+          <ZoomLockSettings />
         </Panel>
 
         <Panel
