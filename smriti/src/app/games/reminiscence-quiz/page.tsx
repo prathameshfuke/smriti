@@ -12,6 +12,7 @@ import { useTranslation } from '@/lib/i18n/provider';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 import { db, type LocalReminiscenceQuiz } from '@/lib/db/schema';
+import { buildMemoryQuiz } from '@/lib/games/memory-quiz';
 
 export default function ReminiscenceQuizPage() {
   return (
@@ -37,23 +38,41 @@ function ReminiscenceQuizPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const patientId = currentPatient?.id;
+
+  // Built fresh from the Memory Bank on every visit — see lib/games/memory-quiz.ts.
   useEffect(() => {
-    if (!currentPatient) return;
-    void db.reminiscenceQuizzes
-      .where('patientId')
-      .equals(currentPatient.id)
-      .first()
-      .then((row) => setQuiz(row ?? null));
-    void db.memoryBankEntries
-      .where('patientId')
-      .equals(currentPatient.id)
-      .toArray()
-      .then((entries) => {
-        const map: Record<string, string | null> = {};
-        for (const entry of entries) map[entry.title] = entry.photoUrl;
-        setEntryPhotos(map);
-      });
-  }, [currentPatient]);
+    if (!patientId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const entries = await db.memoryBankEntries
+          .where('patientId')
+          .equals(patientId)
+          .filter((e) => e.active)
+          .toArray();
+        if (cancelled) return;
+        const photos: Record<string, string | null> = {};
+        for (const entry of entries) photos[entry.title.trim()] = entry.photoUrl;
+        setEntryPhotos(photos);
+        setQuiz(
+          buildMemoryQuiz(patientId, entries, {
+            whoIsThis: () => t('game.reminiscenceQuiz.whoIsThis'),
+            whoIsYour: (relationship) => t('game.reminiscenceQuiz.whoIsYour', { relationship }),
+            whichIsAbout: (detail) => t('game.reminiscenceQuiz.whichIsAbout', { detail }),
+          }),
+        );
+      } catch {
+        // An unreadable local database shows the "add memories" message, never a blank screen.
+        if (!cancelled) setQuiz(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // `t` changes identity with language; the quiz is rebuilt only when the patient changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patientId]);
 
   const onComplete = (accuracyPct: number) => {
     // No difficulty adjustment for this game — a fixed 5-question quiz has
@@ -92,9 +111,9 @@ function ReminiscenceQuizPageInner() {
       />
       <main className="flex flex-1 flex-col">
         <NextIntlClientProvider locale={language} messages={REMINISCENCE_QUIZ_MESSAGES[language as keyof typeof REMINISCENCE_QUIZ_MESSAGES] ?? REMINISCENCE_QUIZ_MESSAGES.en}>
-          {quiz === undefined ? null : quiz === null ? (
+          {!currentPatient || quiz === null ? (
             <NoQuizYet />
-          ) : (
+          ) : quiz === undefined ? null : (
             <GameComponent
               quiz={quiz}
               entryPhotos={entryPhotos}

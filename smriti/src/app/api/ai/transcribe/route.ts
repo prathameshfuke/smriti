@@ -1,11 +1,13 @@
 import { verifyDeviceTrust } from '@/lib/auth/deviceTrustServer';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { transcribeAudio } from '@/lib/ai/transcribe-client';
-import { transcribeBhashini, supportsBhashiniAsr } from '@/lib/ai/bhashini-asr-client';
+import { bhashiniAudioFormat, transcribeBhashini, supportsBhashiniAsr } from '@/lib/ai/bhashini-asr-client';
+import { createServiceRoleClient } from '@/lib/supabase/client';
+import { hasServerConsent } from '@/lib/consent/consentServer';
 import { isUILanguage } from '@/lib/i18n/languages';
 
 /**
- * Two independent auth paths, same shape as /api/ai/complete: a kiosk's
+ * Two independent auth paths, same shape as /api/ai/converse: a kiosk's
  * device-trust token (patient companion, Prompt 2) or a caregiver Bearer
  * token (Memory Bank "Quick add" mic button, Prompt 4) — no ownership
  * check needed for the caregiver path since transcription alone touches
@@ -43,6 +45,10 @@ export async function POST(request: Request) {
     if (!caregiverAuth) {
       return Response.json({ error: 'invalid_device_token' }, { status: 401 });
     }
+  } else if (!(await hasServerConsent(createServiceRoleClient(), token.patientId, 'voice'))) {
+    // A patient's voice leaves the device only with the caregiver's recorded
+    // consent for voice processing (see lib/consent/policy.ts).
+    return Response.json({ error: 'consent_required' }, { status: 403 });
   }
 
   // Bhashini ASR first for as/hi — its whole value here (per Task 0
@@ -56,7 +62,7 @@ export async function POST(request: Request) {
   const languageRaw = formData.get('language');
   const language = typeof languageRaw === 'string' && isUILanguage(languageRaw) ? languageRaw : 'en';
 
-  if (supportsBhashiniAsr(language)) {
+  if (supportsBhashiniAsr(language) && bhashiniAudioFormat(audio.type) !== null) {
     try {
       const result = await transcribeBhashini(audio, language);
       return Response.json({ text: result.text });

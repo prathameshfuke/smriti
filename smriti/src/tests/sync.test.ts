@@ -644,3 +644,204 @@ describe('POST /api/sync', () => {
     expect(inserted.some((a) => a.alert_type === 'low_adherence' && a.severity === 'yellow')).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Ask Smriti data: Memory Bank pull, consent and offline answers, cursors
+// ---------------------------------------------------------------------------
+describe('syncToServer — Ask Smriti data', () => {
+  const serverEntry = {
+    id: 'mb-remote',
+    patient_id: 'p1',
+    category: 'person',
+    title: 'Raju',
+    detail: 'Your son. Visits on Sundays.',
+    photo_url: null,
+    relationship: 'son',
+    active: true,
+    created_by: 'c1',
+    updated_at: '2026-09-10T10:00:00.000Z',
+  };
+
+  function okResponse(updates: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        serverTimestamp: '2026-09-17T12:00:00.000Z',
+        syncedEventCount: 0,
+        syncErrors: {},
+        updates: { patients: [], reminders: [], alerts: [], ...updates },
+        ...extra,
+      }),
+    };
+  }
+
+  beforeEach(async () => {
+    await db.memoryBankEntries.clear();
+    await db.consents.clear();
+    await db.aiConversationLog.clear();
+    await db.syncCursors.clear();
+    getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
+  });
+
+  it('still syncs with nothing to upload, so changes from other devices arrive', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ memoryBankEntries: [serverEntry] }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    const result = await syncToServer('p1');
+
+    expect(result.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const local = await db.memoryBankEntries.get('mb-remote');
+    expect(local).toMatchObject({ title: 'Raju', relationship: 'son', patientId: 'p1', synced: true });
+    expect((await db.syncCursors.get('p1'))?.serverTimestamp).toBe('2026-09-17T12:00:00.000Z');
+  });
+
+  it('sends the saved cursor so only changes since the last sync are downloaded', async () => {
+    await db.syncCursors.put({ patientId: 'p1', serverTimestamp: '2026-09-16T00:00:00.000Z' });
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.patients[0].lastSyncTimestamp).toBe('2026-09-16T00:00:00.000Z');
+  });
+
+  it('never lets a server row overwrite a Memory Bank edit this phone has not uploaded yet', async () => {
+    await db.memoryBankEntries.put({
+      id: 'mb-remote',
+      patientId: 'p1',
+      category: 'person',
+      title: 'Raju',
+      detail: 'Visits on Saturdays now.',
+      photoUrl: null,
+      relationship: 'son',
+      active: true,
+      createdBy: 'c1',
+      updatedAt: '2026-09-09T10:00:00.000Z',
+      synced: false,
+    });
+    // The server rejects the upload, so the local edit stays unsent.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        okResponse({ memoryBankEntries: [serverEntry] }, { syncErrors: { p1: { memoryBankEntries: 'boom' } } }),
+      ),
+    );
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    expect((await db.memoryBankEntries.get('mb-remote'))?.detail).toBe('Visits on Saturdays now.');
+    expect(await db.syncCursors.get('p1')).toBeUndefined();
+  });
+
+  it('uploads an unsent consent and offline answers, then marks them sent', async () => {
+    await db.consents.put({
+      patientId: 'p1',
+      version: 2,
+      careProfile: true,
+      guardianAttested: true,
+      aiCompanion: false,
+      voiceProcessing: false,
+      consentedBy: 'c1',
+      consentedAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-02T00:00:00.000Z',
+      synced: false,
+    });
+    await db.aiConversationLog.put({
+      id: 'offline-1',
+      patientId: 'p1',
+      question: 'who is Raju',
+      answer: 'Raju (son): Your son.',
+      grounded: true,
+      modelUsed: 'on-device',
+      createdAt: '2026-09-15T08:00:00.000Z',
+      pendingSync: true,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.patients[0].consent).toMatchObject({ patient_id: 'p1', ai_companion: false, version: 2 });
+    expect(body.patients[0].aiConversationLogs).toEqual([
+      expect.objectContaining({ id: 'offline-1', model_used: 'on-device', question: 'who is Raju' }),
+    ]);
+    expect((await db.consents.get('p1'))?.synced).toBe(true);
+    expect((await db.aiConversationLog.get('offline-1'))?.pendingSync).toBe(false);
+  });
+});
+
+describe('POST /api/sync — consent and offline companion answers', () => {
+  it('pins consent to the authorized patient and caregiver, and only accepts on-device model names for logs', async () => {
+    getUser.mockResolvedValue({ data: { user: { id: 'u-consent-sync-test' } }, error: null });
+    const consentChain = makeChain({ data: null, error: null });
+    consentChain.maybeSingle = vi.fn(() => Promise.resolve({ data: null, error: null }));
+    const logChain = makeChain({ data: null, error: null });
+    fromMock.mockImplementation((table: string) => {
+      if (table === 'caregivers') return makeChain({ data: { id: 'c-real' }, error: null });
+      if (table === 'patients') return makeChain({ data: [{ id: 'p1' }], error: null });
+      if (table === 'patient_consents') return consentChain;
+      if (table === 'ai_conversation_log') return logChain;
+      return makeChain({ data: [], error: null });
+    });
+
+    const { POST } = await import('@/app/api/sync/route');
+    const res = await POST(
+      new Request('http://localhost/api/sync', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deviceId: 'd1',
+          lastSyncTimestamp: null,
+          patients: [
+            {
+              patientId: 'p1',
+              sessions: [],
+              events: [],
+              dailySummaries: [],
+              reminderAcks: [],
+              consent: {
+                patient_id: 'someone-else',
+                caregiver_id: 'forged',
+                version: 2,
+                care_profile: true,
+                guardian_attested: true,
+                ai_companion: true,
+                voice_processing: true,
+                consented_at: '2026-09-01T00:00:00.000Z',
+                updated_at: '2026-09-02T00:00:00.000Z',
+              },
+              aiConversationLogs: [
+                {
+                  id: '6f1b2c1e-8a47-4d0e-9a55-0d7d0f0c7a11',
+                  question: 'who is Raju',
+                  answer: 'Raju (son)',
+                  grounded: true,
+                  model_used: 'groq/pretend',
+                  created_at: '2026-09-15T08:00:00.000Z',
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(consentChain.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ patient_id: 'p1', caregiver_id: 'c-real', ai_companion: true }),
+      { onConflict: 'patient_id' },
+    );
+    expect(logChain.upsert).toHaveBeenCalledWith(
+      [expect.objectContaining({ patient_id: 'p1', model_used: 'on-device', flagged_for_followup: false })],
+      { onConflict: 'id', ignoreDuplicates: true },
+    );
+  });
+});

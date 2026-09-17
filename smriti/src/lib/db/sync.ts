@@ -7,10 +7,16 @@ import {
   type LocalDailySummary,
   type LocalReminderAck,
   type LocalMemoryBankEntry,
+  type LocalAiConversationLog,
+  type LocalConsent,
 } from './schema';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { toHHMM } from '@/lib/supabase/types';
 import { toLocalAppointmentFields } from './wire';
+import { applyServerConsent } from '@/lib/consent/consentClient';
+import { clearCachedAnswers } from '@/lib/ai/companion-cache';
+import { fromWireConsent, toWireConsent } from '@/lib/consent/wire';
+import type { MemoryBankCategory, PatientConsent } from '@/lib/supabase/types';
 
 const SYNC_TIMEOUT_MS = 15_000;
 
@@ -65,6 +71,8 @@ interface PatientSyncErrors {
   dailySummaries?: string;
   reminderAcks?: string;
   memoryBankEntries?: string;
+  consent?: string;
+  aiConversationLogs?: string;
 }
 
 /** Wire shape for `memory_bank_entries` — Supabase columns are snake_case,
@@ -81,6 +89,34 @@ interface WireMemoryBankEntry {
   active: boolean;
   created_by: string;
   updated_at: string;
+}
+
+function toLocalMemoryBankEntry(row: WireMemoryBankEntry): LocalMemoryBankEntry {
+  return {
+    id: row.id,
+    patientId: row.patient_id,
+    category: row.category as MemoryBankCategory,
+    title: row.title,
+    detail: row.detail,
+    photoUrl: row.photo_url,
+    relationship: row.relationship,
+    active: row.active,
+    createdBy: row.created_by,
+    updatedAt: row.updated_at,
+    synced: true,
+  };
+}
+
+function toWireAiLog(row: LocalAiConversationLog) {
+  return {
+    id: row.id,
+    patient_id: row.patientId,
+    question: row.question,
+    answer: row.answer,
+    grounded: row.grounded,
+    model_used: row.modelUsed,
+    created_at: row.createdAt,
+  };
 }
 
 function toWireMemoryBankEntry(e: LocalMemoryBankEntry): WireMemoryBankEntry {
@@ -157,6 +193,11 @@ interface SyncResponseBody {
     patients: ServerPatientRow[];
     reminders: ServerReminderRow[];
     alerts: unknown[];
+    /** Memory Bank rows changed since the cursor, including soft-deleted ones —
+     * so an entry added or removed on another device reaches this phone's
+     * offline Ask Smriti too. Absent from older servers. */
+    memoryBankEntries?: WireMemoryBankEntry[];
+    consents?: PatientConsent[];
   };
 }
 
@@ -173,18 +214,12 @@ interface PatientSyncPayload {
   /** The patient's own details (name, language…) when edited on this phone. */
   profile: LocalPatient | null;
   profileQueueIds: string[];
-}
-
-function payloadSize(p: PatientSyncPayload): number {
-  return (
-    p.sessions.length +
-    p.events.length +
-    p.dailySummaries.length +
-    p.reminderAcks.length +
-    p.memoryBankEntries.length +
-    p.reminderSchedules.length +
-    (p.profile ? 1 : 0)
-  );
+  /** This patient's consent when it changed on this phone and has not reached the server. */
+  consent: LocalConsent | null;
+  /** Ask Smriti answers given on this phone while offline, not yet logged on the server. */
+  aiConversationLogs: LocalAiConversationLog[];
+  /** Server time of this patient's last successful sync; null pulls everything. */
+  since: string | null;
 }
 
 /**
@@ -236,7 +271,19 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
 
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
-  const [sessions, events, dailySummaries, reminderAcks, memoryBankEntries, scheduleQueue, profileQueue, profile] = await Promise.all([
+  const [
+    sessions,
+    events,
+    dailySummaries,
+    reminderAcks,
+    memoryBankEntries,
+    scheduleQueue,
+    profileQueue,
+    profile,
+    consent,
+    aiConversationLogs,
+    cursor,
+  ] = await Promise.all([
     db.gameSessions.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.telemetryEvents.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     // dailySummaries has no plain `patientId` index (only the compound
@@ -254,6 +301,9 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
       .filter((q) => q.recordId === patientId)
       .toArray(),
     db.patients.get(patientId),
+    db.consents.get(patientId),
+    db.aiConversationLog.where('patientId').equals(patientId).filter((r) => r.pendingSync === true).toArray(),
+    db.syncCursors.get(patientId),
   ]);
   const queuedIds = [...new Set(scheduleQueue.map((q) => q.recordId))];
   const found = await db.reminderSchedules.bulkGet(queuedIds);
@@ -275,6 +325,9 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     scheduleQueueIds: scheduleQueue.filter((q) => scheduleIds.has(q.recordId)).map((q) => q.id),
     profile: profileQueue.length && profile ? profile : null,
     profileQueueIds: profileQueue.map((q) => q.id),
+    consent: consent && !consent.synced ? consent : null,
+    aiConversationLogs,
+    since: cursor?.serverTimestamp ?? null,
   };
 }
 
@@ -290,6 +343,7 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
  * queries keep coming up empty, with no visible sign anything was wrong.
  */
 async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncResponseBody): Promise<void> {
+  const memoryBankChanged = new Set<string>();
   await db.transaction(
     'rw',
     [
@@ -301,6 +355,9 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
       db.patients,
       db.reminderSchedules,
       db.syncQueue,
+      db.consents,
+      db.aiConversationLog,
+      db.syncCursors,
     ],
     async () => {
       for (const payload of payloads) {
@@ -331,9 +388,44 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
           // the local data-URL every same-device render actually uses with a remote URL that
           // needs a network fetch — this only ever flips the one field that changed.
           for (const e of payload.memoryBankEntries) {
-            await db.memoryBankEntries.update(e.id, { synced: true });
+            // Only rows not edited again while the upload was in flight.
+            await db.memoryBankEntries
+              .where('id')
+              .equals(e.id)
+              .filter((row) => row.updatedAt === e.updatedAt)
+              .modify({ synced: true });
           }
         }
+        if (!errors.consent && payload.consent) {
+          const sent = payload.consent;
+          await db.consents
+            .where('patientId')
+            .equals(sent.patientId)
+            .filter((row) => row.updatedAt === sent.updatedAt)
+            .modify({ synced: true });
+        }
+        if (!errors.aiConversationLogs) {
+          for (const log of payload.aiConversationLogs) {
+            await db.aiConversationLog.update(log.id, { pendingSync: false });
+          }
+        }
+        // A patient with every category accepted advances its pull cursor; a
+        // partial failure keeps the old one so nothing changed meanwhile is skipped.
+        if (Object.keys(errors).length === 0 && body.serverTimestamp) {
+          await db.syncCursors.put({ patientId: payload.patientId, serverTimestamp: body.serverTimestamp });
+        }
+      }
+
+      for (const incoming of body.updates.memoryBankEntries ?? []) {
+        const local = await db.memoryBankEntries.get(incoming.id);
+        // An unsent edit on this phone wins until it is uploaded; otherwise newest wins.
+        if (local && (local.synced === false || Date.parse(local.updatedAt) >= Date.parse(incoming.updated_at))) continue;
+        await db.memoryBankEntries.put(toLocalMemoryBankEntry(incoming));
+        memoryBankChanged.add(incoming.patient_id);
+      }
+
+      for (const incoming of body.updates.consents ?? []) {
+        await applyServerConsent(fromWireConsent(incoming));
       }
 
       for (const incoming of body.updates.patients ?? []) {
@@ -351,6 +443,8 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
       }
     },
   );
+  // Outside the transaction: cached answers built from entries that just changed.
+  for (const patientId of memoryBankChanged) await clearCachedAnswers(patientId);
 }
 
 async function postSync(payloads: PatientSyncPayload[], accessToken: string, retried = false): Promise<SyncResult> {
@@ -372,6 +466,9 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
           reminderSchedules: p.reminderSchedules,
           profile: p.profile,
           memoryBankEntries: p.memoryBankEntries.map(toWireMemoryBankEntry),
+          consent: p.consent ? toWireConsent(p.consent) : null,
+          aiConversationLogs: p.aiConversationLogs.map(toWireAiLog),
+          lastSyncTimestamp: p.since,
         })),
       }),
       signal: AbortSignal.timeout(SYNC_TIMEOUT_MS),
@@ -427,9 +524,9 @@ export async function syncToServer(patientId: string): Promise<SyncResult> {
   const accessToken = await getAccessToken();
   if (!accessToken) return { success: false, error: 'no_session' };
 
+  // Sent even with nothing to upload: the response is also how changes made
+  // on other devices (Memory Bank, consent, reminders) reach this one.
   const payload = await gatherUnsyncedRows(patientId);
-  if (payloadSize(payload) === 0) return { success: true };
-
   return postSync([payload], accessToken);
 }
 
@@ -462,9 +559,8 @@ export async function syncAllPatients(): Promise<SyncResult> {
   // Removed patients are refused by the server; their leftover rows would
   // otherwise make every sync report a failure.
   const patients = (await db.patients.toArray()).filter((p) => p.isActive !== false);
+  if (patients.length === 0) return { success: true };
+  // Every patient goes, including those with nothing to upload — see syncToServer.
   const payloads = await Promise.all(patients.map((p) => gatherUnsyncedRows(p.id)));
-  const nonEmpty = payloads.filter((p) => payloadSize(p) > 0);
-  if (nonEmpty.length === 0) return { success: true };
-
-  return postSync(nonEmpty, accessToken);
+  return postSync(payloads, accessToken);
 }

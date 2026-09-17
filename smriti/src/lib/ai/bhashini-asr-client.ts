@@ -1,5 +1,5 @@
 import type { UILanguage } from '@/lib/i18n/languages';
-import { fetchInferenceAuth } from './bhashini-auth';
+import { fetchInferenceAuth, invalidateInferenceAuth } from './bhashini-auth';
 
 /**
  * Single entry point for Bhashini speech-to-text. Sibling to
@@ -47,6 +47,22 @@ const LEGACY_ASR_SERVICE_ID = 'bhashini/ai4bharat/conformer-multilingual-asr';
 export type BhashiniAsrLanguage = 'as' | 'hi' | 'bn';
 const BHASHINI_ASR_LANGUAGES: ReadonlySet<string> = new Set<BhashiniAsrLanguage>(['as', 'hi', 'bn']);
 
+/** Container formats Bhashini ASR accepts. Safari's MediaRecorder records
+ * `audio/mp4`, which Bhashini rejects — those clips go straight to Groq
+ * Whisper instead of spending a doomed Bhashini attempt first. */
+export type BhashiniAudioFormat = 'webm' | 'wav' | 'flac' | 'ogg';
+
+export function bhashiniAudioFormat(mimeType: string | undefined): BhashiniAudioFormat | null {
+  const base = (mimeType ?? '').split(';')[0].trim().toLowerCase();
+  // An empty type comes from recorders that don't report one; every such
+  // browser in practice (Chrome, Firefox, Android WebView) records webm.
+  if (base === '' || base === 'audio/webm' || base === 'video/webm') return 'webm';
+  if (base === 'audio/wav' || base === 'audio/x-wav' || base === 'audio/wave') return 'wav';
+  if (base === 'audio/flac') return 'flac';
+  if (base === 'audio/ogg') return 'ogg';
+  return null;
+}
+
 /** Whether Bhashini ASR should even be attempted for this language. */
 export function supportsBhashiniAsr(language: UILanguage): language is BhashiniAsrLanguage {
   return BHASHINI_ASR_LANGUAGES.has(language);
@@ -70,6 +86,7 @@ async function computeAsr(
   headerName: string,
   headerValue: string,
   serviceId: string,
+  audioFormat: BhashiniAudioFormat,
 ): Promise<TranscribeBhashiniResult> {
   const response = await fetch(BHASHINI_URL, {
     method: 'POST',
@@ -85,8 +102,10 @@ async function computeAsr(
           config: {
             language: { sourceLanguage: language },
             serviceId,
-            audioFormat: 'webm',
-            samplingRate: 48000,
+            audioFormat,
+            // Only webm/ogg (Opus) are recorded at 48kHz; wav/flac here
+            // come from 16kHz sources, Bhashini's documented rate.
+            samplingRate: audioFormat === 'webm' || audioFormat === 'ogg' ? 48000 : 16000,
           },
         },
       ],
@@ -121,16 +140,22 @@ export async function transcribeBhashini(
   audio: Blob,
   language: BhashiniAsrLanguage,
 ): Promise<TranscribeBhashiniResult> {
+  const audioFormat = bhashiniAudioFormat(audio.type) ?? 'webm';
   const audioBase64 = Buffer.from(await audio.arrayBuffer()).toString('base64');
 
   try {
     const auth = await fetchInferenceAuth('asr', language);
-    return await computeAsr(audioBase64, language, auth.name, auth.value, auth.serviceId);
+    try {
+      return await computeAsr(audioBase64, language, auth.name, auth.value, auth.serviceId, audioFormat);
+    } catch (err) {
+      invalidateInferenceAuth('asr', language);
+      throw err;
+    }
   } catch {
     const legacyKey = process.env.BHASHINI_INFERENCE_API_KEY;
     if (!legacyKey) {
       throw new Error('Bhashini ASR: no service discovered and no legacy BHASHINI_INFERENCE_API_KEY configured');
     }
-    return computeAsr(audioBase64, language, 'Authorization', legacyKey, LEGACY_ASR_SERVICE_ID);
+    return computeAsr(audioBase64, language, 'Authorization', legacyKey, LEGACY_ASR_SERVICE_ID, audioFormat);
   }
 }

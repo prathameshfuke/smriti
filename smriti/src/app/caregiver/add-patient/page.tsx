@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
+import ConsentForm from '@/components/caregiver/ConsentForm';
+import { EMPTY_CONSENT_CHOICES, hasRequiredChoices, type ConsentChoices } from '@/lib/consent/policy';
+import { pushConsent, saveConsent } from '@/lib/consent/consentClient';
 import PageHeader from '@/components/ui/PageHeader';
 import { buttonClass, fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { db, type LocalPatient } from '@/lib/db/schema';
@@ -124,9 +127,11 @@ export default function AddPatientPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [consent, setConsent] = useState<ConsentChoices>(EMPTY_CONSENT_CHOICES);
 
   const ageNumber = Number(age);
-  const canSave = name.trim().length > 0 && gender !== null && ageNumber >= 40 && ageNumber <= 120;
+  const canSave =
+    name.trim().length > 0 && gender !== null && ageNumber >= 40 && ageNumber <= 120 && hasRequiredChoices(consent);
 
   const save = async () => {
     if (!where || !canSave || saving) return;
@@ -166,6 +171,10 @@ export default function AddPatientPage() {
         setError('Could not save to your account. Connect to the internet and try again.');
         return;
       }
+      // Recorded here and on the account before anything else is stored on
+      // this phone; an upload that fails is retried by the next sync.
+      const record = await saveConsent(patient.id, caregiver.id, consent, { push: false });
+      await pushConsent(record);
 
       if (where === 'own') {
         // Nothing else is stored on this phone; the account is the only
@@ -362,6 +371,16 @@ export default function AddPatientPage() {
                 />
               </div>
             ) : null}
+
+            <section aria-labelledby="new-patient-consent-heading" className="flex flex-col gap-3">
+              <h2
+                id="new-patient-consent-heading"
+                className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink"
+              >
+                Privacy &amp; consent
+              </h2>
+              <ConsentForm choices={consent} onChange={setConsent} patientName={name} />
+            </section>
 
             {error ? (
               <p role="alert" className="text-caregiver-body font-bold text-danger">

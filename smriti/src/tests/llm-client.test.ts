@@ -98,7 +98,42 @@ describe('callLLM', () => {
 
     const [, requestInit] = fetchMock.mock.calls[0];
     const sentBody = JSON.parse((requestInit as RequestInit).body as string);
-    expect(sentBody.max_tokens).toBe(300);
+    // gpt-oss reasons before replying: the visible 300 plus reasoning headroom, reasoning kept low.
+    expect(sentBody.max_completion_tokens).toBe(700);
+    expect(sentBody.reasoning_effort).toBe('low');
     expect(sentBody.temperature).toBe(0.3);
+  });
+});
+
+describe('callChat', () => {
+  it('prefers the larger Groq conversation model and asks for a JSON reply', async () => {
+    const fetchMock = mockFetchSequence([{ ok: true, body: groqSuccessBody('{"reply":"Namaskar"}') }]);
+    vi.stubGlobal('fetch', fetchMock);
+    const { callChat } = await import('@/lib/ai/llm-client');
+
+    const result = await callChat({ messages: [{ role: 'user', content: 'hi' }], json: true });
+
+    expect(result).toEqual({ text: '{"reply":"Namaskar"}', model: 'groq/openai/gpt-oss-120b' });
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.model).toBe('openai/gpt-oss-120b');
+    expect(sent.response_format).toEqual({ type: 'json_object' });
+  });
+
+  it('tries the smaller Groq model, then OpenRouter without JSON mode, and returns null text when all fail', async () => {
+    const fetchMock = mockFetchSequence([
+      { ok: false, status: 503 },
+      { ok: false, status: 429 },
+      { ok: true, body: groqSuccessBody('hello') },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+    const { callChat } = await import('@/lib/ai/llm-client');
+
+    const result = await callChat({ messages: [{ role: 'user', content: 'hi' }], json: true });
+    expect(result.model).toBe('openrouter/meta-llama/llama-3.1-8b-instruct');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).model).toBe('openai/gpt-oss-20b');
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body).response_format).toBeUndefined();
+
+    vi.stubGlobal('fetch', mockFetchSequence([{ ok: false, status: 500 }]));
+    expect(await callChat({ messages: [{ role: 'user', content: 'hi' }] })).toEqual({ text: null, model: 'none' });
   });
 });

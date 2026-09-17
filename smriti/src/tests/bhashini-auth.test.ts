@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { clearInferenceAuthCache } from '@/lib/ai/bhashini-auth';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -25,6 +26,7 @@ function configSuccessBody(serviceId: string, name: string, value: string) {
 }
 
 beforeEach(() => {
+  clearInferenceAuthCache();
   process.env.BHASHINI_USER_ID = 'test-user-id';
   process.env.BHASHINI_ULCA_API_KEY = 'test-ulca-key';
 });

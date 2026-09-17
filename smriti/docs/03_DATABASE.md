@@ -461,7 +461,7 @@ CREATE POLICY caregiver_memory_bank ON memory_bank_entries
 -- Caregivers can read the conversation log (for the digest/safety-audit
 -- feature). No patient-facing policy: the kiosk device has no Supabase
 -- session to key RLS off (see src/lib/auth/deviceTrust.ts) — writes for that
--- path go through POST /api/ai/complete using the service-role key instead,
+-- path go through POST /api/ai/converse using the service-role key instead,
 -- after the route validates the device-trust token itself.
 CREATE POLICY caregiver_read_ai_log ON ai_conversation_log
   FOR SELECT USING (patient_id IN (
@@ -491,11 +491,11 @@ CREATE INDEX idx_ai_log_followup ON ai_conversation_log(patient_id, flagged_for_
 -- MIGRATION 006: Reminiscence Quiz
 -- =============================================
 
--- One cached quiz per patient, regenerated in place by a caregiver's
--- "Refresh Quiz" action — never generated on the fly per play, so the game
--- loads instantly and works offline. `questions` is validated server-side
--- before this row is ever written (see POST /api/ai/generate-reminiscence-quiz);
--- a failed regeneration leaves the previous row untouched.
+-- No longer written. The quiz is now built on the patient's phone from the
+-- Memory Bank each time it is played (src/lib/games/memory-quiz.ts); the
+-- server-generated quiz this table held was never copied to the phone, so
+-- the game always opened empty. Kept so existing rows are not lost; safe to
+-- drop once no deployment reads it.
 CREATE TABLE reminiscence_quizzes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   patient_id UUID NOT NULL UNIQUE REFERENCES patients(id) ON DELETE CASCADE,
@@ -802,4 +802,102 @@ ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_appointment_fie
 
 ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_day_of_before_appointment_check
   CHECK (remind_day_of_time IS NULL OR remind_day_of_time <= time_of_day);
+```
+
+```sql
+-- =============================================
+-- MIGRATION 014: Patient data consent + companion log sync
+-- =============================================
+
+-- One current consent per patient, given by the caregiver during onboarding
+-- (or when adding a patient) before any patient data is collected. The
+-- policy text and the meaning of each column live in
+-- src/lib/consent/policy.ts; `version` is that file's CONSENT_VERSION.
+--
+-- Enforcement: POST /api/ai/converse and the device path of
+-- POST /api/ai/transcribe refuse with 403 `consent_required` unless this row
+-- exists, is at the current version, and has the required purpose turned on.
+CREATE TABLE patient_consents (
+  patient_id UUID PRIMARY KEY REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL CHECK (version >= 1),
+  care_profile BOOLEAN NOT NULL,
+  guardian_attested BOOLEAN NOT NULL,
+  ai_companion BOOLEAN NOT NULL DEFAULT false,
+  voice_processing BOOLEAN NOT NULL DEFAULT false,
+  consented_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (NOT voice_processing OR ai_companion)
+);
+
+-- Append-only history, so a later withdrawal never erases the record of
+-- what was agreed to and when.
+CREATE TABLE patient_consent_history (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL,
+  version INTEGER NOT NULL,
+  care_profile BOOLEAN NOT NULL,
+  guardian_attested BOOLEAN NOT NULL,
+  ai_companion BOOLEAN NOT NULL,
+  voice_processing BOOLEAN NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION record_patient_consent_history() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO patient_consent_history
+    (patient_id, caregiver_id, version, care_profile, guardian_attested, ai_companion, voice_processing)
+  VALUES
+    (NEW.patient_id, NEW.caregiver_id, NEW.version, NEW.care_profile, NEW.guardian_attested,
+     NEW.ai_companion, NEW.voice_processing);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_patient_consent_history AFTER INSERT OR UPDATE ON patient_consents
+  FOR EACH ROW EXECUTE FUNCTION record_patient_consent_history();
+
+ALTER TABLE patient_consents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_consent_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY caregiver_patient_consents ON patient_consents
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+CREATE POLICY caregiver_read_consent_history ON patient_consent_history
+  FOR SELECT USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+-- Questions Ask Smriti answered on the phone while offline (from the local
+-- Memory Bank) are uploaded by POST /api/sync under the caregiver's own
+-- session, so the caregiver needs an insert policy on the log; online
+-- answers keep being written by the service role in /api/ai/converse.
+CREATE POLICY caregiver_insert_ai_log ON ai_conversation_log
+  FOR INSERT WITH CHECK (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+```
+
+```sql
+-- =============================================
+-- MIGRATION 015: Conversation turns in the companion log
+-- =============================================
+
+-- Ask Smriti is a conversation now (POST /api/ai/converse): each message and
+-- reply is one row, and rows of the same conversation share a session id so
+-- the caregiver reads them together instead of as unrelated questions.
+-- Nullable, and the route falls back to inserting without it, so turns are
+-- still logged on a database where this migration has not been applied.
+ALTER TABLE ai_conversation_log ADD COLUMN IF NOT EXISTS session_id UUID;
+
+CREATE INDEX IF NOT EXISTS idx_ai_log_session ON ai_conversation_log(patient_id, session_id, created_at);
 ```

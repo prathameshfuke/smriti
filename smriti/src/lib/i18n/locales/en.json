@@ -89,7 +89,10 @@
     },
     "reminiscenceQuiz": {
       "name": "Family & Life Quiz",
-      "noQuiz": "No quiz is ready yet. Ask your caregiver to set one up."
+      "noQuiz": "The quiz needs at least 3 people or memories in the Memory Book. Ask your caregiver to add them.",
+      "whoIsThis": "Who is this?",
+      "whoIsYour": "Who is your {relationship}?",
+      "whichIsAbout": "Who or what is this about? “{detail}”"
     },
     "correct": "Correct!",
     "tryAgain": "Try again",
@@ -159,7 +162,6 @@
       "next": "Next",
       "back": "Back",
       "gotIt": "Got it, let's play!",
-      "iAmReady": "I'm ready!",
       "quickTap": {
         "step1": "First you see one picture. Remember it — this is the picture to catch.",
         "step2": "Then pictures appear one at a time in the middle of the screen.",
@@ -176,7 +178,8 @@
         "step1": "A stack of boxes appears for a few seconds.",
         "step2": "Count every box, including the ones stacked behind or on top.",
         "step3": "When the boxes disappear, enter how many you counted."
-      }
+      },
+      "iAmReady": "I'm ready!"
     }
   },
   "reminder": {
@@ -239,7 +242,21 @@
     "youAsked": "You asked",
     "aiAnswer": "AI-generated answer",
     "fromEarlier": "From earlier",
-    "askAgain": "Ask again"
+    "askAgain": "Ask again",
+    "notSure": "I'm not sure about that. You could ask your caregiver.",
+    "unavailable": "I can't check that right now. Try again in a moment, or ask your caregiver.",
+    "distress": "It sounds like you might be going through something hard right now. Please call 14416 (Tele-MANAS) to talk with someone, or tell your caregiver.",
+    "fromMemoryBook": "From your memory book",
+    "consentNeeded": "Ask Smriti is not turned on. Your caregiver can turn it on in Settings.",
+    "typeInstead": "Type instead",
+    "speakInstead": "Speak instead",
+    "micUnavailable": "The microphone could not be used. You can type your question.",
+    "conversation": "Conversation with Smriti",
+    "you": "You",
+    "smriti": "Smriti",
+    "tapToReply": "Tap to reply",
+    "newConversation": "Start a new conversation",
+    "didNotHear": "I didn't catch that. Please tap and say it again."
   },
   "reminders": {
     "title": "Reminders",

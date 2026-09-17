@@ -8,6 +8,7 @@ import type { UILanguage } from '@/lib/i18n/languages';
 import { useRouter } from 'next/navigation';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import DisplaySizeSettings from '@/components/caregiver/DisplaySizeSettings';
+import PrivacyConsentSettings from '@/components/caregiver/PrivacyConsentSettings';
 import ZoomLockSettings from '@/components/caregiver/ZoomLockSettings';
 import FaqTabsCard from '@/components/ui/FaqTabsCard';
 import PinPad from '@/components/ui/PinPad';
@@ -316,9 +317,13 @@ export default function CaregiverSettingsPage() {
         </Panel>
 
         <Panel
-          title="Zoom"
-          description="Stop the screen zooming by accident while sliding or tapping."
+          title={currentPatient ? `Privacy & consent for ${currentPatient.displayName}` : 'Privacy & consent'}
+          description="What you agreed to, and the optional AI features you can turn on or off."
         >
+          <PrivacyConsentSettings patient={currentPatient} />
+        </Panel>
+
+        <Panel title="Zoom" description="Stop the screen zooming by accident while sliding or tapping.">
           <ZoomLockSettings />
         </Panel>
 

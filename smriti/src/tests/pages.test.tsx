@@ -133,6 +133,7 @@ beforeEach(async () => {
   searchParams = new URLSearchParams();
   await db.caregivers.clear();
   await db.patients.clear();
+  await db.consents.clear();
   await db.reminderSchedules.clear();
   await db.syncQueue.clear();
 });
@@ -882,23 +883,122 @@ describe('Caregiver layout auth guard', () => {
   });
 });
 
+describe('Caregiver layout consent guardrail', () => {
+  const caregiverRow = {
+    id: 'c1',
+    authUserId: 'u1',
+    displayName: 'Test Caregiver',
+    role: 'family' as const,
+    createdAt: new Date().toISOString(),
+  };
+  const patientRow = {
+    id: 'p-no-consent',
+    caregiverId: 'c1',
+    displayName: 'Aai',
+    ageYears: 72,
+    gender: 'female' as const,
+    educationYears: 4,
+    primaryLanguage: 'en',
+    sessionDurationMinutes: 10,
+    isActive: true,
+    currentDifficulty: {},
+    updatedAt: new Date().toISOString(),
+    syncedAt: null,
+  };
+
+  it('sends the caregiver to the consent form for a patient set up before consent existed', async () => {
+    getSession.mockResolvedValue({ data: { session: null } });
+    setOnlineForConsent(false);
+    pathname = '/caregiver/dashboard';
+    await db.caregivers.put(caregiverRow);
+    await db.patients.put(patientRow);
+
+    render(
+      <CaregiverLayout>
+        <p>Protected content</p>
+      </CaregiverLayout>,
+    );
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/consent?next=%2Fcaregiver%2Fdashboard'));
+    expect(screen.queryByText('Protected content')).not.toBeInTheDocument();
+    setOnlineForConsent(true);
+  });
+
+  it('lets the caregiver in once the patient has current consent', async () => {
+    getSession.mockResolvedValue({ data: { session: null } });
+    pathname = '/caregiver/dashboard';
+    await db.caregivers.put(caregiverRow);
+    await db.patients.put(patientRow);
+    await db.consents.put({
+      patientId: 'p-no-consent',
+      version: 2,
+      careProfile: true,
+      guardianAttested: true,
+      aiCompanion: false,
+      voiceProcessing: false,
+      consentedBy: 'c1',
+      consentedAt: '2026-09-01T00:00:00.000Z',
+      updatedAt: '2026-09-01T00:00:00.000Z',
+      synced: true,
+    });
+
+    render(
+      <CaregiverLayout>
+        <p>Protected content</p>
+      </CaregiverLayout>,
+    );
+
+    expect(await screen.findByText('Protected content')).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalledWith(expect.stringContaining('/caregiver/consent'));
+  });
+});
+
+function setOnlineForConsent(value: boolean) {
+  Object.defineProperty(window.navigator, 'onLine', { value, configurable: true });
+}
+
+/** Step 1: the consent form. Both required agreements, nothing optional. */
+function agreeToOnboardingConsent() {
+  fireEvent.click(screen.getByRole('checkbox', { name: /storing and using/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /legally allowed/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Agree and continue' }));
+}
+
 describe('Caregiver onboarding wizard', () => {
+  it('shows the privacy consent form first and blocks setup until both required agreements are given', () => {
+    render(<CaregiverOnboardingPage />);
+    expect(screen.getByLabelText('Step 1 of 5')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /privacy & consent/i })).toBeInTheDocument();
+    // Nothing about the caregiver or patient is asked for yet.
+    expect(screen.queryByPlaceholderText('Your name')).not.toBeInTheDocument();
+
+    const agree = screen.getByRole('button', { name: 'Agree and continue' });
+    expect(agree).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /storing and using/i }));
+    expect(agree).toBeDisabled();
+    // Voice can't be chosen without Ask Smriti itself.
+    expect(screen.getByRole('checkbox', { name: /by speaking/i })).toBeDisabled();
+    fireEvent.click(screen.getByRole('checkbox', { name: /legally allowed/i }));
+    expect(agree).not.toBeDisabled();
+  });
+
   it('advances the step dots on Continue', () => {
     render(<CaregiverOnboardingPage />);
-    expect(screen.getByLabelText('Step 1 of 4')).toBeInTheDocument();
+    agreeToOnboardingConsent();
+    expect(screen.getByLabelText('Step 2 of 5')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByLabelText('Step 2 of 4')).toBeInTheDocument();
+    expect(screen.getByLabelText('Step 3 of 5')).toBeInTheDocument();
   });
 
   it('treats role, gender and duration as exclusive-select groups', () => {
     render(<CaregiverOnboardingPage />);
+    agreeToOnboardingConsent();
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
     fireEvent.click(screen.getByRole('button', { name: 'Doctor' }));
     expect(screen.getByRole('button', { name: 'Doctor' }).className).toContain('bg-primary');
@@ -909,12 +1009,12 @@ describe('Caregiver onboarding wizard', () => {
 
   it('blocks Finish when the PIN and its confirmation do not match', async () => {
     render(<CaregiverOnboardingPage />);
+    agreeToOnboardingConsent();
 
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
@@ -943,12 +1043,12 @@ describe('Caregiver onboarding wizard', () => {
 
   it('on the happy path writes the caregiver, patient and PIN, then navigates home', async () => {
     render(<CaregiverOnboardingPage />);
+    agreeToOnboardingConsent();
 
     fireEvent.change(screen.getByPlaceholderText('Your name'), {
       target: { value: 'Ranjita' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
-    fireEvent.click(screen.getByRole('checkbox'));
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), {
@@ -981,6 +1081,10 @@ describe('Caregiver onboarding wizard', () => {
     expect(await db.patients.count()).toBe(1);
     expect(await db.reminderSchedules.count()).toBe(1);
     expect(useSettingsStore.getState().caregiverPinHash).toBeTruthy();
+    // The consent given in step 1 is recorded for the new patient.
+    const patientRow = await db.patients.toCollection().first();
+    const consent = await db.consents.get(patientRow!.id);
+    expect(consent).toMatchObject({ careProfile: true, guardianAttested: true, aiCompanion: false, version: 2 });
   });
 });
 

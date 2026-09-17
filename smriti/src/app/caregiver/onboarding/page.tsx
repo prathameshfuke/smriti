@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
-import { Checkbox } from '@/components/ui/checkbox';
+import ConsentForm from '@/components/caregiver/ConsentForm';
 import LanguagePicker from '@/components/layout/LanguagePicker';
 import PinPad from '@/components/ui/PinPad';
 import PinDots from '@/components/ui/PinDots';
@@ -17,9 +17,11 @@ import { setDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import { createBrowserClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { pushCaregiverProfile } from '@/lib/db/serverProfile';
 import { buildStarterReminders } from '@/lib/patients/starterReminders';
+import { EMPTY_CONSENT_CHOICES, hasRequiredChoices, type ConsentChoices } from '@/lib/consent/policy';
+import { pushConsent, saveConsent } from '@/lib/consent/consentClient';
 import type { CaregiverRole, Gender } from '@/lib/supabase/types';
 
-const STEPS = [1, 2, 3, 4] as const;
+const STEPS = [1, 2, 3, 4, 5] as const;
 const PIN_LENGTH = 4;
 
 const ROLES: { value: CaregiverRole; label: string }[] = [
@@ -50,7 +52,7 @@ interface WizardData {
   addMorningReminder: boolean;
   addHydrationReminders: boolean;
   deviceTrusted: boolean;
-  consentGiven: boolean;
+  consent: ConsentChoices;
 }
 
 const initialData: WizardData = {
@@ -66,17 +68,17 @@ const initialData: WizardData = {
   addMorningReminder: false,
   addHydrationReminders: false,
   deviceTrusted: false,
-  consentGiven: false,
+  consent: EMPTY_CONSENT_CHOICES,
 };
 
 /** Where the caregiver is in setup, in words and as four segments. */
 function StepDots({ step }: { step: number }) {
   return (
-    <div aria-label={`Step ${step} of 4`} role="group">
+    <div aria-label={`Step ${step} of ${STEPS.length}`} role="group">
       <p aria-hidden="true" className="text-caregiver-body font-bold text-ink-muted">
-        Step {step} of 4
+        Step {step} of {STEPS.length}
       </p>
-      <div aria-hidden="true" className="mt-2 grid grid-cols-4 gap-1.5">
+      <div aria-hidden="true" className="mt-2 grid grid-cols-5 gap-1.5">
         {STEPS.map((s) => (
           <span
             key={s}
@@ -104,8 +106,10 @@ export default function CaregiverOnboardingPage() {
   const [trustLoading, setTrustLoading] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const canContinueStep1 =
-    data.caregiverName.trim().length > 0 && data.role !== null && data.consentGiven;
+  // Guardrail: nothing about the caregiver or patient is even asked for until
+  // both required agreements are given (step 1), and finish() re-checks it.
+  const canContinueConsent = hasRequiredChoices(data.consent);
+  const canContinueStep1 = data.caregiverName.trim().length > 0 && data.role !== null;
   const canContinueStep2 =
     data.patientName.trim().length > 0 &&
     data.gender !== null &&
@@ -128,6 +132,10 @@ export default function CaregiverOnboardingPage() {
   };
 
   const setupDatabase = async () => {
+    if (!hasRequiredChoices(data.consent)) {
+      setStep(1);
+      return false;
+    }
     if (data.pin.length !== PIN_LENGTH || data.pin !== data.confirmPin) {
       setPinError('PINs do not match');
       return false;
@@ -173,6 +181,7 @@ export default function CaregiverOnboardingPage() {
       syncedAt: null,
     };
     await addPatient(patient);
+    const consent = await saveConsent(patientId, caregiverId, data.consent, { push: false });
     usePatientStore.getState().setCurrentPatient(patient);
 
     await setPin(data.pin);
@@ -192,8 +201,9 @@ export default function CaregiverOnboardingPage() {
       // Awaited when online so the "Trust this device" step that follows can
       // find the patient on the account; offline setup still completes
       // locally and syncs the profile later.
+      // The consent row references the patient, so it goes up after the profile.
       if (typeof navigator === 'undefined' || navigator.onLine) {
-        await pushCaregiverProfile(caregiver, patient, language, reminders);
+        if (await pushCaregiverProfile(caregiver, patient, language, reminders)) await pushConsent(consent);
       } else {
         void pushCaregiverProfile(caregiver, patient, language, reminders);
       }
@@ -211,7 +221,7 @@ export default function CaregiverOnboardingPage() {
       console.error('Failed to set device trust token:', err);
     } finally {
       setTrustLoading(false);
-      setStep(4);
+      setStep(5);
     }
   };
 
@@ -238,6 +248,23 @@ export default function CaregiverOnboardingPage() {
 
       {step === 1 ? (
         <section className="flex flex-col gap-5">
+          <h1 className={stepHeading}>Privacy &amp; consent</h1>
+          <p className="-mt-2 text-caregiver-body text-ink-muted">
+            Before setting up, read what SMRITI stores about you and the person you care for, who it is shared
+            with, and how it is protected.
+          </p>
+          <ConsentForm choices={data.consent} onChange={(consent) => setData((d) => ({ ...d, consent }))} />
+          <BigButton
+            label="Agree and continue"
+            variant="primary"
+            disabled={!canContinueConsent}
+            onClick={() => setStep(2)}
+          />
+        </section>
+      ) : null}
+
+      {step === 2 ? (
+        <section className="flex flex-col gap-5">
           <h1 className={stepHeading}>About you</h1>
           <div>
             <label htmlFor="caregiver-name" className={labelClass}>
@@ -263,29 +290,16 @@ export default function CaregiverOnboardingPage() {
               />
             ))}
           </div>
-          <label className="flex cursor-pointer items-start gap-4 rounded-card border border-line200 bg-surface-card p-5 text-caregiver-body text-ink">
-            <Checkbox
-              className="mt-1 shrink-0"
-              checked={data.consentGiven}
-              onCheckedChange={(checked) => setData((d) => ({ ...d, consentGiven: checked }))}
-            />
-            <span>
-              I consent to creating a cognitive care profile for my patient. SMRITI supports
-              cognitive engagement and monitoring. It does not diagnose or treat any medical
-              condition. I understand the collected data stays on this device and syncs only to
-              our secured account, and I can delete it at any time from Settings.
-            </span>
-          </label>
           <BigButton
             label="Continue"
             variant="primary"
             disabled={!canContinueStep1}
-            onClick={() => setStep(2)}
+            onClick={() => setStep(3)}
           />
         </section>
       ) : null}
 
-      {step === 2 ? (
+      {step === 3 ? (
         <section className="flex flex-col gap-5">
           <h1 className={stepHeading}>Your patient</h1>
           <div>
@@ -364,12 +378,12 @@ export default function CaregiverOnboardingPage() {
             label="Continue"
             variant="primary"
             disabled={!canContinueStep2}
-            onClick={() => setStep(3)}
+            onClick={() => setStep(4)}
           />
         </section>
       ) : null}
 
-      {step === 3 ? (
+      {step === 4 ? (
         <section className="flex flex-col gap-5">
           <h1 className={stepHeading}>Caregiver PIN</h1>
           <p className="-mt-2 text-caregiver-body text-ink-muted">
@@ -423,7 +437,7 @@ export default function CaregiverOnboardingPage() {
         </section>
       ) : null}
 
-      {step === 4 ? (
+      {step === 5 ? (
         <section className="flex flex-col gap-5">
           <h1 className={stepHeading}>Trust this device</h1>
           <p className="text-caregiver-body text-ink">

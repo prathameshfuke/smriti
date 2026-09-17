@@ -1,6 +1,7 @@
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 
-const LIMIT = 10;
+/** Turns, newest first — a few conversations' worth. */
+const LIMIT = 30;
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const auth = await authenticateRequest(request);
@@ -24,9 +25,12 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     .single();
   if (!owned) return Response.json({ error: 'not_found' }, { status: 404 });
 
+  // '*' rather than a column list: `session_id` only exists once
+  // MIGRATION 015 is applied, and a missing column in the list would fail
+  // the whole query rather than simply leaving turns ungrouped.
   const { data: rows } = await supabase
     .from('ai_conversation_log')
-    .select('id, question, answer, grounded, flagged_for_followup, created_at')
+    .select('*')
     .eq('patient_id', patientId)
     .order('created_at', { ascending: false })
     .limit(LIMIT);
@@ -38,6 +42,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     grounded: r.grounded,
     flaggedForFollowup: r.flagged_for_followup,
     createdAt: r.created_at,
+    sessionId: (r as { session_id?: string | null }).session_id ?? null,
   }));
 
   return Response.json({ questions });

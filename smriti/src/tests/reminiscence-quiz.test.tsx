@@ -1,36 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import type { ReactNode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
-
-// The param's type is what keeps later .mockImplementation((table: string) => ...)
-// calls in this file type-checking against the same shape.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const serviceFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const callerFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
-const getUser = vi.fn();
-
-function makeChain(result: { data: unknown; error: unknown }) {
-  const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'in', 'order', 'limit', 'insert', 'upsert', 'update']) {
-    chain[method] = vi.fn(() => chain);
-  }
-  chain.single = vi.fn(() => Promise.resolve(result));
-  chain.then = (resolve: (v: typeof result) => unknown) => resolve(result);
-  return chain;
-}
-
-vi.mock('@/lib/supabase/client', () => ({
-  isSupabaseConfigured: () => true,
-  createServerClient: () => ({ auth: { getUser }, from: callerFromMock }),
-  createServiceRoleClient: () => ({ from: serviceFromMock }),
-}));
-
-vi.mock('@/lib/ai/llm-client', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/ai/llm-client')>();
-  return { ...actual, callLLM: vi.fn() };
-});
+import type { LocalMemoryBankEntry } from '@/lib/db/schema';
 
 vi.mock('@/lib/audio/speech', () => ({ speak: vi.fn(), GAME_SPEECH_RATE: 0.9 }));
 vi.mock('@/lib/i18n/provider', () => ({
@@ -58,154 +30,33 @@ const QUIZ_UI_EN = {
   backHome: 'Back to Home',
 };
 
-const PERSON_ENTRIES = [
-  { title: 'Raju', detail: 'Your son, visits on Sundays', relationship: 'son', category: 'person' },
-  { title: 'Meena', detail: 'Your daughter, lives in Guwahati', relationship: 'daughter', category: 'person' },
-  { title: 'Wedding day', detail: 'You got married in 1968 in Tezpur', relationship: null, category: 'life_fact' },
+function memoryEntry(
+  id: string,
+  title: string,
+  detail: string,
+  category: LocalMemoryBankEntry['category'],
+  relationship: string | null = null,
+): LocalMemoryBankEntry {
+  return {
+    id,
+    patientId: 'p1',
+    category,
+    title,
+    detail,
+    photoUrl: null,
+    relationship,
+    active: true,
+    createdBy: 'c1',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    synced: true,
+  };
+}
+
+const MEMORY_ENTRIES: LocalMemoryBankEntry[] = [
+  memoryEntry('e1', 'Raju', 'Your son, visits on Sundays', 'person', 'son'),
+  memoryEntry('e2', 'Meena', 'Your daughter, lives in Guwahati', 'person', 'daughter'),
+  memoryEntry('e3', 'Wedding day', 'You got married in 1968 in Tezpur', 'life_fact'),
 ];
-
-function validQuizJson() {
-  return JSON.stringify([
-    { question: 'Who visits on Sundays?', options: ['Raju', 'Meena', 'Wedding day'], correctIndex: 0, entryTitle: 'Raju' },
-    { question: 'Who lives in Guwahati?', options: ['Wedding day', 'Meena', 'Raju'], correctIndex: 1, entryTitle: 'Meena' },
-    { question: 'Where did you marry?', options: ['Tezpur', 'Guwahati', 'Sunday'], correctIndex: 0, entryTitle: 'Wedding day' },
-    { question: 'What is Raju to you?', options: ['Son', 'Daughter', 'Friend'], correctIndex: 0, entryTitle: 'Raju' },
-    { question: 'What is Meena to you?', options: ['Son', 'Daughter', 'Neighbor'], correctIndex: 1, entryTitle: 'Meena' },
-  ]);
-}
-
-function makeAuthedRequest(body: Record<string, unknown>) {
-  return new Request('http://localhost/api/ai/generate-reminiscence-quiz', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer tok', 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-}
-
-beforeEach(async () => {
-  getUser.mockReset();
-  serviceFromMock.mockReset();
-  callerFromMock.mockReset();
-  getUser.mockResolvedValue({ data: { user: { id: 'u1' } }, error: null });
-  callerFromMock.mockImplementation((table: string) => {
-    if (table === 'caregivers') return makeChain({ data: { id: 'c1' }, error: null });
-    if (table === 'patients') return makeChain({ data: { id: 'p1' }, error: null });
-    return makeChain({ data: [], error: null });
-  });
-  serviceFromMock.mockImplementation(() => makeChain({ data: [], error: null }));
-  const { callLLM } = await import('@/lib/ai/llm-client');
-  vi.mocked(callLLM).mockReset();
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
-// ---------------------------------------------------------------------------
-// validateQuizQuestions (pure)
-// ---------------------------------------------------------------------------
-describe('validateQuizQuestions', () => {
-  it('accepts a well-formed 5-question response', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    const result = validateQuizQuestions(validQuizJson(), PERSON_ENTRIES.map((e) => e.title));
-    expect(result).not.toBeNull();
-    expect(result).toHaveLength(5);
-    expect(result?.[0].entryTitle).toBe('Raju');
-  });
-
-  it('rejects a response with the wrong number of questions', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    const short = JSON.stringify(JSON.parse(validQuizJson()).slice(0, 3));
-    expect(validateQuizQuestions(short, PERSON_ENTRIES.map((e) => e.title))).toBeNull();
-  });
-
-  it('rejects a correctIndex out of range', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    const bad = JSON.parse(validQuizJson());
-    bad[0].correctIndex = 3;
-    expect(validateQuizQuestions(JSON.stringify(bad), PERSON_ENTRIES.map((e) => e.title))).toBeNull();
-  });
-
-  it('rejects an entryTitle that does not match a real entry', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    const bad = JSON.parse(validQuizJson());
-    bad[0].entryTitle = 'Someone Invented';
-    expect(validateQuizQuestions(JSON.stringify(bad), PERSON_ENTRIES.map((e) => e.title))).toBeNull();
-  });
-
-  it('rejects invalid JSON without throwing', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    expect(validateQuizQuestions('not json at all', PERSON_ENTRIES.map((e) => e.title))).toBeNull();
-  });
-
-  it('tolerates a markdown code fence around the JSON', async () => {
-    const { validateQuizQuestions } = await import('@/lib/ai/reminiscence-quiz');
-    const fenced = '```json\n' + validQuizJson() + '\n```';
-    expect(validateQuizQuestions(fenced, PERSON_ENTRIES.map((e) => e.title))).toHaveLength(5);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// POST /api/ai/generate-reminiscence-quiz
-// ---------------------------------------------------------------------------
-describe('POST /api/ai/generate-reminiscence-quiz', () => {
-  it('produces exactly 5 valid questions and stores them', async () => {
-    const factsChain = makeChain({ data: PERSON_ENTRIES, error: null });
-    const quizChain = makeChain({ data: null, error: null });
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'memory_bank_entries') return factsChain;
-      if (table === 'reminiscence_quizzes') return quizChain;
-      return makeChain({ data: [], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: validQuizJson(), model: 'groq/llama-3.1-8b-instant', grounded: true });
-
-    const { POST } = await import('@/app/api/ai/generate-reminiscence-quiz/route');
-    const res = await POST(makeAuthedRequest({ patientId: 'p1' }));
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.questions).toHaveLength(5);
-    expect(quizChain.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ patient_id: 'p1' }),
-      expect.anything(),
-    );
-  });
-
-  it('refuses with an explanation when Memory Bank has fewer than 3 person/life_fact entries, without calling the LLM', async () => {
-    serviceFromMock.mockImplementation((table: string) =>
-      table === 'memory_bank_entries' ? makeChain({ data: PERSON_ENTRIES.slice(0, 2), error: null }) : makeChain({ data: [], error: null }),
-    );
-    const { callLLM } = await import('@/lib/ai/llm-client');
-
-    const { POST } = await import('@/app/api/ai/generate-reminiscence-quiz/route');
-    const res = await POST(makeAuthedRequest({ patientId: 'p1' }));
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.error).toBe('not_enough_facts');
-    expect(body.needed).toBe(3);
-    expect(callLLM).not.toHaveBeenCalled();
-  });
-
-  it('does not crash and does not overwrite the existing cached quiz on malformed LLM output', async () => {
-    const factsChain = makeChain({ data: PERSON_ENTRIES, error: null });
-    const quizChain = makeChain({ data: null, error: null });
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'memory_bank_entries') return factsChain;
-      if (table === 'reminiscence_quizzes') return quizChain;
-      return makeChain({ data: [], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: 'not valid json {{{', model: 'groq/llama-3.1-8b-instant', grounded: true });
-
-    const { POST } = await import('@/app/api/ai/generate-reminiscence-quiz/route');
-    const res = await POST(makeAuthedRequest({ patientId: 'p1' }));
-
-    expect(res.status).toBe(502);
-    const body = await res.json();
-    expect(body.error).toBe('invalid_quiz_generated');
-    expect(quizChain.upsert).not.toHaveBeenCalled();
-  });
-});
 
 // ---------------------------------------------------------------------------
 // reminiscence-quiz/GameComponent.tsx
@@ -267,39 +118,141 @@ describe('reminiscence-quiz GameComponent', () => {
 // reminiscence-quiz/page.tsx — offline play from the Dexie cache
 // ---------------------------------------------------------------------------
 describe('ReminiscenceQuizPage', () => {
-  it('plays fully from the cached Dexie quiz with no network call', async () => {
+  const patientRow = {
+    id: 'p1',
+    caregiverId: 'c1',
+    displayName: 'Aai',
+    ageYears: 72,
+    gender: 'female' as const,
+    educationYears: 4,
+    primaryLanguage: 'en',
+    sessionDurationMinutes: 10,
+    isActive: true,
+    currentDifficulty: {},
+    updatedAt: new Date().toISOString(),
+    syncedAt: null,
+  };
+
+  afterEach(async () => {
+    const { usePatientStore } = await import('@/stores/patientStore');
+    usePatientStore.setState(usePatientStore.getInitialState(), true);
+    vi.unstubAllGlobals();
+  });
+
+  it('builds the quiz from the Memory Bank on the phone and plays it with no network call', async () => {
     const { db } = await import('@/lib/db/schema');
     const { usePatientStore } = await import('@/stores/patientStore');
-    await db.reminiscenceQuizzes.clear();
-    await db.reminiscenceQuizzes.put(sampleQuiz);
-    usePatientStore.setState({
-      currentPatient: {
-        id: 'p1',
-        caregiverId: 'c1',
-        displayName: 'Aai',
-        ageYears: 72,
-        gender: 'female',
-        educationYears: 4,
-        primaryLanguage: 'en',
-        sessionDurationMinutes: 10,
-        isActive: true,
-        currentDifficulty: {},
-        updatedAt: new Date().toISOString(),
-        syncedAt: null,
-      },
-    });
-
+    await db.memoryBankEntries.clear();
+    await db.memoryBankEntries.bulkPut(MEMORY_ENTRIES);
+    usePatientStore.setState({ currentPatient: patientRow });
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
     const { default: ReminiscenceQuizPage } = await import('@/app/games/reminiscence-quiz/page');
     render(<ReminiscenceQuizPage />);
 
-    expect(await screen.findByText('Who visits on Sundays?')).toBeInTheDocument();
+    // Every option on screen is a Memory Bank title.
+    const options = await screen.findAllByRole('button', { name: /^(Raju|Meena|Wedding day)$/ });
+    expect(options).toHaveLength(3);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
 
-    usePatientStore.setState(usePatientStore.getInitialState(), true);
-    vi.unstubAllGlobals();
+  it('explains what is needed instead of showing a blank screen when the Memory Bank is too small', async () => {
+    const { db } = await import('@/lib/db/schema');
+    const { usePatientStore } = await import('@/stores/patientStore');
+    await db.memoryBankEntries.clear();
+    await db.memoryBankEntries.put(MEMORY_ENTRIES[0]);
+    usePatientStore.setState({ currentPatient: patientRow });
+
+    const { default: ReminiscenceQuizPage } = await import('@/app/games/reminiscence-quiz/page');
+    render(<ReminiscenceQuizPage />);
+
+    expect(await screen.findByText('game.reminiscenceQuiz.noQuiz')).toBeInTheDocument();
+  });
+
+  it('never renders blank when no patient is selected', async () => {
+    const { default: ReminiscenceQuizPage } = await import('@/app/games/reminiscence-quiz/page');
+    render(<ReminiscenceQuizPage />);
+    expect(await screen.findByText('game.reminiscenceQuiz.noQuiz')).toBeInTheDocument();
   });
 });
 
+// ---------------------------------------------------------------------------
+// lib/games/memory-quiz.ts
+// ---------------------------------------------------------------------------
+describe('buildMemoryQuiz', () => {
+  const wording = {
+    whoIsThis: () => 'Who is this?',
+    whoIsYour: (relationship: string) => `Who is your ${relationship}?`,
+    whichIsAbout: (detail: string) => `Which is about: ${detail}`,
+  };
+
+  function seeded(seed = 1) {
+    let x = seed;
+    return () => {
+      x = (x * 16807) % 2147483647;
+      return (x - 1) / 2147483646;
+    };
+  }
+
+  it('uses only Memory Bank titles as answers, with the correct one always among the options', async () => {
+    const { buildMemoryQuiz } = await import('@/lib/games/memory-quiz');
+    const quiz = buildMemoryQuiz('p1', MEMORY_ENTRIES, wording, seeded(7));
+    const titles = MEMORY_ENTRIES.map((e) => e.title);
+    expect(quiz).not.toBeNull();
+    for (const q of quiz!.questions) {
+      expect(q.options).toHaveLength(3);
+      expect(new Set(q.options).size).toBe(3);
+      q.options.forEach((o) => expect(titles).toContain(o));
+      expect(q.options[q.correctIndex]).toBe(q.entryTitle);
+    }
+  });
+
+  it('asks about each entry at most once and never more than 5 questions', async () => {
+    const { buildMemoryQuiz } = await import('@/lib/games/memory-quiz');
+    const many = Array.from({ length: 12 }, (_, i) => memoryEntry(`e${i}`, `Place ${i}`, `Detail number ${i}`, 'life_fact'));
+    const quiz = buildMemoryQuiz('p1', many, wording, seeded(3))!;
+    expect(quiz.questions).toHaveLength(5);
+    expect(new Set(quiz.questions.map((q) => q.entryTitle)).size).toBe(5);
+  });
+
+  it('shows a photo only when the question is "who is this", so the photo never gives an answer away', async () => {
+    const { buildMemoryQuiz } = await import('@/lib/games/memory-quiz');
+    const people = [
+      { ...memoryEntry('a', 'Raju', 'Visits on Sundays', 'person', 'son'), photoUrl: 'data:image/png;base64,a' },
+      memoryEntry('b', 'Meena', 'Lives in Guwahati', 'person', 'daughter'),
+      memoryEntry('c', 'Hari', 'Lives next door', 'person', 'neighbour'),
+    ];
+    const quiz = buildMemoryQuiz('p1', people, wording, seeded(11))!;
+    const raju = quiz.questions.find((q) => q.entryTitle === 'Raju')!;
+    expect(raju).toMatchObject({ question: 'Who is this?', showPhoto: true });
+    quiz.questions.filter((q) => q.entryTitle !== 'Raju').forEach((q) => expect(q.showPhoto).toBe(false));
+  });
+
+  it('never offers another person with the same relationship as a wrong answer', async () => {
+    const { buildMemoryQuiz } = await import('@/lib/games/memory-quiz');
+    const entries = [
+      memoryEntry('a', 'Raju', '', 'person', 'son'),
+      memoryEntry('b', 'Ravi', '', 'person', 'son'),
+      memoryEntry('c', 'Meena', '', 'person', 'daughter'),
+      memoryEntry('d', 'Home', 'Jorhat', 'life_fact'),
+    ];
+    for (let seed = 1; seed < 20; seed++) {
+      const quiz = buildMemoryQuiz('p1', entries, wording, seeded(seed))!;
+      for (const q of quiz.questions.filter((x) => x.question === 'Who is your son?')) {
+        const sons = q.options.filter((o) => o === 'Raju' || o === 'Ravi');
+        expect(sons).toHaveLength(1);
+      }
+    }
+  });
+
+  it('returns null with fewer than 3 entries, ignoring removed ones', async () => {
+    const { buildMemoryQuiz } = await import('@/lib/games/memory-quiz');
+    const entries = [
+      memoryEntry('a', 'Raju', 'x', 'person'),
+      memoryEntry('b', 'Meena', 'y', 'person'),
+      { ...memoryEntry('c', 'Hari', 'z', 'person'), active: false },
+    ];
+    expect(buildMemoryQuiz('p1', entries, wording)).toBeNull();
+  });
+});

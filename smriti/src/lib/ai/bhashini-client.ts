@@ -1,5 +1,5 @@
 import type { UILanguage } from '@/lib/i18n/languages';
-import { fetchInferenceAuth } from './bhashini-auth';
+import { fetchInferenceAuth, invalidateInferenceAuth } from './bhashini-auth';
 
 /**
  * Single entry point for Bhashini text-to-speech. Sibling to llm-client.ts
@@ -31,7 +31,7 @@ const PIPELINE_ID = '64392f96daac500b55c543cd';
 // account can't resolve a service for this language.
 const LEGACY_TTS_SERVICE_ID = 'Bhashini/IITM/TTS';
 
-const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
+export const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
   en: 'en',
   hi: 'hi',
   as: 'as',
@@ -50,6 +50,24 @@ const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
  * this two-step flow existed. The legacy fallback below reuses this same
  * budget for its own single call. */
 const BHASHINI_TIMEOUT_MS = 15_000;
+
+class BhashiniHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Bhashini returned ${status}`);
+  }
+}
+
+/** Bhashini's GPU-backed services answer an intermittent 502 (seen repeatedly
+ * for Assamese and Bengali TTS in the live probe) that succeeds on the next
+ * try; a server error gets exactly one retry, anything else fails at once. */
+async function withOneRetry<T>(fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof BhashiniHttpError && err.status >= 500) return fn();
+    throw err;
+  }
+}
 
 export interface SynthesizeSpeechResult {
   /** Base64-encoded audio, ready to embed as a `data:audio/<format>;base64,` URI. */
@@ -90,7 +108,7 @@ async function computeTts(
   });
 
   if (!response.ok) {
-    throw new Error(`Bhashini returned ${response.status}`);
+    throw new BhashiniHttpError(response.status);
   }
 
   const body = await response.json();
@@ -120,7 +138,12 @@ export async function synthesizeSpeech(
 
   try {
     const auth = await fetchInferenceAuth('tts', sourceLanguage);
-    return await computeTts(text, sourceLanguage, auth.name, auth.value, auth.serviceId);
+    try {
+      return await withOneRetry(() => computeTts(text, sourceLanguage, auth.name, auth.value, auth.serviceId));
+    } catch (err) {
+      invalidateInferenceAuth('tts', sourceLanguage);
+      throw err;
+    }
   } catch {
     const legacyKey = process.env.BHASHINI_INFERENCE_API_KEY;
     if (!legacyKey) {

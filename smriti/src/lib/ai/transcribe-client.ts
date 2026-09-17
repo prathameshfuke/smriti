@@ -18,6 +18,15 @@ const GROQ_MODEL = 'whisper-large-v3-turbo';
  * every ASR failure, turning a pre-existing gap into a reachable hang. */
 const GROQ_TIMEOUT_MS = 15_000;
 
+function audioExtension(mimeType: string | undefined): string {
+  const base = (mimeType ?? '').split(';')[0].trim().toLowerCase();
+  if (base === 'audio/mp4' || base === 'audio/x-m4a' || base === 'audio/aac') return 'm4a';
+  if (base === 'audio/mpeg') return 'mp3';
+  if (base === 'audio/ogg') return 'ogg';
+  if (base === 'audio/wav' || base === 'audio/x-wav') return 'wav';
+  return 'webm';
+}
+
 export interface TranscribeResult {
   text: string;
   model: string;
@@ -37,7 +46,9 @@ export async function transcribeAudio(audio: Blob): Promise<TranscribeResult> {
   }
 
   const formData = new FormData();
-  formData.append('file', audio, 'clip.webm');
+  // Whisper detects the codec from the file extension, so a Safari mp4 clip
+  // named .webm was rejected outright.
+  formData.append('file', audio, `clip.${audioExtension(audio.type)}`);
   formData.append('model', GROQ_MODEL);
 
   const response = await fetch(GROQ_TRANSCRIBE_URL, {

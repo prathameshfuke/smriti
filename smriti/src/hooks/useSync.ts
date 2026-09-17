@@ -15,14 +15,17 @@ let inFlightSync: ReturnType<typeof syncAllPatients> | null = null;
 const PERIODIC_INTERVAL_MS = 5 * 60_000;
 
 async function countUnsynced(patientId: string): Promise<number> {
-  const [sessions, events, summaries, acks] = await Promise.all([
+  const [sessions, events, summaries, acks, memories, consents, companionLogs] = await Promise.all([
     db.gameSessions.where('patientId').equals(patientId).filter((r) => !r.synced).count(),
     db.telemetryEvents.where('patientId').equals(patientId).filter((r) => !r.synced).count(),
     // dailySummaries has no plain `patientId` index — see sync.ts's same fix.
     db.dailySummaries.toCollection().filter((r) => r.patientId === patientId && !r.synced).count(),
     db.reminderAcks.where('patientId').equals(patientId).filter((r) => !r.synced).count(),
+    db.memoryBankEntries.where('patientId').equals(patientId).filter((r) => !r.synced).count(),
+    db.consents.where('patientId').equals(patientId).filter((r) => !r.synced).count(),
+    db.aiConversationLog.where('patientId').equals(patientId).filter((r) => r.pendingSync === true).count(),
   ]);
-  return sessions + events + summaries + acks;
+  return sessions + events + summaries + acks + memories + consents + companionLogs;
 }
 
 /** Drives `SyncIndicator`: pending-record count, current status, and sync scheduling. */
