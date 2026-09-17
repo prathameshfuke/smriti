@@ -7,7 +7,7 @@ import { hasServerConsent } from '@/lib/consent/consentServer';
 import { isUILanguage } from '@/lib/i18n/languages';
 
 /**
- * Two independent auth paths, same shape as /api/ai/complete: a kiosk's
+ * Two independent auth paths, same shape as /api/ai/converse: a kiosk's
  * device-trust token (patient companion, Prompt 2) or a caregiver Bearer
  * token (Memory Bank "Quick add" mic button, Prompt 4) — no ownership
  * check needed for the caregiver path since transcription alone touches

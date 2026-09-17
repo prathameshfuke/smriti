@@ -12,7 +12,10 @@
  * the next time they open the caregiver area.
  */
 
-export const CONSENT_VERSION = 1;
+/** 2: Ask Smriti became a conversation — recent turns are now sent with
+ * each message, Groq's larger model writes replies directly in the patient's
+ * language, and a second check reviews each reply. */
+export const CONSENT_VERSION = 2;
 
 /** What a particular feature needs consent for. */
 export type ConsentPurpose = 'care' | 'ai' | 'voice';
@@ -124,10 +127,10 @@ export const PRIVACY_NOTICE: NoticeSection[] = [
     id: 'ai',
     heading: 'Ask Smriti (AI companion) — optional',
     points: [
-      'The question is sent with up to 12 Memory Bank entries and reminders most likely to answer it. Game history, age and contact details are not sent.',
-      'Bhashini (Government of India, MeitY) translates the question and the answer and reads the answer aloud.',
-      'Groq or OpenRouter (AI model providers that may process data outside India) write the answer from those entries only.',
-      'Every question and answer is saved so you can review it. If a question sounds like distress, the patient is shown the Tele-MANAS helpline (14416) and it is flagged for you.',
+      'Each message is sent with the last few turns of the conversation (up to 6) and up to 12 Memory Bank entries. Game history, age, reminders and contact details are not sent.',
+      'Groq, or OpenRouter as a backup (AI model providers that may process data outside India), write the reply in the patient’s language from those Memory Bank entries only, and a second check reviews every reply for details that are not in the Memory Bank.',
+      'Bhashini (Government of India, MeitY) reads replies aloud, and translates a reply only when one comes back in the wrong language.',
+      'Every message and reply is saved so you can review the conversation. If a message sounds like distress, the patient is shown the Tele-MANAS helpline (14416) and it is flagged for you.',
       'With voice turned on, the spoken question is sent to Bhashini (or Groq if Bhashini cannot understand it) to turn it into text. SMRITI keeps the text, not the recording.',
     ],
   },

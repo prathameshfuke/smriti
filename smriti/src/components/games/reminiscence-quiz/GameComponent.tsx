@@ -37,7 +37,7 @@ export default function ReminiscenceQuizGame({ quiz, entryPhotos, onComplete, on
 
   const question = quiz.questions[index];
   const isLast = index + 1 >= quiz.questions.length;
-  const photoUrl = question ? entryPhotos[question.entryTitle] : null;
+  const photoUrl = question && question.showPhoto !== false ? entryPhotos[question.entryTitle] : null;
 
   const selectOption = (i: number) => {
     if (selected !== null) return;

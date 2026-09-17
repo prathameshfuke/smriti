@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { db } from '@/lib/db/schema';
 import { matchSeverity } from './distress-keywords';
-import { memoryEntryToFact, reminderToFact } from './companion-facts';
+import { memoryEntryToFact } from './companion-facts';
 import { bestLocalFact, describeFact, type CompanionFact } from './companion-retrieval';
 import { cacheAnswer } from './companion-cache';
 
@@ -18,18 +18,15 @@ const OFFLINE_DISTRESS_LOG =
   'Shown the Tele-MANAS helpline (14416) on the phone while offline.';
 
 async function localFacts(patientId: string): Promise<CompanionFact[]> {
-  const [entries, reminders] = await Promise.all([
-    db.memoryBankEntries.where('patientId').equals(patientId).filter((e) => e.active).toArray(),
-    db.reminderSchedules.where('patientId').equals(patientId).filter((r) => r.isActive).toArray(),
-  ]);
-  return [...entries.map(memoryEntryToFact), ...reminders.map(reminderToFact)];
+  const entries = await db.memoryBankEntries.where('patientId').equals(patientId).filter((e) => e.active).toArray();
+  return entries.map(memoryEntryToFact);
 }
 
 /**
  * Ask Smriti without a connection. No model runs on the phone, so this never
  * composes an answer: it checks the question for distress (the same keywords
  * the server uses) and otherwise reads back the one saved Memory Bank entry
- * or reminder that clearly matches, exactly as the caregiver wrote it.
+ * that clearly matches, exactly as the caregiver wrote it.
  *
  * Both outcomes are queued for the caregiver's log (`pendingSync`) and
  * uploaded by the next sync, so a distress phrase said offline is still

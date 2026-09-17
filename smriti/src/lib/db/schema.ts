@@ -151,7 +151,7 @@ export interface LocalAiConversationLog {
   language?: string;
   /** True for an answer produced on the phone (offline, from the local
    * Memory Bank) that the server has not logged yet. `lib/db/sync.ts`
-   * uploads these; online answers are logged by `/api/ai/complete` itself. */
+   * uploads these; online answers are logged by `/api/ai/converse` itself. */
   pendingSync?: boolean;
 }
 
@@ -178,6 +178,10 @@ export interface ReminiscenceQuizQuestion {
    * the game look up that entry's photo without round-tripping an id
    * through the LLM. */
   entryTitle: string;
+  /** Whether to show the entry's photo with this question. False when the
+   * photo would give the answer away (the question names the relationship
+   * or quotes the detail). Absent on older quizzes, which always showed it. */
+  showPhoto?: boolean;
 }
 
 export interface LocalReminiscenceQuiz {

@@ -89,7 +89,10 @@
     },
     "reminiscenceQuiz": {
       "name": "Family & Life Quiz",
-      "noQuiz": "No quiz is ready yet. Ask your caregiver to set one up."
+      "noQuiz": "The quiz needs at least 3 people or memories in the Memory Book. Ask your caregiver to add them.",
+      "whoIsThis": "Who is this?",
+      "whoIsYour": "Who is your {relationship}?",
+      "whichIsAbout": "Who or what is this about? “{detail}”"
     },
     "correct": "Correct!",
     "tryAgain": "Try again",
@@ -246,7 +249,13 @@
     "consentNeeded": "Ask Smriti is not turned on. Your caregiver can turn it on in Settings.",
     "typeInstead": "Type instead",
     "speakInstead": "Speak instead",
-    "micUnavailable": "The microphone could not be used. You can type your question."
+    "micUnavailable": "The microphone could not be used. You can type your question.",
+    "conversation": "Conversation with Smriti",
+    "you": "You",
+    "smriti": "Smriti",
+    "tapToReply": "Tap to reply",
+    "newConversation": "Start a new conversation",
+    "didNotHear": "I didn't catch that. Please tap and say it again."
   },
   "reminders": {
     "title": "Reminders",

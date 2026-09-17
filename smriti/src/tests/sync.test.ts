@@ -742,7 +742,7 @@ describe('syncToServer — Ask Smriti data', () => {
   it('uploads an unsent consent and offline answers, then marks them sent', async () => {
     await db.consents.put({
       patientId: 'p1',
-      version: 1,
+      version: 2,
       careProfile: true,
       guardianAttested: true,
       aiCompanion: false,
@@ -769,7 +769,7 @@ describe('syncToServer — Ask Smriti data', () => {
     await syncToServer('p1');
 
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body.patients[0].consent).toMatchObject({ patient_id: 'p1', ai_companion: false, version: 1 });
+    expect(body.patients[0].consent).toMatchObject({ patient_id: 'p1', ai_companion: false, version: 2 });
     expect(body.patients[0].aiConversationLogs).toEqual([
       expect.objectContaining({ id: 'offline-1', model_used: 'on-device', question: 'who is Raju' }),
     ]);
@@ -810,7 +810,7 @@ describe('POST /api/sync — consent and offline companion answers', () => {
               consent: {
                 patient_id: 'someone-else',
                 caregiver_id: 'forged',
-                version: 1,
+                version: 2,
                 care_profile: true,
                 guardian_attested: true,
                 ai_companion: true,

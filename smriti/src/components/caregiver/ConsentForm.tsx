@@ -93,8 +93,8 @@ export default function ConsentForm({ choices, onChange, patientName }: ConsentF
             onCheckedChange={(checked) => set({ aiCompanion: checked })}
           />
           <span>
-            Turn on Ask Smriti. Questions and the related Memory Bank entries are sent to Bhashini and an AI model
-            provider to answer them, and saved for you to review.
+            Turn on Ask Smriti, a conversation companion. Messages, the recent conversation and related Memory Bank
+            entries are sent to an AI model provider to reply, and saved for you to review.
           </span>
         </label>
         <label className={`${cardClass} ${choices.aiCompanion ? '' : 'cursor-not-allowed opacity-60'}`}>

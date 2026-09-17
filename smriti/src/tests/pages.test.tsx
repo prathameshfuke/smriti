@@ -931,7 +931,7 @@ describe('Caregiver layout consent guardrail', () => {
     await db.patients.put(patientRow);
     await db.consents.put({
       patientId: 'p-no-consent',
-      version: 1,
+      version: 2,
       careProfile: true,
       guardianAttested: true,
       aiCompanion: false,
@@ -1084,7 +1084,7 @@ describe('Caregiver onboarding wizard', () => {
     // The consent given in step 1 is recorded for the new patient.
     const patientRow = await db.patients.toCollection().first();
     const consent = await db.consents.get(patientRow!.id);
-    expect(consent).toMatchObject({ careProfile: true, guardianAttested: true, aiCompanion: false, version: 1 });
+    expect(consent).toMatchObject({ careProfile: true, guardianAttested: true, aiCompanion: false, version: 2 });
   });
 });
 

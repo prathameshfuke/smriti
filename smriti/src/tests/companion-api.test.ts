@@ -42,7 +42,7 @@ function consentRow(overrides: Record<string, unknown> = {}) {
   return {
     patient_id: 'p1',
     caregiver_id: 'cg1',
-    version: 1,
+    version: 2,
     care_profile: true,
     guardian_attested: true,
     ai_companion: true,
@@ -64,10 +64,11 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 vi.mock('@/lib/ai/bhashini-nmt-client', () => ({ translateText: vi.fn() }));
+vi.mock('@/lib/ai/bhashini-client', () => ({ synthesizeSpeech: vi.fn() }));
 
 vi.mock('@/lib/ai/llm-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/ai/llm-client')>();
-  return { ...actual, callLLM: vi.fn() };
+  return { ...actual, callLLM: vi.fn(), callChat: vi.fn() };
 });
 
 // A real HMAC-signed token, matching what POST /api/device-trust would
@@ -85,8 +86,9 @@ beforeEach(async () => {
   callerFromMock.mockReset();
   serviceFromMock.mockImplementation(() => makeChain({ data: [], error: null }));
   callerFromMock.mockImplementation(() => makeChain({ data: [], error: null }));
-  const { callLLM } = await import('@/lib/ai/llm-client');
+  const { callLLM, callChat } = await import('@/lib/ai/llm-client');
   vi.mocked(callLLM).mockReset();
+  vi.mocked(callChat).mockReset();
 });
 
 afterEach(() => {
@@ -383,124 +385,6 @@ describe('POST /api/ai/transcribe', () => {
 });
 
 // ---------------------------------------------------------------------------
-// POST /api/ai/complete
-// ---------------------------------------------------------------------------
-describe('POST /api/ai/complete', () => {
-  function makeRequest(body: Record<string, unknown>) {
-    return new Request('http://localhost/api/ai/complete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  }
-
-  it('builds a system prompt containing every active Memory Bank fact verbatim', async () => {
-    const factsChain = makeChain({
-      data: [
-        { title: 'Raju', detail: 'Your son, visits on Sundays', relationship: 'son', category: 'person' },
-        {
-          title: 'Blood pressure pill',
-          detail: 'One red pill after breakfast',
-          relationship: null,
-          category: 'medication',
-        },
-      ],
-      error: null,
-    });
-    serviceFromMock.mockImplementation((table: string) =>
-      table === 'memory_bank_entries' ? factsChain : makeChain({ data: [], error: null }),
-    );
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({
-      text: 'Raju is your son.',
-      model: 'groq/llama-3.1-8b-instant',
-      grounded: true,
-    });
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    await POST(makeRequest({ question: 'who is Raju', deviceTrustToken: makeDeviceToken('p1') }));
-
-    const [callArgs] = vi.mocked(callLLM).mock.calls;
-    const systemPrompt = (callArgs[0] as { systemPrompt: string }).systemPrompt;
-    expect(systemPrompt).toContain('Your son, visits on Sundays');
-    expect(systemPrompt).toContain('One red pill after breakfast');
-  });
-
-  it('refuses to answer with the exact fallback text when there are zero active facts, without calling the LLM', async () => {
-    const factsChain = makeChain({ data: [], error: null });
-    const logChain = makeChain({ data: [], error: null });
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'memory_bank_entries') return factsChain;
-      if (table === 'ai_conversation_log') return logChain;
-      return makeChain({ data: [], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(makeRequest({ question: 'who is Raju', deviceTrustToken: makeDeviceToken('p1') }));
-    const body = await res.json();
-
-    expect(body.text).toBe("I'm not sure about that. You could ask your caregiver.");
-    expect(callLLM).not.toHaveBeenCalled();
-    expect(logChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ grounded: false, flagged_for_followup: false, model_used: 'none' }),
-    );
-  });
-
-  it('short-circuits to the Tele-MANAS response on a high-severity phrase, without calling the LLM', async () => {
-    const logChain = makeChain({ data: [], error: null });
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'ai_conversation_log') return logChain;
-      return makeChain({ data: [{ title: 'x', detail: 'y', relationship: null, category: 'life_fact' }], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    const { TELE_MANAS_RESPONSE } = await import('@/lib/ai/distress-keywords');
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(makeRequest({ question: 'I want to hurt myself', deviceTrustToken: makeDeviceToken('p1') }));
-    const body = await res.json();
-
-    expect(body.text).toBe(TELE_MANAS_RESPONSE);
-    expect(callLLM).not.toHaveBeenCalled();
-    expect(logChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ flagged_for_followup: true, grounded: false, model_used: 'distress-shortcircuit' }),
-    );
-  });
-
-  it('does not short-circuit on a single low-severity phrase', async () => {
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'ai_conversation_log') return makeChain({ data: [], error: null });
-      return makeChain({ data: [{ title: 'x', detail: 'y', relationship: null, category: 'life_fact' }], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: 'It is Tuesday.', model: 'groq/llama-3.1-8b-instant', grounded: true });
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    await POST(makeRequest({ question: 'I am scared, what day is it', deviceTrustToken: makeDeviceToken('p1') }));
-
-    expect(callLLM).toHaveBeenCalledTimes(1);
-  });
-
-  it('short-circuits on a low-severity phrase seen twice within the last 5 logged questions', async () => {
-    const logChain = makeChain({ data: [{ question: 'I feel scared today' }], error: null });
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'ai_conversation_log') return logChain;
-      return makeChain({ data: [{ title: 'x', detail: 'y', relationship: null, category: 'life_fact' }], error: null });
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    const { TELE_MANAS_RESPONSE } = await import('@/lib/ai/distress-keywords');
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(makeRequest({ question: 'I am still scared', deviceTrustToken: makeDeviceToken('p1') }));
-    const body = await res.json();
-
-    expect(body.text).toBe(TELE_MANAS_RESPONSE);
-    expect(callLLM).not.toHaveBeenCalled();
-    expect(logChain.insert).toHaveBeenCalledWith(expect.objectContaining({ flagged_for_followup: true }));
-  });
-});
-
-// ---------------------------------------------------------------------------
 // GET /api/patients/[id]/companion-activity
 // ---------------------------------------------------------------------------
 describe('GET /api/patients/[id]/companion-activity', () => {
@@ -556,156 +440,215 @@ describe('GET /api/patients/[id]/companion-activity', () => {
   });
 });
 
+
 // ---------------------------------------------------------------------------
-// Consent guardrail, Bhashini translation and grounding in the AI routes
+// POST /api/ai/converse
 // ---------------------------------------------------------------------------
-describe('Ask Smriti routes — consent, language and grounding', () => {
-  function completeRequest(body: Record<string, unknown>) {
-    return new Request('http://localhost/api/ai/complete', {
+describe('POST /api/ai/converse', () => {
+  function converse(body: Record<string, unknown>) {
+    return new Request('http://localhost/api/ai/converse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceTrustToken: makeDeviceToken('p1'), ...body }),
     });
   }
 
-  const rajuFacts = [
-    { id: 'e1', title: 'Raju', detail: 'Your son, visits on Sundays', relationship: 'son', category: 'person' },
+  const memoryRows = [
+    { id: 'e1', title: 'Raju', detail: 'Lives in Guwahati, visits on Sundays', relationship: 'son', category: 'person' },
+    { id: 'e2', title: 'Meena', detail: 'Lives in Jorhat, a teacher', relationship: 'daughter', category: 'person' },
   ];
 
-  function withFacts(logChain = makeChain({ data: [], error: null })) {
+  function withMemoryBank(logChain = makeChain({ data: [], error: null })) {
     serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'memory_bank_entries') return makeChain({ data: rajuFacts, error: null });
+      if (table === 'memory_bank_entries') return makeChain({ data: memoryRows, error: null });
       if (table === 'ai_conversation_log') return logChain;
       return makeChain({ data: [], error: null });
     });
     return logChain;
   }
 
-  it('refuses with 403 before translating or calling the model when Ask Smriti consent was never given', async () => {
+  /** First callChat = the reply, second = the independent check. */
+  async function modelSays(reply: Record<string, unknown> | string | null, verdict: boolean | null = true) {
+    const { callChat } = await import('@/lib/ai/llm-client');
+    vi.mocked(callChat)
+      .mockResolvedValueOnce({
+        text: reply === null ? null : typeof reply === 'string' ? reply : JSON.stringify(reply),
+        model: 'groq/openai/gpt-oss-120b',
+      })
+      .mockResolvedValue({
+        text: verdict === null ? null : JSON.stringify({ supported: verdict, reason: '' }),
+        model: 'groq/openai/gpt-oss-120b',
+      });
+    return vi.mocked(callChat);
+  }
+
+  it('refuses with 403 before any model call when Ask Smriti consent is missing or switched off', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'hi', type: 'chitchat', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
     currentConsent = null;
-    withFacts();
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
-
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(completeRequest({ question: 'मेरा बेटा कौन है', language: 'hi' }));
-
-    expect(res.status).toBe(403);
-    expect((await res.json()).error).toBe('consent_required');
-    expect(callLLM).not.toHaveBeenCalled();
-    expect(translateText).not.toHaveBeenCalled();
-  });
-
-  it('refuses when the caregiver later turned Ask Smriti off', async () => {
+    expect((await POST(converse({ message: 'hello' }))).status).toBe(403);
     currentConsent = consentRow({ ai_companion: false, voice_processing: false });
-    withFacts();
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(completeRequest({ question: 'who is Raju' }));
-    expect(res.status).toBe(403);
+    expect((await POST(converse({ message: 'hello' }))).status).toBe(403);
+    expect(callChat).not.toHaveBeenCalled();
   });
 
-  it('translates a Hindi question to English with Bhashini, and the answer back to Hindi', async () => {
-    const logChain = withFacts();
-    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
-    vi.mocked(translateText).mockReset();
-    vi.mocked(translateText).mockImplementation(async (text, source, target) => ({
-      text: source === 'hi' && target === 'en' ? 'Who is my son?' : 'राजू आपका बेटा है।',
-      model: 'bhashini/test',
-    }));
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: 'Raju is your son.\nFACTS: F1', model: 'groq/test', grounded: true });
+  it('answers small talk warmly instead of refusing it', async () => {
+    withMemoryBank();
+    await modelSays({ reply: 'নমস্কাৰ! আপুনি কেনে আছে?', type: 'chitchat', facts: [], distress: false });
+    const { POST } = await import('@/app/api/ai/converse/route');
 
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const res = await POST(completeRequest({ question: 'मेरा बेटा कौन है?', language: 'hi' }));
-    const body = await res.json();
+    const body = await (await POST(converse({ message: 'নমস্কাৰ', language: 'as' }))).json();
 
-    expect(translateText).toHaveBeenCalledWith('मेरा बेटा कौन है?', 'hi', 'en');
-    expect(translateText).toHaveBeenCalledWith('Raju is your son.', 'en', 'hi');
-    expect(vi.mocked(callLLM).mock.calls[0][0].userPrompt).toBe('Who is my son?');
-    expect(body).toEqual({ text: 'राजू आपका बेटा है।', grounded: true, kind: 'answer', answerLanguage: 'hi' });
+    expect(body).toMatchObject({ kind: 'answer', text: 'নমস্কাৰ! আপুনি কেনে আছে?', grounded: false, answerLanguage: 'as' });
+  });
+
+  it('puts only Memory Bank entries in front of the model, and never reminders', async () => {
+    serviceFromMock.mockImplementation((table: string) => {
+      if (table === 'memory_bank_entries') return makeChain({ data: memoryRows, error: null });
+      if (table === 'reminder_schedules') throw new Error('reminders must not be read');
+      return makeChain({ data: [], error: null });
+    });
+    const callChat = await modelSays({ reply: 'Raju is your son.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'who is Raju' }))).json();
+
+    const system = callChat.mock.calls[0][0].messages[0].content;
+    expect(system).toContain('F1. Raju (son): Lives in Guwahati, visits on Sundays');
+    expect(system).toContain('Meena (daughter)');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true, factIds: ['m:e1'] });
+  });
+
+  it('sends the conversation so far, so a follow-up keeps its subject', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'He lives in Guwahati.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    await POST(
+      converse({
+        message: 'and where does he live?',
+        history: [
+          { role: 'user', text: 'who is Raju' },
+          { role: 'assistant', text: 'Raju is your son.', factIds: ['m:e1'] },
+        ],
+      }),
+    );
+
+    const messages = callChat.mock.calls[0][0].messages;
+    expect(messages.slice(1).map((m: { role: string; content: string }) => [m.role, m.content])).toEqual([
+      ['user', 'who is Raju'],
+      ['assistant', 'Raju is your son.'],
+      ['user', 'and where does he live?'],
+    ]);
+  });
+
+  it('never shows a reply the independent check finds invented, and logs it for the caregiver', async () => {
+    const logChain = withMemoryBank();
+    await modelSays({ reply: 'Your daughter Priya called you today.', type: 'chitchat', facts: [] }, false);
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'did anyone call me?' }))).json();
+
+    expect(body).toMatchObject({ kind: 'unknown', text: '' });
     expect(logChain.insert).toHaveBeenCalledWith(
-      expect.objectContaining({ grounded: true, question: expect.stringContaining('[English: Who is my son?]') }),
+      expect.objectContaining({ grounded: false, answer: expect.stringContaining('not shown') }),
     );
   });
 
-  it('returns the English answer, marked as English, when translating the answer back fails', async () => {
-    withFacts();
-    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
-    vi.mocked(translateText).mockReset();
-    vi.mocked(translateText).mockImplementation(async (_text, source) => {
-      if (source === 'hi') return { text: 'Who is my son?', model: 'bhashini/test' };
-      throw new Error('Bhashini down');
-    });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: 'Raju is your son.\nFACTS: F1', model: 'groq/test', grounded: true });
+  it('rejects a "memory" reply that cites no Memory Bank entry without asking the checker', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'Your son visits on Mondays.', type: 'memory', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
 
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const body = await (await POST(completeRequest({ question: 'मेरा बेटा कौन है?', language: 'hi' }))).json();
+    const body = await (await POST(converse({ message: 'when does my son visit' }))).json();
 
-    expect(body).toMatchObject({ text: 'Raju is your son.', kind: 'answer', answerLanguage: 'en' });
+    expect(body.kind).toBe('unknown');
+    expect(callChat).toHaveBeenCalledTimes(1);
   });
 
-  it('replaces an answer that cites no fact with the not-sure reply', async () => {
-    withFacts();
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({
-      text: 'Your daughter Priya lives in Delhi.\nFACTS: none',
-      model: 'groq/test',
-      grounded: true,
-    });
+  it('when the checker is unreachable, lets cited memory replies through but not unchecked small talk', async () => {
+    withMemoryBank();
+    await modelSays({ reply: 'Raju is your son.', type: 'memory', facts: ['F1'] }, null);
+    const { POST } = await import('@/app/api/ai/converse/route');
+    expect((await (await POST(converse({ message: 'who is Raju' }))).json()).kind).toBe('answer');
 
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const body = await (await POST(completeRequest({ question: 'where does my daughter live' }))).json();
-
-    expect(body).toMatchObject({ kind: 'unknown', grounded: false, text: "I'm not sure about that. You could ask your caregiver." });
+    await modelSays({ reply: 'Your family loves you and visits often.', type: 'chitchat', facts: [] }, null);
+    expect((await (await POST(converse({ message: 'does my family visit' }))).json()).kind).toBe('unknown');
   });
 
-  it('catches a distress phrase in the patient’s own language even when translation is down', async () => {
-    const logChain = withFacts();
-    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
-    vi.mocked(translateText).mockReset();
-    vi.mocked(translateText).mockRejectedValue(new Error('down'));
-    const { callLLM } = await import('@/lib/ai/llm-client');
+  it('flags distress from keywords before any model call, and from the model’s own flag', async () => {
+    const logChain = withMemoryBank();
+    const callChat = await modelSays({ reply: 'I am here with you.', type: 'chitchat', facts: [], distress: true });
+    const { POST } = await import('@/app/api/ai/converse/route');
 
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const body = await (await POST(completeRequest({ question: 'मैं मरना चाहता हूँ', language: 'hi' }))).json();
+    expect((await (await POST(converse({ message: 'I want to die' }))).json()).kind).toBe('distress');
+    expect(callChat).not.toHaveBeenCalled();
 
-    expect(body.kind).toBe('distress');
-    expect(callLLM).not.toHaveBeenCalled();
+    expect((await (await POST(converse({ message: 'nothing matters any more' }))).json()).kind).toBe('distress');
     expect(logChain.insert).toHaveBeenCalledWith(expect.objectContaining({ flagged_for_followup: true }));
   });
 
-  it('answers from reminders and appointments too, not only Memory Bank entries', async () => {
-    serviceFromMock.mockImplementation((table: string) => {
-      if (table === 'reminder_schedules') {
-        return makeChain({
-          data: [
-            {
-              id: 'r1',
-              label: 'Eye check-up',
-              reminder_type: 'appointment',
-              time_of_day: '10:30:00',
-              days_of_week: [],
-              appointment_date: '2026-09-20',
-              facility_name: 'Jorhat CHC',
-              location_notes: null,
-              bring_notes: 'old spectacles',
-            },
-          ],
-          error: null,
-        });
-      }
-      return makeChain({ data: [], error: null });
+  it('retries a malformed model reply once, then reports unavailable', async () => {
+    withMemoryBank();
+    const { callChat } = await import('@/lib/ai/llm-client');
+    vi.mocked(callChat).mockResolvedValue({ text: 'not json at all', model: 'groq/x' });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'hello' }))).json();
+
+    expect(body.kind).toBe('unavailable');
+    expect(callChat).toHaveBeenCalledTimes(2);
+  });
+
+  it('translates a reply that came back in the wrong language with Bhashini', async () => {
+    withMemoryBank();
+    await modelSays({ reply: 'Raju is your son.', type: 'memory', facts: ['F1'] });
+    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
+    vi.mocked(translateText).mockReset();
+    vi.mocked(translateText).mockResolvedValue({ text: 'राजू आपके बेटे हैं।', model: 'bhashini/x' });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'राजू कौन है', language: 'hi' }))).json();
+
+    expect(translateText).toHaveBeenCalledWith('Raju is your son.', 'en', 'hi');
+    expect(body).toMatchObject({ kind: 'answer', text: 'राजू आपके बेटे हैं।', answerLanguage: 'hi' });
+  });
+
+  it('returns Bhashini speech with the reply when asked, and still answers when speech fails', async () => {
+    withMemoryBank();
+    const { synthesizeSpeech } = await import('@/lib/ai/bhashini-client');
+    vi.mocked(synthesizeSpeech).mockResolvedValueOnce({ audioBase64: 'QUJD', audioFormat: 'wav', model: 'bhashini/x' });
+    await modelSays({ reply: 'Hello!', type: 'chitchat', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+    const withAudio = await (await POST(converse({ message: 'hello', speak: true }))).json();
+    expect(withAudio.audio).toEqual({ audioBase64: 'QUJD', audioFormat: 'wav' });
+
+    vi.mocked(synthesizeSpeech).mockRejectedValueOnce(new Error('502'));
+    await modelSays({ reply: 'Hello!', type: 'chitchat', facts: [] });
+    const withoutAudio = await (await POST(converse({ message: 'hello', speak: true }))).json();
+    expect(withoutAudio).toMatchObject({ kind: 'answer', text: 'Hello!' });
+    expect(withoutAudio.audio).toBeUndefined();
+  });
+
+  it('logs the turn with its conversation id, and still logs before MIGRATION 015 adds the column', async () => {
+    const logChain = makeChain({ data: null, error: null });
+    let inserts = 0;
+    logChain.insert = vi.fn(() => {
+      inserts += 1;
+      const result = inserts === 1 ? { data: null, error: { code: '42703', message: 'no column' } } : { data: null, error: null };
+      return { then: (resolve: (v: unknown) => unknown) => resolve(result) };
     });
-    const { callLLM } = await import('@/lib/ai/llm-client');
-    vi.mocked(callLLM).mockResolvedValue({ text: 'On 20 September at 10:30.\nFACTS: F1', model: 'groq/test', grounded: true });
+    withMemoryBank(logChain);
+    await modelSays({ reply: 'Hello!', type: 'chitchat', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+    const sessionId = '6f1b2c1e-8a47-4d0e-9a55-0d7d0f0c7a11';
 
-    const { POST } = await import('@/app/api/ai/complete/route');
-    const body = await (await POST(completeRequest({ question: 'when is my eye check-up' }))).json();
+    await POST(converse({ message: 'hello', sessionId }));
 
-    const prompt = vi.mocked(callLLM).mock.calls[0][0].systemPrompt;
-    expect(prompt).toContain('F1. Eye check-up: Appointment on 2026-09-20 at 10:30 at Jorhat CHC. Bring: old spectacles.');
-    expect(body).toMatchObject({ kind: 'answer', grounded: true });
+    expect(logChain.insert).toHaveBeenNthCalledWith(1, expect.objectContaining({ session_id: sessionId }));
+    expect(logChain.insert).toHaveBeenNthCalledWith(2, expect.not.objectContaining({ session_id: sessionId }));
   });
 
   it('refuses to transcribe a patient phone’s recording when voice consent is off', async () => {

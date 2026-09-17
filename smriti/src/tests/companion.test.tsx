@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
-import { render as rtlRender, screen, fireEvent } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import { I18nProvider } from '@/lib/i18n/provider';
@@ -88,7 +88,7 @@ function setOnline(value: boolean) {
 async function giveConsent(overrides: Partial<import('@/lib/db/schema').LocalConsent> = {}) {
   await db.consents.put({
     patientId: 'p1',
-    version: 1,
+    version: 2,
     careProfile: true,
     guardianAttested: true,
     aiCompanion: true,
@@ -121,8 +121,32 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 // Companion page
 // ---------------------------------------------------------------------------
+/** A reply from /api/ai/converse. */
+function converseReply(body: Record<string, unknown>) {
+  return { ok: true, status: 200, json: async () => ({ kind: 'answer', grounded: true, factIds: [], answerLanguage: 'en', ...body }) };
+}
+
+function stubConverse(impl: (url: string, init?: RequestInit) => unknown) {
+  const fetchMock = vi.fn().mockImplementation(impl);
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
+/** Only the conversation requests — narration also calls /api/ai/speak. */
+function converseCalls(fetchMock: ReturnType<typeof vi.fn>): Array<Record<string, unknown>> {
+  return fetchMock.mock.calls
+    .filter((call) => String(call[0]).includes('/api/ai/converse'))
+    .map((call) => JSON.parse(String((call[1] as RequestInit).body)));
+}
+
+async function ask(question: string) {
+  fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
+  fireEvent.change(screen.getByRole('textbox'), { target: { value: question } });
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+}
+
 describe('CompanionPage', () => {
-  it('renders a mic button and instructions on load', async () => {
+  it('renders a mic button and an invitation to speak on load', async () => {
     installMediaRecorder();
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
@@ -131,114 +155,128 @@ describe('CompanionPage', () => {
     expect(screen.getByText(/ask me something/i)).toBeInTheDocument();
   });
 
-  it('renders the answer after a record → transcribe → answer flow', async () => {
+  it('keeps both sides of the conversation on screen and sends the earlier turns with the next message', async () => {
     installMediaRecorder();
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/api/ai/transcribe')) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => ({ text: 'what is my medication' }) });
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ text: 'One red pill after breakfast.', grounded: true }),
+    const fetchMock = stubConverse((url: string, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body));
+      return converseReply({
+        text: body.message === 'who is Raju' ? 'Raju is your son.' : 'He lives in Guwahati.',
+        factIds: ['m:e1'],
       });
     });
-    vi.stubGlobal('fetch', fetchMock);
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
 
+    await ask('who is Raju');
+    expect(await screen.findByText('Raju is your son.')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'and where does he live?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    expect(await screen.findByText('He lives in Guwahati.')).toBeInTheDocument();
+
+    // Both questions and both replies stay visible.
+    expect(screen.getByText('who is Raju')).toBeInTheDocument();
+    expect(screen.getByText('and where does he live?')).toBeInTheDocument();
+
+    const [first, second] = converseCalls(fetchMock);
+    expect(second.history).toEqual([
+      { role: 'user', text: 'who is Raju' },
+      { role: 'assistant', text: 'Raju is your son.', factIds: ['m:e1'] },
+    ]);
+    expect(second.sessionId).toBe(first.sessionId);
+    expect(first).toMatchObject({ message: 'who is Raju', language: 'en', speak: true, history: [] });
+    expect(String((first.clientContext as { date: string }).date)).toMatch(/\d{4}/);
+  });
+
+  it('starts a fresh conversation when asked, sending no earlier turns', async () => {
+    installMediaRecorder();
+    const fetchMock = stubConverse(() => converseReply({ text: 'Hello!' }));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('hello');
+    expect(await screen.findByText('Hello!')).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /start a new conversation/i }));
+    expect(screen.queryByText('hello')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'hello again' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    await screen.findByText('hello again');
+    await waitFor(() => expect(converseCalls(fetchMock)).toHaveLength(2));
+    const [first, second] = converseCalls(fetchMock);
+    expect(second.history).toEqual([]);
+    expect(second.sessionId).not.toBe(first.sessionId);
+  });
+
+  it('plays the speech the server sent with the reply instead of asking for it again', async () => {
+    installMediaRecorder();
+    const fetchMock = stubConverse(() => converseReply({ text: 'Hello!', audio: { audioBase64: 'QUJD', audioFormat: 'wav' } }));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('hello');
+    await screen.findByText('Hello!');
+
+    // The reply arrived with its audio, so no separate /api/ai/speak request.
+    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(['/api/ai/converse']);
+    expect(await db.speechCache.get('en Hello!')).toMatchObject({ audioBase64: 'QUJD' });
+  });
+
+  it('shows its own reviewed wording for the fixed replies, and never caches them', async () => {
+    installMediaRecorder();
+    stubConverse(() => ({ ok: true, status: 200, json: async () => ({ kind: 'unknown', text: '', grounded: false }) }));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('where does my daughter live');
+
+    expect(await screen.findByText(/not sure about that/i)).toBeInTheDocument();
+    expect(await db.aiConversationLog.count()).toBe(0);
+  });
+
+  it('shows the helpline wording when the server reports distress', async () => {
+    installMediaRecorder();
+    stubConverse(() => ({ ok: true, status: 200, json: async () => ({ kind: 'distress', text: 'x' }) }));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('I feel hopeless');
+
+    expect(await screen.findByText(/14416/)).toBeInTheDocument();
+  });
+
+  it('never stays stuck in "thinking" when the request hangs past its timeout', async () => {
+    installMediaRecorder();
+    stubConverse(() => Promise.reject(new Error('The operation was aborted')));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('who is Raju');
+
+    expect(await screen.findByText(/can't check that right now|try again in a moment/i)).toBeInTheDocument();
+    expect(screen.queryByText(/thinking/i)).not.toBeInTheDocument();
+  });
+
+  it('records, transcribes and answers a spoken question', async () => {
+    installMediaRecorder();
+    stubConverse((url: string) =>
+      url.includes('/api/ai/transcribe')
+        ? { ok: true, status: 200, json: async () => ({ text: 'what is my medication' }) }
+        : converseReply({ text: 'One red pill after breakfast.' }),
+    );
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
     const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton); // start
-    await screen.findByRole('button', { name: /stop/i }); // wait for recording to actually establish
-    fireEvent.click(micButton); // stop
+    fireEvent.click(micButton);
+    await screen.findByRole('button', { name: /stop/i });
+    fireEvent.click(micButton);
 
     expect(await screen.findByText('One red pill after breakfast.')).toBeInTheDocument();
-    expect(screen.getByText(/ai-generated answer/i)).toBeInTheDocument();
+    expect(screen.getByText('what is my medication')).toBeInTheDocument();
   });
 
-  it('renders a text input instead of the mic button when MediaRecorder is unavailable', async () => {
-    vi.stubGlobal('MediaRecorder', undefined);
-    const { default: CompanionPage } = await import('@/app/companion/page');
-    render(<CompanionPage />);
-
-    expect(await screen.findByRole('textbox')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
-  });
-
-  it('shows the fallback immediately when offline, without calling the network', async () => {
-    installMediaRecorder();
-    setOnline(false);
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { default: CompanionPage } = await import('@/app/companion/page');
-    render(<CompanionPage />);
-
-    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton);
-    await screen.findByRole('button', { name: /stop/i });
-    fireEvent.click(micButton);
-
-    expect(
-      await screen.findByText(/can't check that right now|try again in a moment/i),
-    ).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
-  it('reaches the fallback phase, never stays stuck in "thinking", when /api/ai/transcribe hangs past its timeout', async () => {
-    // Simulates what AbortSignal.timeout() produces on the client once every
-    // server-side provider (Bhashini ASR, then Groq Whisper) has exhausted
-    // its own timeout and the transcribe route itself never responds —
-    // same rejected-fetch approach as sync.test.ts, no real waiting.
-    installMediaRecorder();
-    const fetchMock = vi.fn().mockRejectedValue(new Error('The operation was aborted'));
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { default: CompanionPage } = await import('@/app/companion/page');
-    render(<CompanionPage />);
-
-    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton);
-    await screen.findByRole('button', { name: /stop/i });
-    fireEvent.click(micButton);
-
-    expect(
-      await screen.findByText(/can't check that right now|try again in a moment/i),
-    ).toBeInTheDocument();
-  });
-
-  it('shows the fallback and does not cache it when /api/ai/complete returns the LLM-outage sentinel (200 OK, both providers down)', async () => {
-    installMediaRecorder();
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/api/ai/transcribe')) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => ({ text: 'what is my medication' }) });
-      }
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({
-          text: "I can't check that right now. Try again in a moment, or ask your caregiver.",
-          grounded: false,
-        }),
-      });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { default: CompanionPage } = await import('@/app/companion/page');
-    render(<CompanionPage />);
-
-    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton);
-    await screen.findByRole('button', { name: /stop/i });
-    fireEvent.click(micButton);
-
-    expect(await screen.findByText(/can't check that right now/i)).toBeInTheDocument();
-    const cached = await db.aiConversationLog.where('patientId').equals('p1').toArray();
-    expect(cached).toHaveLength(0);
-  });
-
-  it('shows a cached answer with a "from earlier" label and never calls /api/ai/complete', async () => {
+  it('answers a repeated first question from the phone, with no request at all', async () => {
     installMediaRecorder();
     await db.aiConversationLog.put({
       id: 'cached-1',
@@ -246,62 +284,34 @@ describe('CompanionPage', () => {
       question: 'what is my medication',
       answer: 'One red pill after breakfast.',
       grounded: true,
-      modelUsed: 'groq/llama-3.1-8b-instant',
+      modelUsed: 'groq',
       createdAt: new Date().toISOString(),
+      language: 'en',
     });
-
-    const fetchMock = vi.fn().mockImplementation((url: string) => {
-      if (url.includes('/api/ai/transcribe')) {
-        return Promise.resolve({ ok: true, status: 200, json: async () => ({ text: 'what is my medication' }) });
-      }
-      throw new Error('should not call /api/ai/complete on a cache hit');
+    const fetchMock = stubConverse(() => {
+      throw new Error('should not reach the network on a cache hit');
     });
-    vi.stubGlobal('fetch', fetchMock);
-
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton);
-    await screen.findByRole('button', { name: /stop/i });
-    fireEvent.click(micButton);
+    await ask('what is my medication');
 
     expect(await screen.findByText('One red pill after breakfast.')).toBeInTheDocument();
     expect(screen.getByText(/from earlier/i)).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/api/ai/complete'), expect.anything());
+    expect(converseCalls(fetchMock)).toEqual([]);
   });
 
-  it('reaches the fallback phase, never stays stuck in "thinking", when browser dictation throws synchronously (SpeechRecognition.start() failure)', async () => {
-    // Forces the network path to fall through so acquireTranscript reaches
-    // its SpeechRecognition fallback, then makes that constructor throw —
-    // the one failure mode neither acquireTranscript's nor handleTranscript's
-    // own try/catch can see, since it happens inside a Promise executor.
-    installMediaRecorder();
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
-    vi.stubGlobal(
-      'SpeechRecognition',
-      class {
-        constructor() {
-          throw new Error('SpeechRecognition.start() failed');
-        }
-      },
-    );
-
+  it('renders the typing form and no mic when MediaRecorder is unavailable', async () => {
+    vi.stubGlobal('MediaRecorder', undefined);
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
-    fireEvent.click(micButton);
-    await screen.findByRole('button', { name: /stop/i });
-    fireEvent.click(micButton);
-
-    expect(
-      await screen.findByText(/can't check that right now|try again in a moment/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
   });
 });
 
-describe('CompanionPage — consent and language', () => {
+describe('CompanionPage — consent, offline and microphone', () => {
   it('does not offer the mic or typing, and explains why, when the caregiver has not turned Ask Smriti on', async () => {
     installMediaRecorder();
     await db.consents.clear();
@@ -323,30 +333,18 @@ describe('CompanionPage — consent and language', () => {
     expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
   });
 
-  it('sends the patient language and shows the reviewed not-sure reply for an unknown answer', async () => {
+  it('stops asking as soon as consent is withdrawn elsewhere (403 from the server)', async () => {
     installMediaRecorder();
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ text: "I'm not sure about that. You could ask your caregiver.", grounded: false, kind: 'unknown' }),
-    });
-    vi.stubGlobal('fetch', fetchMock);
+    stubConverse(() => ({ ok: false, status: 403, json: async () => ({ error: 'consent_required' }) }));
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'where does my daughter live' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    await ask('who is Raju');
 
-    expect(await screen.findByText(/not sure about that/i)).toBeInTheDocument();
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ question: 'where does my daughter live', language: 'en' });
-    expect(body.clientContext.date).toMatch(/\d{4}/);
-    // Only real answers are cached.
-    expect(await db.aiConversationLog.count()).toBe(0);
+    expect(await screen.findByText(/ask smriti is not turned on/i)).toBeInTheDocument();
   });
 
-  it('answers offline from the Memory Bank without the network', async () => {
+  it('answers offline from the Memory Bank, with no network call', async () => {
     installMediaRecorder();
     setOnline(false);
     await db.memoryBankEntries.put({
@@ -362,14 +360,13 @@ describe('CompanionPage — consent and language', () => {
       updatedAt: new Date().toISOString(),
       synced: true,
     });
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
+    const fetchMock = stubConverse(() => {
+      throw new Error('offline: no request expected');
+    });
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'who is Raju' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+    await ask('who is Raju');
 
     expect(await screen.findByText('Raju (son): Your son, visits on Sundays')).toBeInTheDocument();
     expect(screen.getByText(/from your memory book/i)).toBeInTheDocument();

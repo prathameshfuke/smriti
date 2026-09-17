@@ -1,6 +1,6 @@
 /**
  * Distress-keyword safety net for the companion. Checked before every LLM
- * call in `POST /api/ai/complete` — never folded into the grounded-QA logic
+ * call in `POST /api/ai/converse` — never folded into the grounded-QA logic
  * itself, so the two concerns (fact-grounding vs. crisis detection) stay
  * independently readable and testable.
  *

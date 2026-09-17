@@ -3,7 +3,7 @@ import { db, type LocalAiConversationLog } from '@/lib/db/schema';
 /**
  * Offline "last 5 answered questions" cache for the companion page. A local
  * mirror only — the durable, caregiver-visible log lives server-side in
- * Supabase's `ai_conversation_log`, written by `POST /api/ai/complete`. This
+ * Supabase's `ai_conversation_log`, written by `POST /api/ai/converse`. This
  * table already had exactly the right shape (it was scaffolded ahead of
  * this feature), so it's reused rather than adding a new Dexie table.
  *

@@ -1,6 +1,6 @@
 /**
- * Retrieval for Ask Smriti: picks which of a patient's saved facts (Memory
- * Bank entries and reminders) a question is about. Pure, so the same ranking
+ * Retrieval for Ask Smriti: picks which of a patient's Memory Bank entries a
+ * question is about. Pure, so the same ranking
  * runs on the server before the LLM call and on the phone to answer offline.
  *
  * Lexical on purpose. Memory Banks are small (tens of entries), written by
@@ -10,7 +10,7 @@
  * service that would be one more place patient data is sent.
  */
 
-export type CompanionFactKind = 'person' | 'schedule' | 'life_fact' | 'medication' | 'reminder';
+export type CompanionFactKind = 'person' | 'schedule' | 'life_fact' | 'medication';
 
 export interface CompanionFact {
   id: string;
@@ -61,8 +61,8 @@ export function significantWords(text: string): string[] {
 /** Question words that say which kind of fact is wanted, checked on the English form of the question. */
 const INTENT_HINTS: Array<{ pattern: RegExp; kinds: CompanionFactKind[] }> = [
   { pattern: /\b(who|name|son|daughter|wife|husband|brother|sister|grand\w*|friend|neighbou?r|family|visit\w*)\b/i, kinds: ['person'] },
-  { pattern: /\b(medicine|medication|tablet|pill|dose|drug|insulin|capsule)s?\b/i, kinds: ['medication', 'reminder'] },
-  { pattern: /\b(when|time|today|tomorrow|appointment|doctor|clinic|hospital|schedule|routine|morning|evening|night)\b/i, kinds: ['schedule', 'reminder'] },
+  { pattern: /\b(medicine|medication|tablet|pill|dose|drug|insulin|capsule)s?\b/i, kinds: ['medication'] },
+  { pattern: /\b(when|time|today|tomorrow|appointment|doctor|clinic|hospital|schedule|routine|morning|evening|night)\b/i, kinds: ['schedule'] },
   { pattern: /\b(where|live|home|born|village|town|house|work\w*|job|school|married)\b/i, kinds: ['life_fact'] },
 ];
 
@@ -97,7 +97,7 @@ function fieldScore(queryWords: string[], fieldWords: string[], weight: number):
  * patient's own words and, when translated, English) and returns them best
  * first. Title matches count most, then relationship, then detail; a fact of
  * the kind the question asks for gets a small boost so "who is Raju" beats
- * a reminder that mentions Raju in passing.
+ * an entry that mentions Raju in passing.
  */
 export function rankFacts(questions: string[], facts: CompanionFact[]): RankedFact[] {
   const queryWords = [...new Set(questions.flatMap(significantWords))];
@@ -125,6 +125,10 @@ export function rankFacts(questions: string[], facts: CompanionFact[]): RankedFa
  */
 export function selectFactsForPrompt(questions: string[], facts: CompanionFact[]): CompanionFact[] {
   const ranked = rankFacts(questions, facts);
+  // A Memory Bank small enough to send whole goes whole, best matches first:
+  // the model reads every script, where word matching can't cross from an
+  // Assamese question to an English entry.
+  if (facts.length <= MAX_FACTS_PER_QUESTION) return ranked.map((r) => r.fact);
   const matched = ranked.filter((r) => r.score > 0);
   if (matched.length > 0) {
     // Every match plus a few unmatched entries of context, when there is room:

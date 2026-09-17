@@ -9,7 +9,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
  * valid-looking token for any patient id and pass `validateToken` on the
  * server, granting unauthenticated read access to that patient's Memory
  * Bank entries and write access to their `ai_conversation_log` via
- * `/api/ai/complete` and `/api/ai/transcribe`.
+ * `/api/ai/converse` and `/api/ai/transcribe`.
  *
  * This module never gets imported by a `'use client'` file — importing
  * `node:crypto` from client code would fail the build anyway, which is a

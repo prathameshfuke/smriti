@@ -11,7 +11,7 @@ function startOfTodayIso(): string {
 
 /**
  * Patient-facing: "is there an encouragement note to show right now."
- * Two auth paths, same shape as /api/ai/complete — a kiosk device-trust
+ * Two auth paths, same shape as /api/ai/converse — a kiosk device-trust
  * token (patient device, no Supabase session) or a caregiver Bearer token
  * (previewing what the patient will see). The 1-per-day rate limit is
  * enforced HERE, server-side, not just in the UI — a device token proves
