@@ -298,7 +298,7 @@ export default function LandingPage() {
             <ul className="mt-3 space-y-1 text-base text-paper50/80">
               <li>
                 <a
-                  href="https://github.com/prathameshfuke/smriti-backup"
+                  href="https://github.com/prathameshfuke/smriti"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center underline decoration-paper50/30 underline-offset-4 hover:text-paper50"
