@@ -33,7 +33,32 @@ const PIPELINE_ID = '64392f96daac500b55c543cd';
  * 40s client-ceiling contract in companion/page.tsx doesn't change. */
 const ULCA_CONFIG_TIMEOUT_MS = 5_000;
 
-export type BhashiniTaskType = 'asr' | 'tts';
+export type BhashiniTaskType = 'asr' | 'tts' | 'translation';
+
+/** The inference key ULCA mints is reusable across compute calls, so it is
+ * cached per process instead of paying the config round trip (up to 5s) on
+ * every question, transcript and spoken line. Callers drop an entry with
+ * `invalidateInferenceAuth` when a compute call using it fails, so a revoked
+ * or rotated key is replaced on the very next attempt. */
+const AUTH_CACHE_TTL_MS = 30 * 60_000;
+const authCache = new Map<string, { auth: InferenceAuth; expiresAt: number }>();
+
+function cacheKey(taskType: BhashiniTaskType, sourceLanguage: string, targetLanguage?: string): string {
+  return [process.env.BHASHINI_USER_ID ?? '', taskType, sourceLanguage, targetLanguage ?? ''].join('|');
+}
+
+export function invalidateInferenceAuth(
+  taskType: BhashiniTaskType,
+  sourceLanguage: string,
+  targetLanguage?: string,
+): void {
+  authCache.delete(cacheKey(taskType, sourceLanguage, targetLanguage));
+}
+
+/** Test isolation only. */
+export function clearInferenceAuthCache(): void {
+  authCache.clear();
+}
 
 export interface InferenceAuth {
   /** The header name the compute call must send this value under —
@@ -63,6 +88,21 @@ export interface InferenceAuth {
 export async function fetchInferenceAuth(
   taskType: BhashiniTaskType,
   sourceLanguage: string,
+  targetLanguage?: string,
+): Promise<InferenceAuth> {
+  const key = cacheKey(taskType, sourceLanguage, targetLanguage);
+  const cached = authCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.auth;
+
+  const auth = await requestInferenceAuth(taskType, sourceLanguage, targetLanguage);
+  authCache.set(key, { auth, expiresAt: Date.now() + AUTH_CACHE_TTL_MS });
+  return auth;
+}
+
+async function requestInferenceAuth(
+  taskType: BhashiniTaskType,
+  sourceLanguage: string,
+  targetLanguage?: string,
 ): Promise<InferenceAuth> {
   const userID = process.env.BHASHINI_USER_ID;
   const ulcaApiKey = process.env.BHASHINI_ULCA_API_KEY;
@@ -78,7 +118,12 @@ export async function fetchInferenceAuth(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      pipelineTasks: [{ taskType, config: { language: { sourceLanguage } } }],
+      pipelineTasks: [
+        {
+          taskType,
+          config: { language: targetLanguage ? { sourceLanguage, targetLanguage } : { sourceLanguage } },
+        },
+      ],
       pipelineRequestConfig: { pipelineId: PIPELINE_ID },
     }),
     signal: AbortSignal.timeout(ULCA_CONFIG_TIMEOUT_MS),
@@ -90,10 +135,10 @@ export async function fetchInferenceAuth(
 
   const body = await response.json();
   const serviceId = body?.pipelineResponseConfig?.[0]?.config?.[0]?.serviceId;
-  const key = body?.pipelineInferenceAPIEndPoint?.inferenceApiKey;
-  if (typeof serviceId !== 'string' || typeof key?.name !== 'string' || typeof key?.value !== 'string') {
+  const apiKey = body?.pipelineInferenceAPIEndPoint?.inferenceApiKey;
+  if (typeof serviceId !== 'string' || typeof apiKey?.name !== 'string' || typeof apiKey?.value !== 'string') {
     throw new Error('Bhashini config call returned no matching service');
   }
 
-  return { name: key.name, value: key.value, serviceId };
+  return { name: apiKey.name, value: apiKey.value, serviceId };
 }

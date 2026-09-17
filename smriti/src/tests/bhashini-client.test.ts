@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { clearInferenceAuthCache } from '@/lib/ai/bhashini-auth';
 
 const ORIGINAL_ENV = { ...process.env };
 
@@ -28,6 +29,7 @@ function ttsSuccessBody(audioBase64: string, audioFormat = 'wav') {
 }
 
 beforeEach(() => {
+  clearInferenceAuthCache();
   process.env.BHASHINI_USER_ID = 'test-user-id';
   process.env.BHASHINI_ULCA_API_KEY = 'test-ulca-key';
   process.env.BHASHINI_INFERENCE_API_KEY = 'test-legacy-key';

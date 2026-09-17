@@ -215,6 +215,11 @@ describe('patient home on a shared phone', () => {
   });
 });
 
+function agreeToRequiredConsent() {
+  fireEvent.click(screen.getByRole('checkbox', { name: /storing and using/i }));
+  fireEvent.click(screen.getByRole('checkbox', { name: /legally allowed/i }));
+}
+
 describe('Add patient', () => {
   it('own phone: saves to the account only and leaves this phone unchanged', async () => {
     await db.patients.put(patient());
@@ -227,6 +232,7 @@ describe('Add patient', () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Hari' } });
     fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '81' } });
     fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    agreeToRequiredConsent();
     fireEvent.click(screen.getByRole('button', { name: /add hari/i }));
 
     expect(await screen.findByRole('heading', { name: /hari is added/i })).toBeInTheDocument();
@@ -244,6 +250,7 @@ describe('Add patient', () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Hari' } });
     fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '81' } });
     fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    agreeToRequiredConsent();
     fireEvent.click(screen.getByRole('button', { name: /add hari/i }));
 
     expect(await screen.findByText(/could not save to your account/i)).toBeInTheDocument();
@@ -259,6 +266,7 @@ describe('Add patient', () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Hari' } });
     fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '81' } });
     fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    agreeToRequiredConsent();
     fireEvent.click(screen.getByRole('button', { name: /add hari/i }));
 
     expect(await screen.findByRole('heading', { name: /hari is added/i })).toBeInTheDocument();
@@ -277,6 +285,9 @@ describe('Add patient', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Male' }));
     expect(add()).toBeDisabled();
     fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '70' } });
+    // Still disabled: the required privacy agreements are part of adding someone.
+    expect(add()).toBeDisabled();
+    agreeToRequiredConsent();
     expect(add()).not.toBeDisabled();
   });
 });
@@ -377,6 +388,7 @@ describe('Add patient, shared phone, offline', () => {
     fireEvent.change(screen.getByLabelText(/^name$/i), { target: { value: 'Hari' } });
     fireEvent.change(screen.getByLabelText(/^age$/i), { target: { value: '81' } });
     fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    agreeToRequiredConsent();
     fireEvent.click(screen.getByRole('button', { name: /add hari/i }));
 
     expect(await screen.findByText(/could not save to your account/i)).toBeInTheDocument();

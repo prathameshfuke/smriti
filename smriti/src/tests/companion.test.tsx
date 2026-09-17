@@ -84,8 +84,28 @@ function setOnline(value: boolean) {
   Object.defineProperty(window.navigator, 'onLine', { value, configurable: true });
 }
 
+/** Ask Smriti with voice turned on, as a caregiver would have agreed during onboarding. */
+async function giveConsent(overrides: Partial<import('@/lib/db/schema').LocalConsent> = {}) {
+  await db.consents.put({
+    patientId: 'p1',
+    version: 1,
+    careProfile: true,
+    guardianAttested: true,
+    aiCompanion: true,
+    voiceProcessing: true,
+    consentedBy: 'c1',
+    consentedAt: '2026-09-01T00:00:00.000Z',
+    updatedAt: '2026-09-01T00:00:00.000Z',
+    synced: true,
+    ...overrides,
+  });
+}
+
 beforeEach(async () => {
   await db.aiConversationLog.clear();
+  await db.consents.clear();
+  await db.memoryBankEntries.clear();
+  await giveConsent();
   usePatientStore.setState({ currentPatient: testPatient });
   push.mockClear();
   getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
@@ -107,7 +127,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Ask a question' })).toBeInTheDocument();
     expect(screen.getByText(/ask me something/i)).toBeInTheDocument();
   });
 
@@ -128,7 +148,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton); // start
     await screen.findByRole('button', { name: /stop/i }); // wait for recording to actually establish
     fireEvent.click(micButton); // stop
@@ -142,8 +162,8 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
-    expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
   it('shows the fallback immediately when offline, without calling the network', async () => {
@@ -155,7 +175,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton);
     await screen.findByRole('button', { name: /stop/i });
     fireEvent.click(micButton);
@@ -178,7 +198,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton);
     await screen.findByRole('button', { name: /stop/i });
     fireEvent.click(micButton);
@@ -208,7 +228,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton);
     await screen.findByRole('button', { name: /stop/i });
     fireEvent.click(micButton);
@@ -241,7 +261,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton);
     await screen.findByRole('button', { name: /stop/i });
     fireEvent.click(micButton);
@@ -270,7 +290,7 @@ describe('CompanionPage', () => {
     const { default: CompanionPage } = await import('@/app/companion/page');
     render(<CompanionPage />);
 
-    const micButton = screen.getByRole('button', { name: /ask/i });
+    const micButton = await screen.findByRole('button', { name: 'Ask a question' });
     fireEvent.click(micButton);
     await screen.findByRole('button', { name: /stop/i });
     fireEvent.click(micButton);
@@ -278,6 +298,97 @@ describe('CompanionPage', () => {
     expect(
       await screen.findByText(/can't check that right now|try again in a moment/i),
     ).toBeInTheDocument();
+  });
+});
+
+describe('CompanionPage — consent and language', () => {
+  it('does not offer the mic or typing, and explains why, when the caregiver has not turned Ask Smriti on', async () => {
+    installMediaRecorder();
+    await db.consents.clear();
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    expect(await screen.findByText(/ask smriti is not turned on/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('offers typing only, never the microphone, when voice is off', async () => {
+    installMediaRecorder();
+    await giveConsent({ voiceProcessing: false });
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    expect(await screen.findByRole('textbox')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Ask a question' })).not.toBeInTheDocument();
+  });
+
+  it('sends the patient language and shows the reviewed not-sure reply for an unknown answer', async () => {
+    installMediaRecorder();
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ text: "I'm not sure about that. You could ask your caregiver.", grounded: false, kind: 'unknown' }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'where does my daughter live' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText(/not sure about that/i)).toBeInTheDocument();
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toMatchObject({ question: 'where does my daughter live', language: 'en' });
+    expect(body.clientContext.date).toMatch(/\d{4}/);
+    // Only real answers are cached.
+    expect(await db.aiConversationLog.count()).toBe(0);
+  });
+
+  it('answers offline from the Memory Bank without the network', async () => {
+    installMediaRecorder();
+    setOnline(false);
+    await db.memoryBankEntries.put({
+      id: 'e1',
+      patientId: 'p1',
+      category: 'person',
+      title: 'Raju',
+      detail: 'Your son, visits on Sundays',
+      photoUrl: null,
+      relationship: 'son',
+      active: true,
+      createdBy: 'c1',
+      updatedAt: new Date().toISOString(),
+      synced: true,
+    });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Type instead' }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'who is Raju' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+
+    expect(await screen.findByText('Raju (son): Your son, visits on Sundays')).toBeInTheDocument();
+    expect(screen.getByText(/from your memory book/i)).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('offers typing instead of a dead end when microphone permission is refused', async () => {
+    installMediaRecorder();
+    Object.defineProperty(window.navigator, 'mediaDevices', {
+      value: { getUserMedia: vi.fn().mockRejectedValue(new Error('NotAllowedError')) },
+      configurable: true,
+    });
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Ask a question' }));
+
+    expect(await screen.findByText(/microphone could not be used/i)).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 });
 

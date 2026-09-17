@@ -13,6 +13,18 @@ import {
   toWireReminderSchedule,
   toWireSession,
 } from '@/lib/db/wire';
+import { fromWireConsent, parseConsentRecord, toWireConsent } from '@/lib/consent/wire';
+
+/** Pull cursors are compared against client-written `updated_at` values, so
+ * a phone whose clock runs behind could write a row that looks older than
+ * another phone's cursor. Re-reading this overlap on every pull costs a few
+ * duplicate rows (merged idempotently client-side) and closes that gap. */
+const PULL_OVERLAP_MS = 60 * 60_000;
+
+/** "Table not there yet" — MIGRATION 014 not applied. Not a sync failure. */
+const MISSING_TABLE_CODES = new Set(['42P01', 'PGRST205']);
+
+const MAX_LOG_TEXT = 2_000;
 
 /** Long enough to stop a runaway loop, short enough that a caregiver tapping
  * Sync now right after an automatic sync only waits a moment (the client
@@ -40,6 +52,12 @@ interface PatientSyncPayload {
   reminderSchedules?: Array<Record<string, unknown> & { id: string }>;
   /** Patient details edited on the phone (Settings: language, name, age). */
   profile?: Record<string, unknown> | null;
+  /** snake_case `patient_consents` row, when consent changed on the phone. */
+  consent?: Record<string, unknown> | null;
+  /** snake_case Ask Smriti answers given offline on the phone. */
+  aiConversationLogs?: Array<Record<string, unknown> & { id: string }>;
+  /** Server time of this patient's last successful sync. */
+  lastSyncTimestamp?: string | null;
 }
 
 /** Which of one patient's row categories Supabase actually rejected this sync. */
@@ -52,6 +70,8 @@ interface PatientSyncErrors {
   dailySummaries?: string;
   reminderAcks?: string;
   memoryBankEntries?: string;
+  consent?: string;
+  aiConversationLogs?: string;
 }
 
 interface SyncRequestBody {
@@ -196,6 +216,22 @@ export async function POST(request: Request) {
         .upsert(patient.memoryBankEntries as never[], { onConflict: 'id' });
       if (error) errors.memoryBankEntries = error.message;
     }
+    if (patient.consent) {
+      const error = await saveConsent(supabase, patient.patientId, caregiver.id, patient.consent);
+      if (error) errors.consent = error;
+    }
+    if (patient.aiConversationLogs?.length) {
+      const rows = patient.aiConversationLogs.flatMap((log) => {
+        const row = toWireAiLog(log, patient.patientId);
+        return row ? [row] : [];
+      });
+      if (rows.length) {
+        const { error } = await supabase
+          .from('ai_conversation_log')
+          .upsert(rows as never[], { onConflict: 'id', ignoreDuplicates: true });
+        if (error) errors.aiConversationLogs = error.message;
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       syncErrors[patient.patientId] = errors;
@@ -216,10 +252,16 @@ export async function POST(request: Request) {
     await checkLowAdherenceAlert(supabase, patient.patientId);
   }
 
-  const since = body.lastSyncTimestamp ?? new Date(0).toISOString();
   const patientIds = ownedPatients.map((p) => p.patientId);
+  const since = pullSince(ownedPatients.map((p) => p.lastSyncTimestamp ?? body.lastSyncTimestamp ?? null));
 
-  const [{ data: patients }, { data: reminders }, { data: alerts }] = await Promise.all([
+  const [
+    { data: patients },
+    { data: reminders },
+    { data: alerts },
+    { data: memoryBankEntries },
+    { data: consents },
+  ] = await Promise.all([
     patientIds.length
       ? supabase.from('patients').select('*').in('id', patientIds).gte('updated_at', since)
       : Promise.resolve({ data: [] }),
@@ -233,17 +275,106 @@ export async function POST(request: Request) {
     patientIds.length
       ? supabase.from('alerts').select('*').in('patient_id', patientIds).eq('is_resolved', false)
       : Promise.resolve({ data: [] }),
+    patientIds.length
+      ? supabase
+          .from('memory_bank_entries')
+          .select('id, patient_id, category, title, detail, photo_url, relationship, active, created_by, updated_at')
+          .in('patient_id', patientIds)
+          .gte('updated_at', since)
+      : Promise.resolve({ data: [] }),
+    patientIds.length
+      ? supabase.from('patient_consents').select('*').in('patient_id', patientIds).gte('updated_at', since)
+      : Promise.resolve({ data: [] }),
   ]);
 
   return Response.json({
     serverTimestamp: new Date().toISOString(),
     syncedEventCount,
     syncErrors,
-    updates: { patients: patients ?? [], reminders: reminders ?? [], alerts: alerts ?? [] },
+    updates: {
+      patients: patients ?? [],
+      reminders: reminders ?? [],
+      alerts: alerts ?? [],
+      memoryBankEntries: memoryBankEntries ?? [],
+      consents: consents ?? [],
+    },
   });
 }
 
 type AuthedSupabase = NonNullable<Awaited<ReturnType<typeof authenticateRequest>>>['supabase'];
+
+/** The earliest cursor among the patients in this request (minus the overlap); epoch when any has none. */
+function pullSince(cursors: Array<string | null>): string {
+  const times = cursors.map((c) => (c ? Date.parse(c) : Number.NaN));
+  if (times.length === 0 || times.some((t) => Number.isNaN(t))) return new Date(0).toISOString();
+  return new Date(Math.max(0, Math.min(...times) - PULL_OVERLAP_MS)).toISOString();
+}
+
+/**
+ * Saves a consent sent by the phone. The patient and caregiver are pinned to
+ * the ones this request was authorized for, whatever the body says, and an
+ * older consent never replaces a newer one already on the server. Returns an
+ * error message, or null when saved, skipped as stale, or the table is not
+ * migrated yet.
+ */
+async function saveConsent(
+  supabase: AuthedSupabase,
+  patientId: string,
+  caregiverId: string,
+  raw: Record<string, unknown>,
+): Promise<string | null> {
+  const parsed = parseConsentRecord(fromWireConsentLoose(raw));
+  if (!parsed) return 'invalid_consent';
+  const record = { ...parsed, patientId, consentedBy: caregiverId };
+
+  const { data: existing, error: readError } = await supabase
+    .from('patient_consents')
+    .select('updated_at')
+    .eq('patient_id', patientId)
+    .maybeSingle();
+  if (readError) {
+    if (MISSING_TABLE_CODES.has(readError.code ?? '')) {
+      console.error('SMRITI: patient_consents table missing — apply MIGRATION 014.');
+      return null;
+    }
+    return readError.message;
+  }
+  if (existing && Date.parse(existing.updated_at) >= Date.parse(record.updatedAt)) return null;
+
+  const { error } = await supabase
+    .from('patient_consents')
+    .upsert(toWireConsent(record) as never, { onConflict: 'patient_id' });
+  return error ? error.message : null;
+}
+
+/** Reads a snake_case consent row from an untrusted body into the camelCase shape parseConsentRecord validates. */
+function fromWireConsentLoose(raw: Record<string, unknown>): unknown {
+  try {
+    return fromWireConsent(raw as never);
+  } catch {
+    return null;
+  }
+}
+
+function toWireAiLog(raw: Record<string, unknown>, patientId: string) {
+  const text = (v: unknown) => (typeof v === 'string' && v.trim().length > 0 ? v.slice(0, MAX_LOG_TEXT) : null);
+  const question = text(raw.question);
+  const answer = text(raw.answer);
+  const createdAt = typeof raw.created_at === 'string' && !Number.isNaN(Date.parse(raw.created_at)) ? raw.created_at : null;
+  const row = { id: raw.id };
+  if (!question || !answer || !createdAt || !hasValidIds(row as Record<string, unknown>, ['id'])) return null;
+  return {
+    id: raw.id as string,
+    patient_id: patientId,
+    question,
+    answer,
+    grounded: raw.grounded === true,
+    // Only the two kinds of answer a phone produces offline are accepted.
+    model_used: raw.model_used === 'on-device-distress' ? 'on-device-distress' : 'on-device',
+    flagged_for_followup: raw.model_used === 'on-device-distress',
+    created_at: createdAt,
+  };
+}
 
 /**
  * Fetches the last 8 days of accuracy for one patient+game, and inserts a

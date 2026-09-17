@@ -238,7 +238,15 @@
     "youAsked": "You asked",
     "aiAnswer": "AI-generated answer",
     "fromEarlier": "From earlier",
-    "askAgain": "Ask again"
+    "askAgain": "Ask again",
+    "notSure": "I'm not sure about that. You could ask your caregiver.",
+    "unavailable": "I can't check that right now. Try again in a moment, or ask your caregiver.",
+    "distress": "It sounds like you might be going through something hard right now. Please call 14416 (Tele-MANAS) to talk with someone, or tell your caregiver.",
+    "fromMemoryBook": "From your memory book",
+    "consentNeeded": "Ask Smriti is not turned on. Your caregiver can turn it on in Settings.",
+    "typeInstead": "Type instead",
+    "speakInstead": "Speak instead",
+    "micUnavailable": "The microphone could not be used. You can type your question."
   },
   "reminders": {
     "title": "Reminders",

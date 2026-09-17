@@ -19,6 +19,16 @@ const HIGH_SEVERITY_PATTERNS: RegExp[] = [
   /hurt myself/i,
   /end my life/i,
   /suicide/i,
+  // Checked on the patient's own words too, not only the English
+  // translation: a translation outage must never switch the safety net off.
+  /आत्महत्या/u,
+  /मरना चाहत[ाी]/u,
+  /जीना नहीं चाहत[ाी]/u,
+  /खुद को (?:मार|नुकसान)/u,
+  /আত্মহত্যা/u,
+  /মরতে চাই/u,
+  /মৰিব খোজো/u,
+  /मर्न चाहन्छु/u,
 ];
 
 const LOW_SEVERITY_PATTERNS: RegExp[] = [/\bscared\b/i, /help me/i];

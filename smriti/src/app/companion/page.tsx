@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslation } from '@/lib/i18n/provider';
-import { useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Square } from 'lucide-react';
 import { v4 as uuid } from 'uuid';
@@ -12,15 +12,25 @@ import { fieldClass } from '@/components/ui/Panel';
 import { narrate } from '@/lib/audio/narrate';
 import { FALLBACK_TEXT } from '@/lib/ai/llm-client';
 import { cacheAnswer, findCachedAnswer } from '@/lib/ai/companion-cache';
+import { answerOffline } from '@/lib/ai/companion-offline';
+import type { CompanionAnswerKind } from '@/lib/ai/companion-answer';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
+import { loadConsent } from '@/lib/consent/consentClient';
+import { isConsentValid } from '@/lib/consent/policy';
+import { isUILanguage, type UILanguage } from '@/lib/i18n/languages';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 
 type Phase = 'idle' | 'recording' | 'thinking' | 'answered' | 'fallback';
 
+/** What the caregiver agreed to for this patient, read from the phone's consent record. */
+type Access = 'checking' | 'none' | 'text' | 'voice';
+
+type AnswerSource = 'ai' | 'cache' | 'memoryBook';
+
 interface AnswerState {
   text: string;
-  fromCache: boolean;
+  source: AnswerSource;
 }
 
 const MIC_SIZE_PX = 128;
@@ -32,13 +42,31 @@ const MIC_SIZE_PX = 128;
  * is honored correctly. */
 const TRANSCRIBE_FETCH_TIMEOUT_MS = 40_000;
 
+/** Bounds /api/ai/complete: translation in and out (8s each), two LLM
+ * providers (15s each) and consent/fact lookups, plus margin. */
+const COMPLETE_FETCH_TIMEOUT_MS = 60_000;
+
+/** A patient who forgets to tap stop still gets an answer instead of an open mic. */
+const MAX_RECORDING_MS = 30_000;
+
+/** BCP-47 tags for browser dictation; without one it listens for the browser's own language. */
+const RECOGNITION_LANG: Record<UILanguage, string> = {
+  en: 'en-IN',
+  hi: 'hi-IN',
+  as: 'as-IN',
+  bn: 'bn-IN',
+  ne: 'ne-NP',
+  brx: 'hi-IN',
+  mni: 'bn-IN',
+};
+
 /** Browser dictation, used both as the Groq-failure/offline fallback and as
  * the sole transcript source when MediaRecorder can't record at all. No
  * true live partial-transcript display (see plan Decision 8) — Groq
  * Whisper, the primary transcriber, is batch-only, and running
  * SpeechRecognition purely for on-screen captions alongside MediaRecorder
  * means two concurrent mic consumers, a real cross-browser flakiness risk. */
-function acquireViaSpeechRecognition(): Promise<string | null> {
+function acquireViaSpeechRecognition(language: UILanguage): Promise<string | null> {
   if (typeof window === 'undefined') return Promise.resolve(null);
   const Ctor =
     (window as unknown as { SpeechRecognition?: new () => SpeechRecognitionLike }).SpeechRecognition ??
@@ -53,6 +81,7 @@ function acquireViaSpeechRecognition(): Promise<string | null> {
       settled = true;
       resolve(value);
     };
+    recognition.lang = RECOGNITION_LANG[language];
     recognition.onresult = (event) => {
       const text = event.results?.[0]?.[0]?.transcript;
       finish(typeof text === 'string' && text.length > 0 ? text : null);
@@ -66,10 +95,19 @@ function acquireViaSpeechRecognition(): Promise<string | null> {
 const subscribeNever = () => () => {};
 
 interface SpeechRecognitionLike {
+  lang: string;
   start(): void;
   onresult: ((event: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null;
   onerror: (() => void) | null;
   onend: (() => void) | null;
+}
+
+function localContext() {
+  const now = new Date();
+  return {
+    date: now.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }),
+    time: now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+  };
 }
 
 export default function CompanionPage() {
@@ -81,7 +119,12 @@ export default function CompanionPage() {
   const [transcript, setTranscript] = useState('');
   const [textInput, setTextInput] = useState('');
   const [answer, setAnswer] = useState<AnswerState | null>(null);
+  const [consentAccess, setAccess] = useState<Access>('checking');
+  const [typing, setTyping] = useState(false);
+  const [micError, setMicError] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   // Read through useSyncExternalStore rather than a `typeof window` branch:
@@ -98,35 +141,73 @@ export default function CompanionPage() {
   // Spoken answers and speech recognition use the same language as the
   // screen, which follows the patient's language (selectActivePatient).
   const patientLanguage = language;
+  const patientId = currentPatient?.id;
 
-  const speakAnswer = (text: string) => {
-    void narrate(text, patientLanguage, isOnline);
+  // Consent guardrail: Ask Smriti does nothing — no recording, no network —
+  // unless the caregiver turned it on for this patient.
+  const access: Access = patientId ? consentAccess : 'none';
+  useEffect(() => {
+    if (!patientId) return;
+    let cancelled = false;
+    void loadConsent(patientId).then((consent) => {
+      if (cancelled) return;
+      setAccess(isConsentValid(consent, 'voice') ? 'voice' : isConsentValid(consent, 'ai') ? 'text' : 'none');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId]);
+
+  // Never leave the microphone open when the patient leaves the screen.
+  useEffect(
+    () => () => {
+      if (autoStopRef.current) clearTimeout(autoStopRef.current);
+      streamRef.current?.getTracks?.().forEach((track) => track.stop());
+    },
+    [],
+  );
+
+  const speakAnswer = (text: string, answerLanguage: UILanguage = patientLanguage) => {
+    void narrate(text, answerLanguage, isOnline);
   };
 
-  const showFallback = () => {
-    setAnswer({ text: FALLBACK_TEXT, fromCache: false });
+  const showFallback = (text = t('companion.unavailable')) => {
+    setAnswer({ text, source: 'ai' });
     setPhase('fallback');
-    speakAnswer(FALLBACK_TEXT);
+    speakAnswer(text);
   };
+
+  /** The fixed replies use the app's own reviewed translations, not a machine translation. */
+  const fixedReply = (kind: CompanionAnswerKind): string =>
+    kind === 'distress' ? t('companion.distress') : kind === 'unknown' ? t('companion.notSure') : t('companion.unavailable');
 
   const handleTranscript = async (text: string) => {
     setTranscript(text);
-    const patientId = currentPatient?.id;
     if (!patientId) {
       showFallback();
       return;
     }
 
-    const cached = await findCachedAnswer(patientId, text);
+    const cached = await findCachedAnswer(patientId, text, patientLanguage);
     if (cached) {
-      setAnswer({ text: cached.answer, fromCache: true });
+      setAnswer({ text: cached.answer, source: 'cache' });
       setPhase('answered');
-      speakAnswer(cached.answer);
+      speakAnswer(cached.answer, isUILanguage(cached.language) ? cached.language : patientLanguage);
       return;
     }
 
     if (!isOnline) {
-      showFallback();
+      const offline = await answerOffline(patientId, text);
+      if (offline.kind === 'distress') {
+        showFallback(t('companion.distress'));
+      } else if (offline.kind === 'memoryBook') {
+        setAnswer({ text: offline.text, source: 'memoryBook' });
+        setPhase('answered');
+        // Read as the caregiver wrote it; the voice follows the screen language.
+        speakAnswer(offline.text);
+      } else {
+        showFallback();
+      }
       return;
     }
 
@@ -136,21 +217,43 @@ export default function CompanionPage() {
       const res = await fetch('/api/ai/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: text, deviceTrustToken: token }),
+        body: JSON.stringify({
+          question: text,
+          language: patientLanguage,
+          clientContext: localContext(),
+          deviceTrustToken: token,
+        }),
+        signal: AbortSignal.timeout(COMPLETE_FETCH_TIMEOUT_MS),
       });
+      if (res.status === 403) {
+        // Consent was withdrawn on another device and hasn't synced here yet.
+        setAccess('none');
+        reset();
+        return;
+      }
       const body = await res.json();
+      const kind: CompanionAnswerKind =
+        body.kind === 'unknown' || body.kind === 'distress' || body.kind === 'unavailable' ? body.kind : 'answer';
       // The route still returns 200 when both LLM providers are down — it
       // hands back llm-client's own transient-failure sentinel rather than
       // a real answer. Route that to the same fallback UI, and critically,
       // never cache it: caching it would keep serving "can't check that
       // right now" for this question even after the providers recover.
-      if (!res.ok || typeof body.text !== 'string' || body.text === FALLBACK_TEXT) {
+      if (!res.ok || typeof body.text !== 'string' || body.text === FALLBACK_TEXT || kind === 'unavailable') {
         showFallback();
         return;
       }
-      setAnswer({ text: body.text, fromCache: false });
+      if (kind !== 'answer') {
+        const reply = fixedReply(kind);
+        setAnswer({ text: reply, source: 'ai' });
+        setPhase('answered');
+        speakAnswer(reply);
+        return;
+      }
+      const answerLanguage: UILanguage = isUILanguage(body.answerLanguage) ? body.answerLanguage : patientLanguage;
+      setAnswer({ text: body.text, source: 'ai' });
       setPhase('answered');
-      speakAnswer(body.text);
+      speakAnswer(body.text, answerLanguage);
       await cacheAnswer({
         id: uuid(),
         patientId,
@@ -159,18 +262,22 @@ export default function CompanionPage() {
         grounded: Boolean(body.grounded),
         modelUsed: 'groq',
         createdAt: new Date().toISOString(),
+        // An answer that came back untranslated is cached as English, so the
+        // next ask in the patient's language tries translation again.
+        language: answerLanguage,
       });
     } catch {
       showFallback();
     }
   };
 
-  const acquireTranscript = async (): Promise<string | null> => {
+  const acquireTranscript = async (mimeType: string): Promise<string | null> => {
     if (isOnline) {
       try {
         const token = await getDeviceTrustToken();
         const formData = new FormData();
-        formData.append('audio', new Blob(chunksRef.current, { type: 'audio/webm' }), 'clip.webm');
+        const type = mimeType || 'audio/webm';
+        formData.append('audio', new Blob(chunksRef.current, { type }), 'clip');
         formData.append('deviceTrustToken', JSON.stringify(token));
         formData.append('language', patientLanguage);
         const res = await fetch('/api/ai/transcribe', {
@@ -186,20 +293,42 @@ export default function CompanionPage() {
         // Fall through to browser dictation below.
       }
     }
-    return acquireViaSpeechRecognition();
+    return acquireViaSpeechRecognition(patientLanguage);
+  };
+
+  const releaseMic = () => {
+    if (autoStopRef.current) clearTimeout(autoStopRef.current);
+    autoStopRef.current = null;
+    streamRef.current?.getTracks?.().forEach((track) => track.stop());
+    streamRef.current = null;
   };
 
   const startRecording = async () => {
+    let stream: MediaStream;
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch {
+      // Permission denied or no microphone: offer typing rather than claim
+      // the answer can't be checked.
+      setPhase('idle');
+      setMicError(true);
+      setTyping(true);
+      return;
+    }
+    try {
+      streamRef.current = stream;
       chunksRef.current = [];
       const recorder = new window.MediaRecorder(stream);
-      recorder.ondataavailable = (event) => chunksRef.current.push(event.data);
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size !== 0) chunksRef.current.push(event.data);
+      };
       recorder.onstop = () => {
+        releaseMic();
         setPhase('thinking');
         void (async () => {
           try {
-            const text = await acquireTranscript();
+            // Safari records audio/mp4, not webm; the server picks a transcriber that accepts it.
+            const text = await acquireTranscript(recorder.mimeType || chunksRef.current[0]?.type || '');
             if (text) {
               await handleTranscript(text);
             } else {
@@ -218,7 +347,11 @@ export default function CompanionPage() {
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
+      autoStopRef.current = setTimeout(() => {
+        if (recorder.state === 'recording') recorder.stop();
+      }, MAX_RECORDING_MS);
     } catch {
+      releaseMic();
       showFallback();
     }
   };
@@ -229,45 +362,69 @@ export default function CompanionPage() {
       return;
     }
     if (phase !== 'idle') return;
+    setMicError(false);
     // Flips synchronously, before the async getUserMedia permission prompt
     // resolves — a tap should pulse immediately, not lag behind mic access.
     setPhase('recording');
     void startRecording();
   };
 
-  const reset = () => {
+  function reset() {
     setPhase('idle');
     setTranscript('');
     setTextInput('');
     setAnswer(null);
-  };
+  }
 
   const onTextSubmit = () => {
-    if (!textInput.trim()) return;
-    void handleTranscript(textInput.trim());
+    const question = textInput.trim();
+    if (!question || phase === 'thinking') return;
+    void handleTranscript(question);
   };
+
+  const canSpeak = access === 'voice' && mediaRecorderSupported;
+  const showTextForm = access !== 'checking' && access !== 'none' && (!canSpeak || typing);
 
   const prompt =
     phase === 'recording'
       ? t('companion.listening')
       : phase === 'thinking'
         ? t('companion.thinking')
-        : phase === 'idle'
+        : phase === 'idle' && access !== 'none'
           ? t('companion.askMeSomething')
           : null;
+
+  const sourceLabel =
+    answer?.source === 'cache'
+      ? t('companion.fromEarlier')
+      : answer?.source === 'memoryBook'
+        ? t('companion.fromMemoryBook')
+        : t('companion.aiAnswer');
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-canvas">
       <PatientNav title={t('companion.title')} onBack={() => router.push('/app')} />
 
       <main className="flex flex-1 flex-col gap-8 px-5 py-8">
-        {prompt ? (
+        {access === 'none' ? (
+          <div className="rounded-card border border-line200 bg-surface-card p-5">
+            <p className="text-patient-body text-ink">{t('companion.consentNeeded')}</p>
+          </div>
+        ) : null}
+
+        {prompt && access !== 'checking' ? (
           <p aria-live="polite" className="font-serif-display text-[2.25rem] font-medium leading-[1.15] text-ink">
             {prompt}
           </p>
         ) : null}
 
-        {mediaRecorderSupported ? (
+        {micError ? (
+          <p role="alert" className="text-patient-body text-ink">
+            {t('companion.micUnavailable')}
+          </p>
+        ) : null}
+
+        {canSpeak && !typing ? (
           <button
             type="button"
             aria-label={phase === 'recording' ? t('companion.stopAsking') : t('companion.askQuestion')}
@@ -294,7 +451,9 @@ export default function CompanionPage() {
               {phase === 'recording' ? t('companion.tapWhenFinished') : t('companion.tapAndSpeak')}
             </span>
           </button>
-        ) : (
+        ) : null}
+
+        {showTextForm && (phase === 'idle' || phase === 'thinking') ? (
           <div className="flex w-full flex-col gap-3">
             <label htmlFor="companion-text-question" className="text-patient-body font-bold text-ink">
               {t('companion.typeQuestion')}
@@ -302,6 +461,8 @@ export default function CompanionPage() {
             <input
               id="companion-text-question"
               value={textInput}
+              maxLength={500}
+              lang={patientLanguage}
               onChange={(e) => setTextInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') onTextSubmit();
@@ -309,9 +470,25 @@ export default function CompanionPage() {
               style={{ minHeight: 64 }}
               className={`${fieldClass} text-patient-body`}
             />
-            <BigButton label={t('companion.ask')} variant="primary" onClick={onTextSubmit} />
+            <BigButton
+              label={t('companion.ask')}
+              variant="primary"
+              onClick={onTextSubmit}
+              disabled={phase === 'thinking'}
+            />
           </div>
-        )}
+        ) : null}
+
+        {canSpeak && phase === 'idle' ? (
+          <BigButton
+            label={typing ? t('companion.speakInstead') : t('companion.typeInstead')}
+            variant="secondary"
+            onClick={() => {
+              setMicError(false);
+              setTyping((v) => !v);
+            }}
+          />
+        ) : null}
 
         {(phase === 'answered' || phase === 'fallback') && transcript ? (
           <div>
@@ -323,7 +500,7 @@ export default function CompanionPage() {
         {answer ? (
           <div className="rounded-card border border-line200 bg-surface-card p-5">
             <p className="text-patient-body text-ink">{answer.text}</p>
-            <p className="mt-3 text-patient-sm text-ink-muted">{answer.fromCache ? t('companion.fromEarlier') : t('companion.aiAnswer')}</p>
+            <p className="mt-3 text-patient-sm text-ink-muted">{sourceLabel}</p>
           </div>
         ) : null}
 

@@ -3,6 +3,7 @@ import { ENCRYPTED_FIELDS } from '@/lib/db/crypto/fields';
 import { createEncryptionMiddleware } from '@/lib/db/crypto/middleware';
 import { type KeyringEntry, loadOrCreateStorageKey, migrateToEncrypted } from '@/lib/db/crypto/keys';
 import type { AckMethod, CaregiverRole, GameType, MemoryBankCategory, ReminderType } from '@/lib/supabase/types';
+import type { ConsentRecord } from '@/lib/consent/policy';
 
 /**
  * Offline-first local mirror (IndexedDB via Dexie).
@@ -145,6 +146,28 @@ export interface LocalAiConversationLog {
   grounded: boolean;
   modelUsed: string;
   createdAt: string;
+  /** Language the question was asked in. Cached answers are only reused for
+   * the same language — they are stored translated. Absent on older rows. */
+  language?: string;
+  /** True for an answer produced on the phone (offline, from the local
+   * Memory Bank) that the server has not logged yet. `lib/db/sync.ts`
+   * uploads these; online answers are logged by `/api/ai/complete` itself. */
+  pendingSync?: boolean;
+}
+
+/** Per-patient pull cursor for `/api/sync`: the server time of the last
+ * successful sync, so each sync only downloads what changed since. Lives in
+ * Dexie (not localStorage) so deleting the local database also resets it and
+ * the next sign-in pulls everything again. */
+export interface SyncCursor {
+  patientId: string;
+  serverTimestamp: string;
+}
+
+/** The caregiver's consent for one patient — see lib/consent/policy.ts. */
+export interface LocalConsent extends ConsentRecord {
+  /** False until `/api/sync` (or the direct push after the form) confirms the server has it. */
+  synced: boolean;
 }
 
 export interface ReminiscenceQuizQuestion {
@@ -275,6 +298,8 @@ export class SmritiDB extends Dexie {
   deviceTrust!: Table<DeviceTrustToken, string>;
   /** Out-of-line keys. Holds the sealed storage key — see lib/db/crypto/keys.ts. */
   keyring!: Table<KeyringEntry, string>;
+  consents!: Table<LocalConsent, string>;
+  syncCursors!: Table<SyncCursor, string>;
 
   /** The unsealed field-encryption key. Memory only, loaded on every open. */
   private storageKey: Uint8Array | null = null;
@@ -328,6 +353,11 @@ export class SmritiDB extends Dexie {
     // New store only. The sealed key for field-level encryption at rest.
     this.version(7).stores({
       keyring: '',
+    });
+    // New stores only. One consent record and one sync cursor per patient.
+    this.version(8).stores({
+      consents: 'patientId',
+      syncCursors: 'patientId',
     });
 
     // Personal and health fields are encrypted before they reach IndexedDB

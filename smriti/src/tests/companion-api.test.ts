@@ -20,10 +20,11 @@ const getUser = vi.fn();
  * exists in this repo yet. */
 function makeChain(result: { data: unknown; error: unknown }) {
   const chain: Record<string, unknown> = {};
-  for (const method of ['select', 'eq', 'in', 'order', 'limit', 'insert', 'update']) {
+  for (const method of ['select', 'eq', 'in', 'gte', 'order', 'limit', 'insert', 'update', 'upsert']) {
     chain[method] = vi.fn(() => chain);
   }
   chain.single = vi.fn(() => Promise.resolve(result));
+  chain.maybeSingle = vi.fn(() => Promise.resolve(result));
   chain.then = (resolve: (v: typeof result) => unknown) => resolve(result);
   return chain;
 }
@@ -35,11 +36,34 @@ const serviceFromMock = vi.fn((_table: string) => makeChain({ data: [], error: n
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const callerFromMock = vi.fn((_table: string) => makeChain({ data: [], error: null }));
 
+/** The patient's consent row the AI routes check first; tests set it to null
+ * or switch purposes off to exercise the guardrail. */
+function consentRow(overrides: Record<string, unknown> = {}) {
+  return {
+    patient_id: 'p1',
+    caregiver_id: 'cg1',
+    version: 1,
+    care_profile: true,
+    guardian_attested: true,
+    ai_companion: true,
+    voice_processing: true,
+    consented_at: '2026-09-01T00:00:00.000Z',
+    updated_at: '2026-09-01T00:00:00.000Z',
+    ...overrides,
+  };
+}
+let currentConsent: Record<string, unknown> | null = consentRow();
+
 vi.mock('@/lib/supabase/client', () => ({
   isSupabaseConfigured: () => true,
   createServerClient: () => ({ auth: { getUser }, from: callerFromMock }),
-  createServiceRoleClient: () => ({ from: serviceFromMock }),
+  createServiceRoleClient: () => ({
+    from: (table: string) =>
+      table === 'patient_consents' ? makeChain({ data: currentConsent, error: null }) : serviceFromMock(table),
+  }),
 }));
+
+vi.mock('@/lib/ai/bhashini-nmt-client', () => ({ translateText: vi.fn() }));
 
 vi.mock('@/lib/ai/llm-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/ai/llm-client')>();
@@ -55,6 +79,7 @@ function makeDeviceToken(patientId: string, caregiverId = 'cg1') {
 }
 
 beforeEach(async () => {
+  currentConsent = consentRow();
   getUser.mockReset();
   serviceFromMock.mockReset();
   callerFromMock.mockReset();
@@ -528,5 +553,173 @@ describe('GET /api/patients/[id]/companion-activity', () => {
     expect(body.questions).toHaveLength(3);
     expect(body.questions[1].grounded).toBe(false);
     expect(body.questions[2].flaggedForFollowup).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Consent guardrail, Bhashini translation and grounding in the AI routes
+// ---------------------------------------------------------------------------
+describe('Ask Smriti routes — consent, language and grounding', () => {
+  function completeRequest(body: Record<string, unknown>) {
+    return new Request('http://localhost/api/ai/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceTrustToken: makeDeviceToken('p1'), ...body }),
+    });
+  }
+
+  const rajuFacts = [
+    { id: 'e1', title: 'Raju', detail: 'Your son, visits on Sundays', relationship: 'son', category: 'person' },
+  ];
+
+  function withFacts(logChain = makeChain({ data: [], error: null })) {
+    serviceFromMock.mockImplementation((table: string) => {
+      if (table === 'memory_bank_entries') return makeChain({ data: rajuFacts, error: null });
+      if (table === 'ai_conversation_log') return logChain;
+      return makeChain({ data: [], error: null });
+    });
+    return logChain;
+  }
+
+  it('refuses with 403 before translating or calling the model when Ask Smriti consent was never given', async () => {
+    currentConsent = null;
+    withFacts();
+    const { callLLM } = await import('@/lib/ai/llm-client');
+    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const res = await POST(completeRequest({ question: 'मेरा बेटा कौन है', language: 'hi' }));
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toBe('consent_required');
+    expect(callLLM).not.toHaveBeenCalled();
+    expect(translateText).not.toHaveBeenCalled();
+  });
+
+  it('refuses when the caregiver later turned Ask Smriti off', async () => {
+    currentConsent = consentRow({ ai_companion: false, voice_processing: false });
+    withFacts();
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const res = await POST(completeRequest({ question: 'who is Raju' }));
+    expect(res.status).toBe(403);
+  });
+
+  it('translates a Hindi question to English with Bhashini, and the answer back to Hindi', async () => {
+    const logChain = withFacts();
+    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
+    vi.mocked(translateText).mockReset();
+    vi.mocked(translateText).mockImplementation(async (text, source, target) => ({
+      text: source === 'hi' && target === 'en' ? 'Who is my son?' : 'राजू आपका बेटा है।',
+      model: 'bhashini/test',
+    }));
+    const { callLLM } = await import('@/lib/ai/llm-client');
+    vi.mocked(callLLM).mockResolvedValue({ text: 'Raju is your son.\nFACTS: F1', model: 'groq/test', grounded: true });
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const res = await POST(completeRequest({ question: 'मेरा बेटा कौन है?', language: 'hi' }));
+    const body = await res.json();
+
+    expect(translateText).toHaveBeenCalledWith('मेरा बेटा कौन है?', 'hi', 'en');
+    expect(translateText).toHaveBeenCalledWith('Raju is your son.', 'en', 'hi');
+    expect(vi.mocked(callLLM).mock.calls[0][0].userPrompt).toBe('Who is my son?');
+    expect(body).toEqual({ text: 'राजू आपका बेटा है।', grounded: true, kind: 'answer', answerLanguage: 'hi' });
+    expect(logChain.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ grounded: true, question: expect.stringContaining('[English: Who is my son?]') }),
+    );
+  });
+
+  it('returns the English answer, marked as English, when translating the answer back fails', async () => {
+    withFacts();
+    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
+    vi.mocked(translateText).mockReset();
+    vi.mocked(translateText).mockImplementation(async (_text, source) => {
+      if (source === 'hi') return { text: 'Who is my son?', model: 'bhashini/test' };
+      throw new Error('Bhashini down');
+    });
+    const { callLLM } = await import('@/lib/ai/llm-client');
+    vi.mocked(callLLM).mockResolvedValue({ text: 'Raju is your son.\nFACTS: F1', model: 'groq/test', grounded: true });
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const body = await (await POST(completeRequest({ question: 'मेरा बेटा कौन है?', language: 'hi' }))).json();
+
+    expect(body).toMatchObject({ text: 'Raju is your son.', kind: 'answer', answerLanguage: 'en' });
+  });
+
+  it('replaces an answer that cites no fact with the not-sure reply', async () => {
+    withFacts();
+    const { callLLM } = await import('@/lib/ai/llm-client');
+    vi.mocked(callLLM).mockResolvedValue({
+      text: 'Your daughter Priya lives in Delhi.\nFACTS: none',
+      model: 'groq/test',
+      grounded: true,
+    });
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const body = await (await POST(completeRequest({ question: 'where does my daughter live' }))).json();
+
+    expect(body).toMatchObject({ kind: 'unknown', grounded: false, text: "I'm not sure about that. You could ask your caregiver." });
+  });
+
+  it('catches a distress phrase in the patient’s own language even when translation is down', async () => {
+    const logChain = withFacts();
+    const { translateText } = await import('@/lib/ai/bhashini-nmt-client');
+    vi.mocked(translateText).mockReset();
+    vi.mocked(translateText).mockRejectedValue(new Error('down'));
+    const { callLLM } = await import('@/lib/ai/llm-client');
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const body = await (await POST(completeRequest({ question: 'मैं मरना चाहता हूँ', language: 'hi' }))).json();
+
+    expect(body.kind).toBe('distress');
+    expect(callLLM).not.toHaveBeenCalled();
+    expect(logChain.insert).toHaveBeenCalledWith(expect.objectContaining({ flagged_for_followup: true }));
+  });
+
+  it('answers from reminders and appointments too, not only Memory Bank entries', async () => {
+    serviceFromMock.mockImplementation((table: string) => {
+      if (table === 'reminder_schedules') {
+        return makeChain({
+          data: [
+            {
+              id: 'r1',
+              label: 'Eye check-up',
+              reminder_type: 'appointment',
+              time_of_day: '10:30:00',
+              days_of_week: [],
+              appointment_date: '2026-09-20',
+              facility_name: 'Jorhat CHC',
+              location_notes: null,
+              bring_notes: 'old spectacles',
+            },
+          ],
+          error: null,
+        });
+      }
+      return makeChain({ data: [], error: null });
+    });
+    const { callLLM } = await import('@/lib/ai/llm-client');
+    vi.mocked(callLLM).mockResolvedValue({ text: 'On 20 September at 10:30.\nFACTS: F1', model: 'groq/test', grounded: true });
+
+    const { POST } = await import('@/app/api/ai/complete/route');
+    const body = await (await POST(completeRequest({ question: 'when is my eye check-up' }))).json();
+
+    const prompt = vi.mocked(callLLM).mock.calls[0][0].systemPrompt;
+    expect(prompt).toContain('F1. Eye check-up: Appointment on 2026-09-20 at 10:30 at Jorhat CHC. Bring: old spectacles.');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true });
+  });
+
+  it('refuses to transcribe a patient phone’s recording when voice consent is off', async () => {
+    currentConsent = consentRow({ voice_processing: false });
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const formData = new FormData();
+    formData.append('audio', new Blob(['fake'], { type: 'audio/webm' }), 'clip.webm');
+    formData.append('deviceTrustToken', JSON.stringify(makeDeviceToken('p1')));
+    const { POST } = await import('@/app/api/ai/transcribe/route');
+
+    const res = await POST(new Request('http://localhost/api/ai/transcribe', { method: 'POST', body: formData }));
+
+    expect(res.status).toBe(403);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

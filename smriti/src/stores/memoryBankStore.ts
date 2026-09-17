@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { db, type LocalMemoryBankEntry } from '@/lib/db/schema';
+import { clearCachedAnswers } from '@/lib/ai/companion-cache';
 
 interface MemoryBankState {
   entries: LocalMemoryBankEntry[];
@@ -30,6 +31,8 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
   addEntry: async (entry) => {
     const withSync: LocalMemoryBankEntry = { ...entry, synced: false };
     await db.memoryBankEntries.put(withSync);
+    // Ask Smriti's cached answers were built from the old entries.
+    await clearCachedAnswers(entry.patientId);
     set({ entries: [...get().entries, withSync] });
   },
 
@@ -45,6 +48,7 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
     };
 
     await db.memoryBankEntries.put(updated);
+    await clearCachedAnswers(existing.patientId);
     set({ entries: get().entries.map((e) => (e.id === id ? updated : e)) });
   },
 
@@ -60,6 +64,7 @@ export const useMemoryBankStore = create<MemoryBankState>()((set, get) => ({
     };
 
     await db.memoryBankEntries.put(updated);
+    await clearCachedAnswers(existing.patientId);
     set({ entries: get().entries.filter((e) => e.id !== id) });
   },
 }));

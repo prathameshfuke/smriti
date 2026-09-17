@@ -1,5 +1,5 @@
 import type { UILanguage } from '@/lib/i18n/languages';
-import { fetchInferenceAuth } from './bhashini-auth';
+import { fetchInferenceAuth, invalidateInferenceAuth } from './bhashini-auth';
 
 /**
  * Single entry point for Bhashini text-to-speech. Sibling to llm-client.ts
@@ -31,7 +31,7 @@ const PIPELINE_ID = '64392f96daac500b55c543cd';
 // account can't resolve a service for this language.
 const LEGACY_TTS_SERVICE_ID = 'Bhashini/IITM/TTS';
 
-const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
+export const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
   en: 'en',
   hi: 'hi',
   as: 'as',
@@ -120,7 +120,12 @@ export async function synthesizeSpeech(
 
   try {
     const auth = await fetchInferenceAuth('tts', sourceLanguage);
-    return await computeTts(text, sourceLanguage, auth.name, auth.value, auth.serviceId);
+    try {
+      return await computeTts(text, sourceLanguage, auth.name, auth.value, auth.serviceId);
+    } catch (err) {
+      invalidateInferenceAuth('tts', sourceLanguage);
+      throw err;
+    }
   } catch {
     const legacyKey = process.env.BHASHINI_INFERENCE_API_KEY;
     if (!legacyKey) {

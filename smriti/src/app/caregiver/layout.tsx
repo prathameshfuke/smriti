@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import BigButton from '@/components/ui/BigButton';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { restoreLocalSession, pullAndStoreServerProfile, needsDevicePatientChoice } from '@/lib/auth/localSession';
+import { patientsNeedingConsent } from '@/lib/consent/gate';
 
 type GateState = 'checking' | 'ready' | 'offline';
 
@@ -39,6 +40,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
   // exchange finishes and bounces straight back to /caregiver/login.
   const isLoginRoute = pathname === '/caregiver/login' || pathname.startsWith('/caregiver/login/');
   const isOnboardingRoute = pathname === '/caregiver/onboarding';
+  const isConsentRoute = pathname === '/caregiver/consent';
 
   const [state, setState] = useState<GateState>(isLoginRoute ? 'ready' : 'checking');
   const [retryToken, setRetryToken] = useState(0);
@@ -48,6 +50,16 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
 
     let cancelled = false;
     setState('checking');
+
+    /** Consent guardrail: a patient without valid consent (set up before
+     * consent existed, or before the notice changed) sends the caregiver to
+     * the consent form before any other caregiver screen. */
+    const redirectedForConsent = async (): Promise<boolean> => {
+      if (isConsentRoute || pathname === '/caregiver/device') return false;
+      if ((await patientsNeedingConsent()).length === 0) return false;
+      if (!cancelled) router.replace(`/caregiver/consent?next=${encodeURIComponent(pathname)}`);
+      return true;
+    };
 
     (async () => {
       const foundLocal = await restoreLocalSession();
@@ -76,6 +88,8 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
           router.replace('/caregiver/device?setup=1');
           return;
         }
+        if (await redirectedForConsent()) return;
+        if (cancelled) return;
         setState('ready');
         return;
       }
@@ -103,6 +117,8 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
           router.replace('/caregiver/device?setup=1');
           return;
         }
+        if (await redirectedForConsent()) return;
+        if (cancelled) return;
         setState('ready');
         return;
       }
@@ -119,7 +135,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
       cancelled = true;
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- pathname is read once at the gate, not re-gated on every navigation
-  }, [isLoginRoute, isOnboardingRoute, router, retryToken]);
+  }, [isLoginRoute, isOnboardingRoute, isConsentRoute, router, retryToken]);
 
   if (isLoginRoute) {
     return <section className="min-h-dvh">{children}</section>;

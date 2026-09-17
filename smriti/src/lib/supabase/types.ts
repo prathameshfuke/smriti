@@ -213,6 +213,19 @@ export type AiConversationLog = {
   created_at: Timestamptz;
 }
 
+/** MIGRATION 014 — see src/lib/consent/policy.ts for what each flag means. */
+export type PatientConsent = {
+  patient_id: string;
+  caregiver_id: string;
+  version: number;
+  care_profile: boolean;
+  guardian_attested: boolean;
+  ai_companion: boolean;
+  voice_processing: boolean;
+  consented_at: Timestamptz;
+  updated_at: Timestamptz;
+}
+
 export type FamilyShareStatus = 'pending' | 'approved' | 'rejected' | 'surfaced';
 
 export type FamilyShare = {
@@ -286,6 +299,7 @@ export interface Database {
       alerts: TableShape<Alert>;
       memory_bank_entries: TableShape<MemoryBankEntry>;
       ai_conversation_log: TableShape<AiConversationLog>;
+      patient_consents: TableShape<PatientConsent>;
       reminiscence_quizzes: TableShape<ReminiscenceQuiz>;
       caregiver_digests: TableShape<CaregiverDigest>;
       family_shares: TableShape<FamilyShare>;

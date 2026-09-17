@@ -803,3 +803,86 @@ ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_appointment_fie
 ALTER TABLE reminder_schedules ADD CONSTRAINT reminder_schedules_day_of_before_appointment_check
   CHECK (remind_day_of_time IS NULL OR remind_day_of_time <= time_of_day);
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 014: Patient data consent + companion log sync
+-- =============================================
+
+-- One current consent per patient, given by the caregiver during onboarding
+-- (or when adding a patient) before any patient data is collected. The
+-- policy text and the meaning of each column live in
+-- src/lib/consent/policy.ts; `version` is that file's CONSENT_VERSION.
+--
+-- Enforcement: POST /api/ai/complete and the device path of
+-- POST /api/ai/transcribe refuse with 403 `consent_required` unless this row
+-- exists, is at the current version, and has the required purpose turned on.
+CREATE TABLE patient_consents (
+  patient_id UUID PRIMARY KEY REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
+  version INTEGER NOT NULL CHECK (version >= 1),
+  care_profile BOOLEAN NOT NULL,
+  guardian_attested BOOLEAN NOT NULL,
+  ai_companion BOOLEAN NOT NULL DEFAULT false,
+  voice_processing BOOLEAN NOT NULL DEFAULT false,
+  consented_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CHECK (NOT voice_processing OR ai_companion)
+);
+
+-- Append-only history, so a later withdrawal never erases the record of
+-- what was agreed to and when.
+CREATE TABLE patient_consent_history (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  caregiver_id UUID NOT NULL,
+  version INTEGER NOT NULL,
+  care_profile BOOLEAN NOT NULL,
+  guardian_attested BOOLEAN NOT NULL,
+  ai_companion BOOLEAN NOT NULL,
+  voice_processing BOOLEAN NOT NULL,
+  recorded_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION record_patient_consent_history() RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO patient_consent_history
+    (patient_id, caregiver_id, version, care_profile, guardian_attested, ai_companion, voice_processing)
+  VALUES
+    (NEW.patient_id, NEW.caregiver_id, NEW.version, NEW.care_profile, NEW.guardian_attested,
+     NEW.ai_companion, NEW.voice_processing);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER trg_patient_consent_history AFTER INSERT OR UPDATE ON patient_consents
+  FOR EACH ROW EXECUTE FUNCTION record_patient_consent_history();
+
+ALTER TABLE patient_consents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patient_consent_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY caregiver_patient_consents ON patient_consents
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+CREATE POLICY caregiver_read_consent_history ON patient_consent_history
+  FOR SELECT USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+-- Questions Ask Smriti answered on the phone while offline (from the local
+-- Memory Bank) are uploaded by POST /api/sync under the caregiver's own
+-- session, so the caregiver needs an insert policy on the log; online
+-- answers keep being written by the service role in /api/ai/complete.
+CREATE POLICY caregiver_insert_ai_log ON ai_conversation_log
+  FOR INSERT WITH CHECK (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+```
