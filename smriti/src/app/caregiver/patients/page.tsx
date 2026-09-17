@@ -9,6 +9,7 @@ import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
 import StatusBadge, { type StatusTone } from '@/components/ui/StatusBadge';
 import PageHeader from '@/components/ui/PageHeader';
 import AddPatientButton from '@/components/caregiver/AddPatientButton';
+import WeeklyLeaderboard from '@/components/caregiver/WeeklyLeaderboard';
 import { languageName } from '@/lib/i18n/languages';
 import { authedFetch } from '@/lib/api/client';
 import { usePatientStore } from '@/stores/patientStore';
@@ -84,6 +85,8 @@ export default function CaregiverPatientsPage() {
           <AddPatientButton />
         }
       />
+
+      <WeeklyLeaderboard />
 
       {patients === null && !error ? (
         <div className="flex flex-col gap-3" aria-busy="true">
