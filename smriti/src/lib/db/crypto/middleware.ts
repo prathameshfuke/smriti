@@ -61,11 +61,27 @@ export function createEncryptionMiddleware(
           return copy;
         };
 
+        // `key` and `primaryKey` are native IDBCursor accessors that only work
+        // when called on the real cursor. Inherited through Object.create they
+        // run with the wrapper as `this` and throw "Illegal invocation", which
+        // is what Dexie's live-query tracking hits on every cursor read. So
+        // they are forwarded explicitly, the same way Dexie's own virtual
+        // cursor does it.
         const wrapCursor = (cursor: DBCoreCursor | null): DBCoreCursor | null => {
           if (!cursor) return cursor;
           let lastRaw: unknown;
           let lastPlain: unknown;
           return Object.create(cursor, {
+            key: {
+              get() {
+                return cursor.key;
+              },
+            },
+            primaryKey: {
+              get() {
+                return cursor.primaryKey;
+              },
+            },
             value: {
               get() {
                 const raw = cursor.value;
