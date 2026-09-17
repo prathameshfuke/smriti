@@ -19,11 +19,27 @@ const GROQ_MODEL = 'openai/gpt-oss-20b';
  * to a plain greeting.
  */
 export const GROQ_CHAT_MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b'] as const;
+
+/**
+ * Groq's free tier meters per model: 1,000 requests/day and 8,000
+ * tokens/minute each (read from the live rate-limit headers, 2026-09-18).
+ * A conversation turn makes two calls — the reply and the check that it
+ * invented nothing — so the check runs on this smaller model to keep both
+ * inside their own budget instead of spending one model's minute twice.
+ */
+export const GROQ_SMALL_MODEL = 'openai/gpt-oss-20b';
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-// 'meta-llama/llama-3.1-8b-instruct:free' was retired; OpenRouter's own
-// error response names the paid slug below as the replacement — verified
-// live, 2026-09-08.
-const OPENROUTER_MODEL = 'meta-llama/llama-3.1-8b-instruct';
+/**
+ * Both accounts are on the free tier, which decides every model choice here.
+ *
+ * OpenRouter free tier serves only `:free` slugs; a paid slug answers 402
+ * once the small starting balance is gone, so the fallback would die
+ * silently. These two are the free slugs that exist for this account
+ * (checked live, 2026-09-18) — they are tried in order because free
+ * capacity is shared and each answers 429 "rate-limited upstream" fairly
+ * often, which is exactly what happened to all of them during that check.
+ */
+const OPENROUTER_MODELS = ['qwen/qwen3.8-27b:free', 'google/gemma-4-31b-it:free'] as const;
 
 export const FALLBACK_TEXT =
   "I can't check that right now. Try again in a moment, or ask your caregiver.";
@@ -124,6 +140,8 @@ async function callProvider(
 
 export interface CallChatParams {
   messages: ChatMessage[];
+  /** Groq models to try, in order. Defaults to GROQ_CHAT_MODELS. */
+  models?: readonly string[];
   /** Visible reply budget. Default 400. */
   maxTokens?: number;
   /** Default 0.4 — warm but not inventive. */
@@ -154,21 +172,23 @@ export async function callChat(params: CallChatParams): Promise<CallChatResult> 
 
   const groqKey = process.env.GROQ_API_KEY;
   if (groqKey) {
-    for (const model of GROQ_CHAT_MODELS) {
+    for (const model of params.models ?? GROQ_CHAT_MODELS) {
       try {
         return { text: await requestProvider(GROQ_URL, groqKey, model, req), model: `groq/${model}` };
       } catch {
-        // Next model.
+        // Next model: a 429 here is a free-tier minute budget, not a dead provider.
       }
     }
   }
 
   const openRouterKey = process.env.OPENROUTER_API_KEY;
   if (openRouterKey) {
-    try {
-      return { text: await requestProvider(OPENROUTER_URL, openRouterKey, OPENROUTER_MODEL, req), model: `openrouter/${OPENROUTER_MODEL}` };
-    } catch {
-      // Fall through.
+    for (const model of OPENROUTER_MODELS) {
+      try {
+        return { text: await requestProvider(OPENROUTER_URL, openRouterKey, model, req), model: `openrouter/${model}` };
+      } catch {
+        // Next free slug.
+      }
     }
   }
 
@@ -195,11 +215,13 @@ export async function callLLM(params: CallLLMParams): Promise<CallLLMResult> {
 
   const openRouterKey = process.env.OPENROUTER_API_KEY;
   if (openRouterKey) {
-    try {
-      const text = await callProvider(OPENROUTER_URL, openRouterKey, OPENROUTER_MODEL, resolved);
-      return { text, model: `openrouter/${OPENROUTER_MODEL}`, grounded: true };
-    } catch {
-      // Fall through to the canned response.
+    for (const model of OPENROUTER_MODELS) {
+      try {
+        const text = await callProvider(OPENROUTER_URL, openRouterKey, model, resolved);
+        return { text, model: `openrouter/${model}`, grounded: true };
+      } catch {
+        // Next free slug, then the canned response.
+      }
     }
   }
 

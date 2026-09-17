@@ -28,6 +28,8 @@ The Memory Bank AI companion needs two free LLM provider keys in `.env.local` (s
 - `OPENROUTER_API_KEY` — free at [openrouter.ai/keys](https://openrouter.ai/keys). Fallback provider if Groq is rate-limited or unavailable.
 - `SUPABASE_SERVICE_ROLE_KEY` — from your Supabase project's Settings → API. Used only server-side by `/api/ai/converse` to write conversation logs on behalf of a kiosk-trusted patient device (which has no Supabase session of its own). **Never expose this to the browser or commit it.**
 
+Both AI accounts are on the **free tier**, which constrains model choice: Groq meters 1,000 requests/day and 8,000 tokens/minute *per model*, and OpenRouter serves only slugs ending in `:free` (a paid slug answers 402 once the starting balance is gone). Ask Smriti therefore answers on `gpt-oss-120b` and runs its invented-detail check on `gpt-oss-20b`, so the two calls of one turn draw on separate budgets. Run `node --env-file=.env.local scripts/probe-ai.mjs` to see every provider's status and the remaining budget before blaming the app.
+
 All AI features call through `src/lib/ai/llm-client.ts` — never call Groq/OpenRouter directly from a feature file.
 
 ## Learn More

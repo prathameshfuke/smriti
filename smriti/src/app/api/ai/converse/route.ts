@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { createServiceRoleClient } from '@/lib/supabase/client';
-import { callChat } from '@/lib/ai/llm-client';
+import { callChat, GROQ_SMALL_MODEL } from '@/lib/ai/llm-client';
 import { matchSeverity, TELE_MANAS_RESPONSE } from '@/lib/ai/distress-keywords';
 import { translateText } from '@/lib/ai/bhashini-nmt-client';
 import { synthesizeSpeech } from '@/lib/ai/bhashini-client';
@@ -166,6 +166,9 @@ async function isReplyAllowed(reply: ModelReply, facts: CompanionFact[], history
   if (reply.type === 'memory' && reply.cited.length === 0) return false;
   const verdict = await callChat({
     messages: buildVerifierMessages(facts, history, message, reply.reply),
+    // The smaller model, so the reply and its check draw on separate
+    // free-tier budgets (see GROQ_SMALL_MODEL).
+    models: [GROQ_SMALL_MODEL],
     json: true,
     maxTokens: 120,
     temperature: 0,
