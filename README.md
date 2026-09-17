@@ -402,7 +402,7 @@ smriti/
 > The app lives inside the `smriti/` subdirectory of this repo — don't forget the `cd`.
 
 ```bash
-git clone https://github.com/prathameshfuke/smriti.git
+git clone https://github.com/prathameshfuke/smriti-backup.git
 cd smriti/smriti
 npm install
 cp .env.local.example .env.local

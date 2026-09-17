@@ -298,7 +298,7 @@ export default function LandingPage() {
             <ul className="mt-3 space-y-1 text-base text-paper50/80">
               <li>
                 <a
-                  href="https://github.com/prathameshfuke/smriti"
+                  href="https://github.com/prathameshfuke/smriti-backup"
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex min-h-10 items-center underline decoration-paper50/30 underline-offset-4 hover:text-paper50"
@@ -322,7 +322,7 @@ export default function LandingPage() {
               SMRITI supports cognitive engagement. It does not diagnose or treat dementia.
             </p>
             <a
-              href="https://github.com/prathameshfuke/smriti/blob/main/LICENSE"
+              href="https://github.com/prathameshfuke/smriti-backup/blob/main/LICENSE"
               target="_blank"
               rel="noreferrer"
               className="mt-2 inline-flex min-h-10 items-center text-base text-paper50/80 underline decoration-paper50/30 underline-offset-4 hover:text-paper50"
