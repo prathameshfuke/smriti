@@ -21,7 +21,7 @@
   <img alt="Supabase" src="https://img.shields.io/badge/Supabase-Postgres-3ECF8E?style=flat-square&logo=supabase&logoColor=white" />
   <img alt="PWA" src="https://img.shields.io/badge/PWA-offline--first-B3452D?style=flat-square&logo=pwa&logoColor=white" />
   <img alt="Vitest" src="https://img.shields.io/badge/tested_with-Vitest-6E9F18?style=flat-square&logo=vitest&logoColor=white" />
-  <img alt="License" src="https://img.shields.io/badge/license-MIT-C9A227?style=flat-square" />
+  <img alt="License" src="https://img.shields.io/badge/license-Proprietary-C9A227?style=flat-square" />
 </p>
 
 <p align="center">
@@ -403,7 +403,7 @@ smriti/
 
 ```bash
 git clone https://github.com/prathameshfuke/smriti-backup.git
-cd smriti/smriti
+cd smriti-backup/smriti
 npm install
 cp .env.local.example .env.local
 # fill in the keys below, then:
@@ -475,7 +475,7 @@ Vitest + Testing Library, with `fake-indexeddb` standing in for Dexie's IndexedD
 
 ## Contributing
 
-Issues and PRs are welcome. This repo is set up to be worked on alongside an AI coding agent — see [AGENTS.md](smriti/AGENTS.md) for the Next.js version notes agents should read before touching code, and [docs/07_AGENT_PROMPTS.md](smriti/docs/07_AGENT_PROMPTS.md) for the original build-prompt sequence.
+Contributions are by invitation only. This repo is set up to be worked on alongside an AI coding agent — see [AGENTS.md](smriti/AGENTS.md) for the Next.js version notes agents should read before touching code, and [docs/07_AGENT_PROMPTS.md](smriti/docs/07_AGENT_PROMPTS.md) for the original build-prompt sequence.
 
 ## Disclaimer
 
@@ -486,7 +486,9 @@ Issues and PRs are welcome. This repo is set up to be worked on alongside an AI 
 
 ## License
 
-MIT — free for personal, research, and non-profit use.
+Proprietary. Copyright © 2026 SMRITI. All rights reserved.
+
+No part of this software, its source code, or its documentation may be copied, modified, distributed, or used without prior written permission from the copyright holder.
 
 ## Acknowledgments
 
