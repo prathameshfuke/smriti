@@ -1,5 +1,7 @@
 'use client';
 
+import { toRequestFacts } from '@/lib/ai/request-facts';
+import { db } from '@/lib/db/schema';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
@@ -225,6 +227,9 @@ export default function CompanionPage() {
           sessionId: sessionRef.current.id,
           speak: true,
           deviceTrustToken: token,
+          // The cloud Memory Bank is encrypted; answers are grounded in this
+          // phone's own copy, sent for this request only.
+          facts: toRequestFacts(await db.memoryBankEntries.where('patientId').equals(patientId).toArray()),
         }),
         signal: AbortSignal.timeout(CONVERSE_FETCH_TIMEOUT_MS),
       });

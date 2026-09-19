@@ -14,10 +14,16 @@ import {
 import { createBrowserClient } from '@/lib/supabase/client';
 import { toHHMM } from '@/lib/supabase/types';
 import { toLocalAppointmentFields } from './wire';
+import {
+  decryptIncomingMemoryBank,
+  encryptEntriesForCloud,
+  type CloudMemoryBankRow,
+  type DecryptedMemoryBank,
+} from '@/lib/memoryBank/cloudSync';
 import { applyServerConsent } from '@/lib/consent/consentClient';
 import { clearCachedAnswers } from '@/lib/ai/companion-cache';
 import { fromWireConsent, toWireConsent } from '@/lib/consent/wire';
-import type { MemoryBankCategory, PatientConsent } from '@/lib/supabase/types';
+import type { PatientConsent } from '@/lib/supabase/types';
 
 const SYNC_TIMEOUT_MS = 15_000;
 
@@ -76,37 +82,9 @@ interface PatientSyncErrors {
   aiConversationLogs?: string;
 }
 
-/** Wire shape for `memory_bank_entries` — Supabase columns are snake_case,
- * unlike the other row categories here, this table is mapped explicitly
- * rather than sent as a raw camelCase pass-through. */
-interface WireMemoryBankEntry {
-  id: string;
-  patient_id: string;
-  category: string;
-  title: string;
-  detail: string;
-  photo_url: string | null;
-  relationship: string | null;
-  active: boolean;
-  created_by: string;
-  updated_at: string;
-}
-
-function toLocalMemoryBankEntry(row: WireMemoryBankEntry): LocalMemoryBankEntry {
-  return {
-    id: row.id,
-    patientId: row.patient_id,
-    category: row.category as MemoryBankCategory,
-    title: row.title,
-    detail: row.detail,
-    photoUrl: row.photo_url,
-    relationship: row.relationship,
-    active: row.active,
-    createdBy: row.created_by,
-    updatedAt: row.updated_at,
-    synced: true,
-  };
-}
+/** Wire shape for `memory_bank_entries` (snake_case). Personal fields are
+ * ciphertext in both directions — see lib/memoryBank/cloudSync.ts. */
+type WireMemoryBankEntry = CloudMemoryBankRow;
 
 function toWireAiLog(row: LocalAiConversationLog) {
   return {
@@ -118,72 +96,6 @@ function toWireAiLog(row: LocalAiConversationLog) {
     model_used: row.modelUsed,
     created_at: row.createdAt,
   };
-}
-
-function toWireMemoryBankEntry(e: LocalMemoryBankEntry): WireMemoryBankEntry {
-  return {
-    id: e.id,
-    patient_id: e.patientId,
-    category: e.category,
-    title: e.title,
-    detail: e.detail,
-    photo_url: e.photoUrl,
-    relationship: e.relationship,
-    active: e.active,
-    created_by: e.createdBy,
-    updated_at: e.updatedAt,
-  };
-}
-
-/** Public Storage bucket for Memory Bank photos — see docs/03_DATABASE.md
- * MIGRATION 012. Public so the reminiscence quiz and any future
- * cross-device caregiver view can render a photo with a plain `<img src>`,
- * no signed-URL round trip. Local Dexie keeps the original data-URL
- * forever (that's what every same-device render — the caregiver form, the
- * kiosk's reminiscence quiz — actually reads); only the copy pushed to
- * Supabase is swapped for the uploaded URL, so the sync payload never ships
- * a multi-MB base64 blob through `/api/sync` more than once. */
-const PHOTO_BUCKET = 'memory-bank-photos';
-
-function dataUrlToBlob(dataUrl: string): Blob {
-  const [header, base64] = dataUrl.split(',');
-  const mime = header.match(/data:(.*?);base64/)?.[1] ?? 'application/octet-stream';
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-
-/**
- * Uploads any data-URL photo among these entries to Storage (object path
- * `{patientId}/{entryId}`, `upsert: true` so re-syncing an edited entry
- * overwrites the same object instead of accumulating duplicates), returning
- * a copy with `photoUrl` swapped to the resulting public URL. An entry
- * whose upload fails is dropped from the result entirely — not sent with a
- * stale/missing photo and marked synced regardless, which would silently
- * lose the photo for good. It simply stays `synced: false` and gets
- * retried whole on the next sync attempt.
- */
-async function uploadMemoryBankPhotos(entries: LocalMemoryBankEntry[]): Promise<LocalMemoryBankEntry[]> {
-  const supabase = createBrowserClient();
-  const results = await Promise.all(
-    entries.map(async (entry): Promise<LocalMemoryBankEntry | null> => {
-      if (!entry.photoUrl || !entry.photoUrl.startsWith('data:')) return entry;
-      try {
-        const blob = dataUrlToBlob(entry.photoUrl);
-        const path = `${entry.patientId}/${entry.id}`;
-        const { error } = await supabase.storage
-          .from(PHOTO_BUCKET)
-          .upload(path, blob, { contentType: blob.type, upsert: true });
-        if (error) return null;
-        const { data } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-        return { ...entry, photoUrl: data.publicUrl };
-      } catch {
-        return null;
-      }
-    }),
-  );
-  return results.filter((e): e is LocalMemoryBankEntry => e !== null);
 }
 
 interface SyncResponseBody {
@@ -208,7 +120,11 @@ interface PatientSyncPayload {
   events: LocalTelemetryEvent[];
   dailySummaries: LocalDailySummary[];
   reminderAcks: LocalReminderAck[];
+  /** Local entries being uploaded, and their encrypted wire copies. Both
+   * empty when no Memory Bank key is unlocked on this phone: entries then
+   * stay local and are never sent in plain text. */
   memoryBankEntries: LocalMemoryBankEntry[];
+  memoryBankWire: WireMemoryBankEntry[];
   reminderSchedules: LocalReminderSchedule[];
   /** syncQueue rows behind `reminderSchedules`, removed once the server saves them. */
   scheduleQueueIds: string[];
@@ -270,6 +186,14 @@ function toLocalReminderSchedule(row: ServerReminderRow): LocalReminderSchedule 
   };
 }
 
+async function encryptForUpload(
+  entries: LocalMemoryBankEntry[],
+): Promise<{ memoryBankEntries: LocalMemoryBankEntry[]; memoryBankWire: WireMemoryBankEntry[] }> {
+  const wire = await encryptEntriesForCloud(entries);
+  const sent = new Set(wire.map((w) => w.id));
+  return { memoryBankEntries: entries.filter((e) => sent.has(e.id)), memoryBankWire: wire };
+}
+
 /** Every unsynced Dexie row for one patient, shaped for the /api/sync request body. */
 async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload> {
   const [
@@ -321,7 +245,7 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     events,
     dailySummaries,
     reminderAcks,
-    memoryBankEntries: await uploadMemoryBankPhotos(memoryBankEntries),
+    ...(await encryptForUpload(memoryBankEntries)),
     reminderSchedules: schedules,
     scheduleQueueIds: scheduleQueue.filter((q) => scheduleIds.has(q.recordId)).map((q) => q.id),
     profile: profileQueue.length && profile ? profile : null,
@@ -390,7 +314,11 @@ async function pruneDeliveredQueue(tableNames: string[]): Promise<void> {
  * "pending" count go to zero and the caregiver dashboard's Supabase-backed
  * queries keep coming up empty, with no visible sign anything was wrong.
  */
-async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncResponseBody): Promise<void> {
+async function applySyncResponse(
+  payloads: PatientSyncPayload[],
+  body: SyncResponseBody,
+  incomingMemoryBank: DecryptedMemoryBank,
+): Promise<void> {
   const memoryBankChanged = new Set<string>();
   await db.transaction(
     'rw',
@@ -427,11 +355,7 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
         if (!errors.reminderAcks) delivered.push('reminder_acks');
         await pruneDeliveredQueue(delivered);
         if (!errors.memoryBankEntries) {
-          // A partial `.update`, not `.bulkPut` of the full object: `payload.memoryBankEntries`
-          // here holds the upload-swapped copy (photoUrl -> Storage URL) built for the wire
-          // request, not the local one. Bulk-overwriting the local row with it would replace
-          // the local data-URL every same-device render actually uses with a remote URL that
-          // needs a network fetch — this only ever flips the one field that changed.
+          // Only the `synced` flag changes: the wire copy is ciphertext, never stored here.
           for (const e of payload.memoryBankEntries) {
             // Only rows not edited again while the upload was in flight.
             await db.memoryBankEntries
@@ -456,7 +380,13 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
         }
         // A patient with every category accepted advances its pull cursor; a
         // partial failure keeps the old one so nothing changed meanwhile is skipped.
-        if (Object.keys(errors).length === 0 && body.serverTimestamp) {
+        // So does a Memory Bank row this phone couldn't decrypt yet (no key):
+        // it is pulled again once the key is unlocked.
+        if (
+          Object.keys(errors).length === 0 &&
+          body.serverTimestamp &&
+          !incomingMemoryBank.unreadablePatients.has(payload.patientId)
+        ) {
           await db.syncCursors.put({ patientId: payload.patientId, serverTimestamp: body.serverTimestamp });
         }
       }
@@ -465,7 +395,9 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
         const local = await db.memoryBankEntries.get(incoming.id);
         // An unsent edit on this phone wins until it is uploaded; otherwise newest wins.
         if (local && (local.synced === false || Date.parse(local.updatedAt) >= Date.parse(incoming.updated_at))) continue;
-        await db.memoryBankEntries.put(toLocalMemoryBankEntry(incoming));
+        const decrypted = incomingMemoryBank.entries.get(incoming.id);
+        if (!decrypted) continue;
+        await db.memoryBankEntries.put(decrypted);
         memoryBankChanged.add(incoming.patient_id);
       }
 
@@ -510,7 +442,7 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
           reminderAcks: p.reminderAcks,
           reminderSchedules: p.reminderSchedules,
           profile: p.profile,
-          memoryBankEntries: p.memoryBankEntries.map(toWireMemoryBankEntry),
+          memoryBankEntries: p.memoryBankWire,
           consent: p.consent ? toWireConsent(p.consent) : null,
           aiConversationLogs: p.aiConversationLogs.map(toWireAiLog),
           lastSyncTimestamp: p.since,
@@ -535,7 +467,10 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
     }
 
     const body = (await res.json()) as SyncResponseBody;
-    await applySyncResponse(payloads, body);
+    // Decrypted before the Dexie transaction: it may download photos, and a
+    // transaction can't stay open across network calls.
+    const incomingMemoryBank = await decryptIncomingMemoryBank(body.updates.memoryBankEntries ?? []);
+    await applySyncResponse(payloads, body, incomingMemoryBank);
 
     const failedPatientIds = Object.keys(body.syncErrors ?? {});
     if (failedPatientIds.length > 0) {

@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import PageHeader from '@/components/ui/PageHeader';
+import MemoryBankBackup from '@/components/caregiver/MemoryBankBackup';
 import { buttonClass, fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { authedFetch } from '@/lib/api/client';
 import { usePatientStore } from '@/stores/patientStore';
@@ -307,6 +308,8 @@ export default function MemoryBankPage() {
           </button>
         }
       />
+
+      <MemoryBankBackup />
 
       {extractError ? (
         <p role="alert" className="-mt-4 mb-6 text-caregiver-body font-bold text-danger">

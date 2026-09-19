@@ -4,6 +4,7 @@ import { renderHook, waitFor, act } from '@testing-library/react';
 import { db } from '@/lib/db/schema';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { encryptCloudField } from '@/lib/memoryBank/cloudCrypto';
 
 const getSession = vi.fn();
 const getUser = vi.fn();
@@ -293,7 +294,8 @@ describe('useSync', () => {
       await result.current.syncNow();
     });
 
-    expect(fetchMock).not.toHaveBeenCalled();
+    // The connectivity check (`/api/health`) may run; the sync itself must not.
+    expect(fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/sync'))).toHaveLength(0);
   });
 });
 
@@ -649,14 +651,17 @@ describe('POST /api/sync', () => {
 // Ask Smriti data: Memory Bank pull, consent and offline answers, cursors
 // ---------------------------------------------------------------------------
 describe('syncToServer — Ask Smriti data', () => {
+  // The cloud Memory Bank is end-to-end encrypted: rows arrive as ciphertext
+  // under the caregiver's Memory Bank key, which this phone has unlocked.
+  const cloudKey = new Uint8Array(32).fill(7);
   const serverEntry = {
     id: 'mb-remote',
     patient_id: 'p1',
     category: 'person',
-    title: 'Raju',
-    detail: 'Your son. Visits on Sundays.',
+    title: encryptCloudField(cloudKey, 'mb-remote', 'title', 'Raju'),
+    detail: encryptCloudField(cloudKey, 'mb-remote', 'detail', 'Your son. Visits on Sundays.'),
     photo_url: null,
-    relationship: 'son',
+    relationship: encryptCloudField(cloudKey, 'mb-remote', 'relationship', 'son'),
     active: true,
     created_by: 'c1',
     updated_at: '2026-09-10T10:00:00.000Z',
@@ -681,6 +686,9 @@ describe('syncToServer — Ask Smriti data', () => {
     await db.consents.clear();
     await db.aiConversationLog.clear();
     await db.syncCursors.clear();
+    await db.caregivers.clear();
+    await db.caregivers.put({ id: 'c1', authUserId: 'u1', displayName: 'Asha', role: 'family', createdAt: '2026-09-01T00:00:00.000Z' });
+    await db.cloudKeys.put({ key: Buffer.from(cloudKey).toString('base64'), savedAt: '2026-09-01T00:00:00.000Z' }, 'c1');
     getSession.mockResolvedValue({ data: { session: { access_token: 'tok' } } });
   });
 
@@ -696,6 +704,69 @@ describe('syncToServer — Ask Smriti data', () => {
     const local = await db.memoryBankEntries.get('mb-remote');
     expect(local).toMatchObject({ title: 'Raju', relationship: 'son', patientId: 'p1', synced: true });
     expect((await db.syncCursors.get('p1'))?.serverTimestamp).toBe('2026-09-17T12:00:00.000Z');
+  });
+
+  it('without an unlocked key, stores nothing it cannot read and keeps the cursor for later', async () => {
+    await db.cloudKeys.clear();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(okResponse({ memoryBankEntries: [serverEntry] })));
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    expect(await db.memoryBankEntries.get('mb-remote')).toBeUndefined();
+    expect(await db.syncCursors.get('p1')).toBeUndefined();
+  });
+
+  it('never uploads a Memory Bank entry in plain text', async () => {
+    await db.memoryBankEntries.put({
+      id: 'mb-local',
+      patientId: 'p1',
+      category: 'person',
+      title: 'Meena',
+      detail: 'Lives at 12 Paona Bazar',
+      photoUrl: null,
+      relationship: 'daughter',
+      active: true,
+      createdBy: 'c1',
+      updatedAt: '2026-09-18T10:00:00.000Z',
+      synced: false,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body as string).patients[0].memoryBankEntries;
+    expect(sent).toHaveLength(1);
+    expect(JSON.stringify(sent)).not.toMatch(/Meena|Paona|daughter/);
+    expect(sent[0].title.startsWith('enc1:')).toBe(true);
+  });
+
+  it('holds entries back entirely when this phone has no key', async () => {
+    await db.cloudKeys.clear();
+    await db.memoryBankEntries.put({
+      id: 'mb-local',
+      patientId: 'p1',
+      category: 'person',
+      title: 'Meena',
+      detail: 'Lives at 12 Paona Bazar',
+      photoUrl: null,
+      relationship: 'daughter',
+      active: true,
+      createdBy: 'c1',
+      updatedAt: '2026-09-18T10:00:00.000Z',
+      synced: false,
+    });
+    const fetchMock = vi.fn().mockResolvedValue(okResponse());
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { syncToServer } = await import('@/lib/db/sync');
+    await syncToServer('p1');
+
+    const body = JSON.stringify(fetchMock.mock.calls.map((c) => c[1]?.body ?? ''));
+    expect(body).not.toMatch(/Meena|Paona/);
+    expect((await db.memoryBankEntries.get('mb-local'))?.synced).toBe(false);
   });
 
   it('sends the saved cursor so only changes since the last sync are downloaded', async () => {

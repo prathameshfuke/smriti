@@ -969,3 +969,118 @@ CREATE INDEX idx_push_deliveries_sent_at ON push_deliveries(sent_at);
 
 ALTER TABLE push_deliveries ENABLE ROW LEVEL SECURITY;
 ```
+
+
+```sql
+-- =============================================
+-- MIGRATION 017: End-to-end encrypted Memory Bank
+-- =============================================
+
+-- The Memory Bank holds names, relationships, addresses and routines of a
+-- vulnerable person. From this migration on, the phone encrypts title,
+-- detail, relationship and photo_url (AES-256-GCM, `enc1:` prefix) before
+-- upload, and photos are uploaded as ciphertext. See
+-- src/lib/memoryBank/cloudCrypto.ts.
+--
+-- KEY MANAGEMENT
+-- One random 256-bit Memory Bank key per caregiver account. Stored here only
+-- wrapped under a key derived from the caregiver's backup passphrase
+-- (PBKDF2-SHA256, 600,000 iterations, random salt). The passphrase and the
+-- unwrapped key never reach the server. Each phone keeps the unwrapped key
+-- in IndexedDB, encrypted by that phone's own storage key.
+--
+-- IF THE PASSPHRASE IS LOST: phones that already hold the key keep working
+-- and keep syncing. If the passphrase is lost AND every such phone is lost
+-- or reset, the cloud copy cannot be decrypted by anyone (including the
+-- operators of this app). This is the price of the server never being able
+-- to read the data. The Memory Bank on the phone itself is never affected.
+--
+-- Deploy order: apply this migration before the app build that ships with
+-- it (api/sync filters on server_updated_at).
+
+-- 1. Wrapped keys, one per caregiver, visible only to that caregiver.
+CREATE TABLE memory_bank_keys (
+  caregiver_id UUID PRIMARY KEY REFERENCES caregivers(id) ON DELETE CASCADE,
+  wrapped_key TEXT NOT NULL,
+  salt TEXT NOT NULL,
+  kdf TEXT NOT NULL CHECK (kdf = 'pbkdf2-sha256'),
+  kdf_iterations INTEGER NOT NULL CHECK (kdf_iterations >= 600000),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE memory_bank_keys ENABLE ROW LEVEL SECURITY;
+
+-- Insert and read only. No UPDATE policy: replacing the key would make
+-- every row encrypted under the old one unreadable on other phones.
+CREATE POLICY caregiver_read_own_key ON memory_bank_keys
+  FOR SELECT USING (caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid()));
+CREATE POLICY caregiver_create_own_key ON memory_bank_keys
+  FOR INSERT WITH CHECK (caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid()));
+
+-- 2. Last-write-wins needs the time of the edit, not of the upload. The
+-- trigger overwrote updated_at with now() on every UPDATE, so an edit made
+-- offline and synced late looked newer than a later edit from another phone.
+-- updated_at is now the phone's edit time; a separate server_updated_at
+-- (set here, on every write) is what api/sync's pull cursor filters on, so a
+-- late-uploaded offline edit still reaches the other phones.
+DROP TRIGGER IF EXISTS trg_memory_bank_updated_at ON memory_bank_entries;
+
+ALTER TABLE memory_bank_entries ADD COLUMN server_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+CREATE INDEX idx_memory_bank_server_updated ON memory_bank_entries(patient_id, server_updated_at);
+
+CREATE OR REPLACE FUNCTION set_server_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.server_updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_memory_bank_server_updated_at BEFORE INSERT OR UPDATE ON memory_bank_entries
+  FOR EACH ROW EXECUTE FUNCTION set_server_updated_at();
+
+-- 3. Refuse plain text. NOT VALID so it applies to every new write without
+-- failing on rows uploaded unencrypted by older builds (see step 5).
+ALTER TABLE memory_bank_entries ADD CONSTRAINT memory_bank_entries_encrypted_check
+  CHECK (
+    title LIKE 'enc1:%' AND detail LIKE 'enc1:%'
+    AND (relationship IS NULL OR relationship LIKE 'enc1:%')
+    AND (photo_url IS NULL OR photo_url LIKE 'enc1:%')
+  ) NOT VALID;
+
+-- Explicit WITH CHECK (the MIGRATION 004 policy relied on USING doubling as
+-- it) and created_by pinned to the caller, so a caregiver can neither write
+-- into another family's patient nor attribute an entry to someone else.
+DROP POLICY caregiver_memory_bank ON memory_bank_entries;
+CREATE POLICY caregiver_memory_bank ON memory_bank_entries
+  FOR ALL
+  USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid())
+  ))
+  WITH CHECK (
+    patient_id IN (
+      SELECT id FROM patients WHERE caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid())
+    )
+    AND created_by IN (SELECT id FROM caregivers WHERE auth_id = auth.uid())
+  );
+
+-- 4. Photos: the bucket becomes private (MIGRATION 012 made it public, so
+-- anyone with a URL could open a family photo) and holds ciphertext, which
+-- is uploaded as application/octet-stream. Reads now go through RLS like
+-- writes; the existing caregiver_memory_bank_photos policy (FOR ALL) already
+-- scopes them to the caregiver's own patients.
+UPDATE storage.buckets
+SET public = false,
+    allowed_mime_types = array['application/octet-stream']
+WHERE id = 'memory-bank-photos';
+
+-- 5. One-off cleanup, run manually AFTER every caregiver's phone has
+-- updated and set a backup passphrase (phones re-upload all their entries
+-- encrypted once a key is set, overwriting the plain rows):
+--
+--   SELECT count(*) FROM memory_bank_entries WHERE title NOT LIKE 'enc1:%';
+--   -- rows left here exist on no phone that has re-synced; delete them, and
+--   -- the old plain-text photo objects:
+--   DELETE FROM memory_bank_entries WHERE title NOT LIKE 'enc1:%';
+--   ALTER TABLE memory_bank_entries VALIDATE CONSTRAINT memory_bank_entries_encrypted_check;
+```

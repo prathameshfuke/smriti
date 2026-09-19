@@ -1,5 +1,6 @@
 'use client';
 
+import StaleDataNotice from '@/components/caregiver/StaleDataNotice';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import CaregiverNav from '@/components/layout/CaregiverNav';
@@ -181,6 +182,7 @@ export default function CaregiverLayout({ children }: { children: React.ReactNod
       </a>
       <CaregiverRail />
       <div id="caregiver-content" tabIndex={-1} className="min-w-0 flex-1 focus:outline-none">
+        <StaleDataNotice />
         {children}
       </div>
       <CaregiverNav />

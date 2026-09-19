@@ -219,7 +219,7 @@ describe('CompanionPage', () => {
     await screen.findByText('Hello!');
 
     // The reply arrived with its audio, so no separate /api/ai/speak request.
-    expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(['/api/ai/converse']);
+    expect(fetchMock.mock.calls.map((c) => String(c[0])).filter((u) => u !== '/api/health')).toEqual(['/api/ai/converse']);
     expect(await findCachedSpeech('en', 'Hello!')).toMatchObject({ audioBase64: 'QUJD' });
   });
 

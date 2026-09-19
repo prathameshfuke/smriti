@@ -1,3 +1,4 @@
+import { parseRequestFacts } from '@/lib/ai/request-facts';
 import { v4 as uuid } from 'uuid';
 import { createServiceRoleClient } from '@/lib/supabase/client';
 import { callChat, GROQ_SMALL_MODEL } from '@/lib/ai/llm-client';
@@ -54,6 +55,8 @@ interface ConverseRequestBody {
   speak?: unknown;
   deviceTrustToken?: { patientId: string; issuedAt: number; issuedBy: string; signature: string };
   patientId?: string;
+  /** Active Memory Bank entries from the phone (see lib/ai/request-facts.ts). */
+  facts?: unknown;
 }
 
 /**
@@ -260,13 +263,10 @@ export async function POST(request: Request) {
     if (lowCount >= DISTRESS_LOW_THRESHOLD) return distress('distress-shortcircuit');
   }
 
-  // The Memory Bank is the only source of personal facts — nothing else is retrieved.
-  const { data: rows } = await service
-    .from('memory_bank_entries')
-    .select('id, title, detail, relationship, category')
-    .eq('patient_id', patientId)
-    .eq('active', true);
-  const facts = (rows ?? []).map((row, i) => memoryEntryToFact({ ...row, id: typeof row.id === 'string' ? row.id : `entry-${i}` }));
+  // The Memory Bank is the only source of personal facts — nothing else is
+  // retrieved. Its cloud copy is end-to-end encrypted, so the facts come from
+  // the phone's own decrypted copy, sent with this request (lib/ai/request-facts.ts).
+  const facts = parseRequestFacts(body.facts).map(memoryEntryToFact);
   const promptFacts = await selectFacts(facts, message, history, language);
 
   const date = cleanContext(body.clientContext?.date);

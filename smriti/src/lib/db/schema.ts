@@ -283,6 +283,22 @@ export interface LocalPatientPhoto {
   updatedAt: string;
 }
 
+/**
+ * The last successful response of a caregiver GET request, so dashboard
+ * screens can show last-synced data instead of an error while offline.
+ * `body` holds patient details and is encrypted at rest.
+ */
+export interface LocalApiCacheEntry {
+  body: unknown;
+  cachedAt: string;
+}
+
+/** The Memory Bank cloud key once unlocked on this phone (base64). */
+export interface LocalCloudKey {
+  key: string;
+  savedAt: string;
+}
+
 export class SmritiDB extends Dexie {
   patientPhotos!: Table<LocalPatientPhoto, string>;
   caregivers!: Table<LocalCaregiver>;
@@ -305,6 +321,12 @@ export class SmritiDB extends Dexie {
   keyring!: Table<KeyringEntry, string>;
   consents!: Table<LocalConsent, string>;
   syncCursors!: Table<SyncCursor, string>;
+  /** Out-of-line keys (request path). Last good caregiver API responses,
+   * shown when offline — see lib/api/client.ts. */
+  apiCache!: Table<LocalApiCacheEntry, string>;
+  /** Out-of-line keys (caregiver id). The unwrapped Memory Bank cloud key,
+   * encrypted at rest by the device key — see lib/memoryBank/cloudKey.ts. */
+  cloudKeys!: Table<LocalCloudKey, string>;
 
   /** The unsealed field-encryption key. Memory only, loaded on every open. */
   private storageKey: Uint8Array | null = null;
@@ -363,6 +385,12 @@ export class SmritiDB extends Dexie {
     this.version(8).stores({
       consents: 'patientId',
       syncCursors: 'patientId',
+    });
+    // New stores only. Last-known caregiver dashboard data for offline use,
+    // and the unlocked Memory Bank cloud key.
+    this.version(9).stores({
+      apiCache: '',
+      cloudKeys: '',
     });
 
     // Personal and health fields are encrypted before they reach IndexedDB

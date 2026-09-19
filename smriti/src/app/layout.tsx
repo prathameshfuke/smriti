@@ -10,6 +10,7 @@ import Disclaimer from "@/components/layout/Disclaimer";
 import ActivityTracker from "@/components/layout/ActivityTracker";
 import AudioRouteReset from "@/components/layout/AudioRouteReset";
 import DisplaySizeSync from "@/components/layout/DisplaySizeSync";
+import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
 import { DEFAULT_DISPLAY_SIZE, DISPLAY_SIZE_BOOT_SCRIPT } from "@/lib/a11y/sizing";
 import { ZOOM_LOCK_BOOT_SCRIPT } from "@/lib/a11y/zoomLock";
 import "./globals.css";
@@ -98,6 +99,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col bg-surface text-ink">
         <LanguageProvider>
+          <ServiceWorkerRegister />
           <ActivityTracker />
           <AudioRouteReset />
           <DisplaySizeSync />
