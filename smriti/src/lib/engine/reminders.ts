@@ -3,10 +3,10 @@ import { db, type LocalReminderAck, type LocalReminderSchedule } from '@/lib/db/
 import { buildQueueItem } from '@/lib/db/syncQueue';
 import { toHHMM, type AckMethod } from '@/lib/supabase/types';
 import { localDateString } from './adherence';
-import { appointmentDueNow, isDatedAppointment, type AppointmentOccurrence } from './appointments';
+import type { AppointmentOccurrence } from './appointments';
+import { computeDueReminders, type DueReminder } from './dueCore';
 
 const HYDRATION_TIMES = ['07:00', '09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00'];
-const DUE_WINDOW_MINUTES = 2;
 
 /** 8 evenly-spaced daily hydration prompts, every day. */
 export function generateDefaultHydrationSchedule(patientId: string): LocalReminderSchedule[] {
@@ -34,50 +34,21 @@ export async function saveReminderSchedules(schedules: LocalReminderSchedule[]):
   });
 }
 
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
-
-export interface DueReminder {
-  schedule: LocalReminderSchedule;
-  /** Set for a dated appointment: which of its two prompts is due. */
-  occurrence?: AppointmentOccurrence;
-}
+export type { DueReminder };
 
 /**
  * Reminders for `patientId` due at `now` and not yet acknowledged.
  *
  * Weekday reminders are due within ±2 minutes of their time. A dated
  * appointment follows its own day-before/day-of windows instead
- * (lib/engine/appointments.ts), keyed by the occurrence date.
+ * (lib/engine/appointments.ts), keyed by the occurrence date. The rules
+ * live in `computeDueReminders` (dueCore.ts), which the service worker and
+ * the server push tick share.
  */
 export async function getDueReminders(patientId: string, now: Date = new Date()): Promise<DueReminder[]> {
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  const today = now.getDay();
-  const todayStr = localDateString(now);
-
   const schedules = await db.reminderSchedules.where('patientId').equals(patientId).toArray();
-  const acks = (await db.reminderAcks.where('patientId').equals(patientId).toArray()).filter((a) => a.acknowledgedAt);
-  const ackedTodayIds = new Set(
-    acks.filter((a) => localDateString(new Date(a.acknowledgedAt as string)) === todayStr).map((a) => a.reminderId),
-  );
-  const ackedOccurrenceKeys = new Set(acks.map((a) => `${a.reminderId}:${a.scheduledAt.slice(0, 10)}`));
-
-  const due: DueReminder[] = [];
-  for (const s of schedules) {
-    if (isDatedAppointment(s)) {
-      const occurrence = appointmentDueNow(s, now, ackedOccurrenceKeys);
-      if (occurrence) due.push({ schedule: s, occurrence });
-      continue;
-    }
-    if (!s.isActive) continue;
-    if (!s.daysOfWeek.includes(today)) continue;
-    if (ackedTodayIds.has(s.id)) continue;
-    if (Math.abs(toMinutes(s.timeOfDay) - nowMinutes) <= DUE_WINDOW_MINUTES) due.push({ schedule: s });
-  }
-  return due;
+  const acks = await db.reminderAcks.where('patientId').equals(patientId).toArray();
+  return computeDueReminders(schedules, acks, now);
 }
 
 /** Reminders for `patientId` that are due right now and not yet acknowledged today. */
