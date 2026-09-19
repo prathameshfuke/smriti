@@ -13,6 +13,7 @@ import {
   toWireReminderSchedule,
   toWireSession,
 } from '@/lib/db/wire';
+import { scheduleAlertPush, type AlertKind, type AlertSeverity } from '@/lib/push/alertNotify';
 import { fromWireConsent, parseConsentRecord, toWireConsent } from '@/lib/consent/wire';
 
 /** Pull cursors are compared against client-written `updated_at` values, so
@@ -419,17 +420,44 @@ async function checkCognitiveDropAlert(
     .single();
   if (!patientRow) return;
 
-  await supabase.from('alerts').insert({
-    id: uuid(),
+  await raiseAlert(supabase, {
     patient_id: patientId,
     caregiver_id: patientRow.caregiver_id,
     alert_type: 'cognitive_drop',
     severity: 'red',
     title: 'Sudden drop in performance',
     description: `Today's ${gameType.replace('_', ' ')} accuracy is well below the recent average.`,
-    is_read: false,
-    is_resolved: false,
-    resolved_at: null,
+  });
+}
+
+/**
+ * The one place an alert row is created. The caregiver is told (Web Push)
+ * only when this call really inserted the row: every caller has already
+ * returned early on its dedupe / resolve paths, and a failed insert stays
+ * silent. The push is fire-and-forget and can never fail the sync.
+ */
+async function raiseAlert(
+  supabase: AuthedSupabase,
+  row: {
+    patient_id: string;
+    caregiver_id: string;
+    alert_type: AlertKind;
+    severity: AlertSeverity;
+    title: string;
+    description: string;
+  },
+): Promise<void> {
+  const id = uuid();
+  const { error } = await supabase
+    .from('alerts')
+    .insert({ id, ...row, is_read: false, is_resolved: false, resolved_at: null });
+  if (error) return;
+  scheduleAlertPush({
+    alertId: id,
+    caregiverId: row.caregiver_id,
+    patientId: row.patient_id,
+    type: row.alert_type,
+    severity: row.severity,
   });
 }
 
@@ -472,8 +500,7 @@ async function checkMissedSessionsAlert(supabase: AuthedSupabase, patientId: str
   // A patient added in the last 3 days has not had the chance to miss 3 days.
   if (patientRow.created_at && Date.now() - new Date(patientRow.created_at).getTime() < 3 * DAY_MS) return;
 
-  await supabase.from('alerts').insert({
-    id: uuid(),
+  await raiseAlert(supabase, {
     patient_id: patientId,
     caregiver_id: patientRow.caregiver_id,
     alert_type: 'missed_sessions',
@@ -481,9 +508,6 @@ async function checkMissedSessionsAlert(supabase: AuthedSupabase, patientId: str
     title: 'Patient missed 3+ consecutive days',
     description:
       'No game sessions recorded in the last 3 days. Regular engagement is important for cognitive maintenance.',
-    is_read: false,
-    is_resolved: false,
-    resolved_at: null,
   });
 }
 
@@ -536,16 +560,12 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
     .single();
   if (!patientRow) return;
 
-  await supabase.from('alerts').insert({
-    id: uuid(),
+  await raiseAlert(supabase, {
     patient_id: patientId,
     caregiver_id: patientRow.caregiver_id,
     alert_type: 'low_adherence',
     severity: 'yellow',
     title: 'Low reminder adherence',
     description: `Only ${overallPct}% of reminders were marked done in the last 7 days.`,
-    is_read: false,
-    is_resolved: false,
-    resolved_at: null,
   });
 }
