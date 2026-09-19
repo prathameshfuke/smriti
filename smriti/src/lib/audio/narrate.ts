@@ -1,6 +1,7 @@
 import { speak } from './speech';
 import { playBase64Audio } from './player';
 import { claimChannel, isCurrent } from './channel';
+import { ensureBundledManifest, findBundledAudio, isBundledManifestLoaded, playBundled } from './bundled';
 import { findCachedSpeech, cacheSpeech } from '@/lib/ai/speech-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
 import type { UILanguage } from '@/lib/i18n/languages';
@@ -12,12 +13,15 @@ import type { UILanguage } from '@/lib/i18n/languages';
 const SPEAK_FETCH_TIMEOUT_MS = 25_000;
 
 /**
- * Speaks a line of dynamic text aloud — a companion answer, a reminder
- * label — via Bhashini TTS, cached locally so a repeated line never re-hits
- * the rate-limited API. Falls back to on-device `speak()` (browser
- * `speechSynthesis`, silent for Assamese on most devices) on any cache
- * miss the API call can't fill: offline, missing key, non-2xx, timeout.
- * Never throws, mirroring every other audio path in this app.
+ * Speaks a line aloud. Playback order, first hit wins:
+ *   1. audio bundled with the app (public/audio, see bundled.ts)
+ *   2. the on-device Dexie speech cache
+ *   3. live Bhashini TTS via /api/ai/speak (online only), cached on success
+ *   4. the browser's Web Speech voice through `speak()` (silent for Assamese
+ *      and most other regional languages on most devices)
+ *   5. silence — the caller's on-screen text is the last fallback.
+ * Never throws, mirroring every other audio path in this app. No tier ever
+ * substitutes another language's audio.
  *
  * `rate` defaults to the normal 1.0 rate — pass {@link GAME_SPEECH_RATE}
  * from game code only. This function is also used outside games (the AI
@@ -28,6 +32,15 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
   // Claimed before any await: a line requested later wins, and this one is
   // dropped if it is overtaken while its audio is still being looked up.
   const token = claimChannel();
+
+  // Tier 1: audio bundled with the app. Offline-safe, no quota, no network.
+  // A clip that will not play (missing file, decode error) falls through.
+  // Awaited only on the first line of a session; afterwards this adds no tick.
+  if (!isBundledManifestLoaded()) await ensureBundledManifest();
+  if (!isCurrent(token)) return;
+  const bundledUrl = findBundledAudio(language, text);
+  if (bundledUrl && (await playBundled(bundledUrl, token, rate))) return;
+  if (!isCurrent(token)) return;
 
   try {
     const cached = await findCachedSpeech(language, text);

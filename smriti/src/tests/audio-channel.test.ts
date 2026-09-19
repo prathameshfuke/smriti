@@ -65,6 +65,9 @@ describe('audio channel', () => {
       .mockImplementationOnce(() => new Promise((r) => (resolveFirst = r)))
       .mockResolvedValueOnce({ audioBase64: 'BBB', audioFormat: 'mp3' });
     const { narrate } = await import('@/lib/audio/narrate');
+    // The bundled manifest is loaded by the first line of a real session; load it
+    // here so this test isolates the overtaking logic from that one-off tick.
+    await (await import('@/lib/audio/bundled')).ensureBundledManifest();
 
     const first = narrate('Instructions', 'en', true);
     await narrate('Which items did you see?', 'en', true);
