@@ -135,7 +135,7 @@ async function playOffline(n = 12) {
     id: rid, patientId: pid, reminderType: 'medication', label: 'Take tablet', timeOfDay: '08:00',
     daysOfWeek: [0, 1, 2, 3, 4, 5, 6], isActive: true, updatedAt: new Date(clock).toISOString(), createdAt: new Date(clock).toISOString(),
   }]);
-  await acknowledgeReminder(rid, pid, 'tap');
+  await acknowledgeReminder(rid, pid, 'touch');
   return { rid };
 }
 
