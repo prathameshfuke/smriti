@@ -80,6 +80,8 @@ export function safeClickUrl(url: unknown): string {
 interface ClientLike {
   url: string;
   focus(): Promise<unknown>;
+  /** Not on every browser; optional on purpose. */
+  navigate?(url: string): Promise<unknown>;
 }
 
 export interface ClientsLike {
@@ -99,6 +101,9 @@ export async function handleNotificationClick(
   const existing = open.find((c) => c.url.startsWith(origin));
   if (existing) {
     await existing.focus();
+    // A specific target (an alert's patient page) must not be lost just
+    // because SMRITI is already open. The plain home target keeps its old behaviour.
+    if (path !== DEFAULT_URL && existing.navigate) await existing.navigate(`${origin}${path}`).catch(() => undefined);
     return;
   }
   await clients.openWindow(`${origin}${path}`);
