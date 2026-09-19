@@ -1,5 +1,7 @@
 /** next-intl messages for the copied larger-number GameComponent. */
 
+import { LARGER_NUMBER_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     level: 'Level',
@@ -73,4 +75,5 @@ export const LARGER_NUMBER_MESSAGES = {
   en: { games: { largerNumber: { gameUI: gameUI.en } } },
   hi: { games: { largerNumber: { gameUI: gameUI.hi } } },
   as: { games: { largerNumber: { gameUI: gameUI.as } } },
+  ...LARGER_NUMBER_NORTHEAST,
 };

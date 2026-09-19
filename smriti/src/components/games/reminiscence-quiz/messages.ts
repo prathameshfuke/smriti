@@ -2,6 +2,8 @@
  * question wording comes from the app locales (`game.reminiscenceQuiz.*`),
  * filled with the Memory Bank text exactly as the caregiver wrote it. */
 
+import { REMINISCENCE_QUIZ_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     heading: 'Family & Life Quiz',
@@ -56,4 +58,5 @@ export const REMINISCENCE_QUIZ_MESSAGES = {
   as: { games: { reminiscenceQuiz: { gameUI: gameUI.as } } },
   bn: { games: { reminiscenceQuiz: { gameUI: gameUI.bn } } },
   ne: { games: { reminiscenceQuiz: { gameUI: gameUI.ne } } },
+  ...REMINISCENCE_QUIZ_NORTHEAST,
 };

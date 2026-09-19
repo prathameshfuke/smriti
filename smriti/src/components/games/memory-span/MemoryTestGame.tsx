@@ -110,12 +110,17 @@ export default function MemoryTestGame({ onComplete }: MemoryTestGameProps) {
   const voice = useVoiceInput(language, isOnline, onSpokenText);
 
   // Generate words on client side to avoid hydration mismatch
+  // The first render happens before the saved language is applied, so the words
+  // may have been drawn from the English bank; redraw once the language settles.
+  const [wordsLanguage, setWordsLanguage] = useState<string | null>(null);
   useEffect(() => {
-    if (wordBank.length > 0 && currentWords.length === 0) {
+    const stale = wordsLanguage !== null && wordsLanguage !== language && gameState === 'presentation';
+    if (wordBank.length > 0 && (currentWords.length === 0 || stale)) {
       const shuffled = [...wordBank].sort(() => Math.random() - 0.5);
       setCurrentWords(shuffled.slice(0, 12));
+      setWordsLanguage(language);
     }
-  }, [wordBank, currentWords.length]);
+  }, [wordBank, currentWords.length, language, wordsLanguage, gameState]);
 
   // Narrate the instructions aloud whenever the word-presentation screen is
   // (re)entered — this game's instruction moment, mirroring how the app's

@@ -1,7 +1,8 @@
 'use client';
 
-import type { SmritiObject } from '@/lib/engine/objects';
+import { objectName, type SmritiObject } from '@/lib/engine/objects';
 import { useTapSelect } from '@/hooks/useTapSelect';
+import { useTranslation } from '@/lib/i18n/provider';
 
 export interface MemoryTile {
   object: SmritiObject;
@@ -37,6 +38,7 @@ const TILE_MIN_PX = 92;
 
 export default function MemoryGrid({ tiles, faceUpIndices, onTileSelect, inputLocked }: MemoryGridProps) {
   const tapSelect = useTapSelect();
+  const { t, language } = useTranslation();
 
   return (
     <div className={`grid ${columnsFor(tiles.length)} gap-4`}>
@@ -50,7 +52,7 @@ export default function MemoryGrid({ tiles, faceUpIndices, onTileSelect, inputLo
             key={i}
             type="button"
             disabled={disabled}
-            aria-label={isFaceUp ? tile.object.name.en : `Card ${i + 1}`}
+            aria-label={isFaceUp ? objectName(tile.object, language) : t('game.card', { n: i + 1 })}
             {...tap}
             style={{
               ...tap.style,

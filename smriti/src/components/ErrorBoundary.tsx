@@ -3,10 +3,13 @@
 import { Component, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import BigButton from '@/components/ui/BigButton';
+import { useTranslation } from '@/lib/i18n/provider';
 
 interface ErrorBoundaryClassProps {
   children: ReactNode;
   onGoHome: () => void;
+  message: string;
+  goHomeLabel: string;
 }
 
 interface ErrorBoundaryState {
@@ -47,9 +50,9 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
           😔
         </span>
         <p className="font-serif-display text-patient-heading text-ink">
-          Something went wrong. Let us go back home.
+          {this.props.message}
         </p>
-        <BigButton label="Go home" variant="primary" onClick={this.goHome} />
+        <BigButton label={this.props.goHomeLabel} variant="primary" onClick={this.goHome} />
       </div>
     );
   }
@@ -57,5 +60,14 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
 
 export default function ErrorBoundary({ children }: { children: ReactNode }) {
   const router = useRouter();
-  return <ErrorBoundaryClass onGoHome={() => router.push('/app')}>{children}</ErrorBoundaryClass>;
+  const { t } = useTranslation();
+  return (
+    <ErrorBoundaryClass
+      onGoHome={() => router.push('/app')}
+      message={t('common.somethingWrong')}
+      goHomeLabel={t('common.goHome')}
+    >
+      {children}
+    </ErrorBoundaryClass>
+  );
 }

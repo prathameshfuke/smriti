@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { LANGUAGES, NATIVE_LANGUAGE_NAME, type UILanguage } from '@/lib/i18n/languages';
 import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
+import { useTranslation } from '@/lib/i18n/provider';
 
 /**
  * Language names are written in their own script, never translated: a patient
@@ -27,6 +28,7 @@ export default function LanguagePicker({ onSelect }: LanguagePickerProps = {}) {
   const language = useSettingsStore((s) => s.language);
   const setLanguage = useSettingsStore((s) => s.setLanguage);
   const pathname = usePathname();
+  const { t } = useTranslation();
 
   // Language is a caregiver-only setting — a dementia patient who
   // accidentally switches the app into a language they don't read has no
@@ -37,7 +39,7 @@ export default function LanguagePicker({ onSelect }: LanguagePickerProps = {}) {
   if (!pathname?.startsWith('/caregiver')) return null;
 
   return (
-    <div className="flex flex-wrap gap-touch-gap" role="group" aria-label="Choose language">
+    <div className="flex flex-wrap gap-touch-gap" role="group" aria-label={t('common.chooseLanguage')}>
       {LANGUAGES.map((code) => {
         const active = code === language;
         return (

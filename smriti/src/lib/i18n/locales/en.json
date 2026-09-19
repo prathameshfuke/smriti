@@ -180,7 +180,10 @@
         "step3": "When the boxes disappear, enter how many you counted."
       },
       "iAmReady": "I'm ready!"
-    }
+    },
+    "tile": "Tile {n}",
+    "card": "Card {n}",
+    "pathPuzzle": "Path connecting puzzle"
   },
   "reminder": {
     "medication": "Time for your medicine",
@@ -198,17 +201,6 @@
     "timeFor": "It is time for:",
     "remindLater": "Remind me in 15 minutes"
   },
-  "push": {
-    "title": "Get reminders even when SMRITI is closed",
-    "body": "Turn on notifications so you do not miss your medicine, water, walks or appointments.",
-    "enable": "Turn on reminders",
-    "notNow": "Not now",
-    "close": "Close",
-    "enabledFull": "Reminders are on. You will be told even when SMRITI is closed.",
-    "enabledLimited": "Reminders are on. They will show while SMRITI is open. Ask your caregiver to help set up reminders for when it is closed.",
-    "blocked": "Notifications are blocked. To turn them on, open your browser settings, choose Site settings, then Notifications, and allow SMRITI.",
-    "installFirst": "To get reminders when SMRITI is closed, first add it to your Home Screen: tap the Share button, then Add to Home Screen, and open SMRITI from there."
-  },
   "caregiver": {
     "dashboard": "Dashboard",
     "patients": "Patients",
@@ -221,7 +213,8 @@
     "offline": "Offline",
     "syncing": "Syncing",
     "pending": "Waiting to sync",
-    "notSyncedYet": "Not synced yet"
+    "notSyncedYet": "Not synced yet",
+    "lastOn": "· last {date}"
   },
   "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
   "lang": {
@@ -237,7 +230,11 @@
     "back": "Back",
     "goBack": "Go back",
     "cancel": "Cancel",
-    "loading": "Loading"
+    "loading": "Loading",
+    "close": "Close",
+    "somethingWrong": "Something went wrong. Let us go back home.",
+    "goHome": "Go home",
+    "chooseLanguage": "Choose language"
   },
   "companion": {
     "title": "Ask Smriti",
@@ -287,6 +284,17 @@
     "from": "From {name}",
     "seen": "Seen"
   },
+  "push": {
+    "title": "Get reminders even when SMRITI is closed",
+    "body": "Turn on notifications so you do not miss your medicine, water, walks or appointments.",
+    "enable": "Turn on reminders",
+    "notNow": "Not now",
+    "close": "Close",
+    "enabledFull": "Reminders are on. You will be told even when SMRITI is closed.",
+    "enabledLimited": "Reminders are on. They will show while SMRITI is open. Ask your caregiver to help set up reminders for when it is closed.",
+    "blocked": "Notifications are blocked. To turn them on, open your browser settings, choose Site settings, then Notifications, and allow SMRITI.",
+    "installFirst": "To get reminders when SMRITI is closed, first add it to your Home Screen: tap the Share button, then Add to Home Screen, and open SMRITI from there."
+  },
   "alertPush": {
     "severityRed": "Urgent",
     "severityYellow": "Needs attention",
@@ -307,5 +315,17 @@
     "notConfigured": "Alerts are not set up on this server yet.",
     "failed": "Could not change alerts. Please try again.",
     "inUse": "This phone already shows reminders for a patient. Use your own phone to receive alerts."
+  },
+  "pin": {
+    "keypad": "PIN keypad",
+    "backspace": "Backspace"
+  },
+  "login": {
+    "title": "Who is using SMRITI?",
+    "subtitle": "Choose one. You can switch later.",
+    "patient": "I am the Patient",
+    "patientHint": "Play games and see my reminders",
+    "caregiver": "I am the Caregiver",
+    "caregiverHint": "Check progress and set things up"
   }
 }

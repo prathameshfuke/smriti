@@ -1,5 +1,7 @@
 'use client';
 
+import { useTranslation } from '@/lib/i18n/provider';
+
 const VIEW_WIDTH = 400;
 const VIEW_HEIGHT = 600;
 const CIRCLE_RADIUS = 28;
@@ -33,6 +35,7 @@ export default function PathCanvas({
   completedPath,
   wrongTap = false,
 }: PathCanvasProps) {
+  const { t } = useTranslation();
   const handlePointerDown = (event: React.PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
@@ -64,7 +67,7 @@ export default function PathCanvas({
       data-testid="path-canvas"
       className="h-full w-full touch-none"
       role="img"
-      aria-label="Path connecting puzzle"
+      aria-label={t('game.pathPuzzle')}
     >
       {completedPath.map((segment) => {
         const from = points[segment.from];

@@ -1,5 +1,7 @@
 /** next-intl messages for the copied dual-n-back GameComponent/GameSettings/GameDemo. */
 
+import { N_BACK_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     title: 'N-Back',
@@ -318,4 +320,5 @@ export const N_BACK_MESSAGES = {
     games: { dualNBack: { title: 'এন-বেক', gameUI: gameUI.as, gameMessages: gameMessages.as } },
     common: { progressShare: progressShare.as, leaderboard: leaderboard.as },
   },
+  ...N_BACK_NORTHEAST,
 };
