@@ -1,5 +1,6 @@
 import type { UILanguage } from '@/lib/i18n/languages';
-import { claimChannel } from './channel';
+import { claimChannel, isCurrent } from './channel';
+import { ensureBundledManifest, findBundledAudio, playBundled } from './bundled';
 
 /** BCP-47 tags to match against installed voices' `.lang`. Bodo (`brx`) and
  * Manipuri (`mni`) have no standard BCP-47 tag with real browser voice
@@ -46,7 +47,27 @@ export const GAME_SPEECH_RATE = 0.9;
 export function speak(text: string, language: UILanguage = 'en', rate = 1): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
-  claimChannel();
+  const token = claimChannel();
+
+  // A fixed game line (feedback, instruction) may ship as a bundled clip.
+  // The manifest loads in the background on first use, so the very first
+  // line of a session can still miss and use the voice; every later one hits.
+  void ensureBundledManifest();
+  const bundledUrl = findBundledAudio(language, text);
+  if (bundledUrl) {
+    void playBundled(bundledUrl, token, rate).then((played) => {
+      if (!played && isCurrent(token)) speakWithVoice(text, language, rate);
+    });
+    return;
+  }
+
+  speakWithVoice(text, language, rate);
+}
+
+/** The Web Speech tier: silent when no installed voice matches a non-English
+ * language, rather than reading the line in the wrong one. */
+function speakWithVoice(text: string, language: UILanguage, rate: number): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   const tag = LANG_TAG[language];
   const voices = window.speechSynthesis.getVoices();
