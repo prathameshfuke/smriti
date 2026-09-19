@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getDueReminders, type DueReminder } from '@/lib/engine/reminders';
+import { occurrenceKey as notifyKey } from '@/lib/engine/dueCore';
+import { refreshNotifyPrefs, showReminderNotification } from '@/lib/push/client';
+import { NOTIFICATION_STRING_KEYS } from '@/lib/push/reminderText';
+import { useTranslation } from '@/lib/i18n/provider';
 import type { AppointmentOccurrence } from '@/lib/engine/appointments';
 import { usePatientStore } from '@/stores/patientStore';
 import { getDevicePatients } from '@/lib/auth/localSession';
@@ -26,6 +30,7 @@ export function useReminders(): {
   clearPendingReminder: () => void;
   snoozePendingReminder: () => void;
 } {
+  const { t, language } = useTranslation();
   const [pending, setPending] = useState<DueReminder | null>(null);
   const pendingRef = useRef<DueReminder | null>(null);
   // An appointment prompt stays due for hours (see lib/engine/appointments.ts),
@@ -34,11 +39,15 @@ export function useReminders(): {
   // on its own.
   const snoozedUntil = useRef(new Map<string, number>());
 
+  // The service worker has no i18n of its own: keep the generic wording it
+  // shows for a reminder in step with the chosen language. The permission
+  // itself is asked for by the opt-in card (NotificationOptIn), on a tap.
   useEffect(() => {
-    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      void Notification.requestPermission();
-    }
+    const strings = Object.fromEntries(NOTIFICATION_STRING_KEYS.map((k) => [k, t(`reminder.${k}`)]));
+    void refreshNotifyPrefs({ language, title: 'SMRITI', strings });
+  }, [language, t]);
 
+  useEffect(() => {
     const tick = async () => {
       const currentPatient = usePatientStore.getState().currentPatient;
       const devicePatients = await getDevicePatients().catch(() => []);
@@ -60,9 +69,13 @@ export function useReminders(): {
       pendingRef.current = next;
       setPending(next);
 
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification('SMRITI', { body: next.schedule.facilityName ?? next.schedule.label, icon: '/icons/icon-192.png' });
-      }
+      // Once per occurrence across the page, the service worker and Web Push
+      // (see lib/push/notifyStore.ts). The in-app card above shows regardless.
+      void showReminderNotification(
+        notifyKey(next, new Date()),
+        'SMRITI',
+        next.schedule.facilityName ?? next.schedule.label,
+      );
     };
 
     void tick();

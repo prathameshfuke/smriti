@@ -198,6 +198,17 @@
     "timeFor": "It is time for:",
     "remindLater": "Remind me in 15 minutes"
   },
+  "push": {
+    "title": "Get reminders even when SMRITI is closed",
+    "body": "Turn on notifications so you do not miss your medicine, water, walks or appointments.",
+    "enable": "Turn on reminders",
+    "notNow": "Not now",
+    "close": "Close",
+    "enabledFull": "Reminders are on. You will be told even when SMRITI is closed.",
+    "enabledLimited": "Reminders are on. They will show while SMRITI is open. Ask your caregiver to help set up reminders for when it is closed.",
+    "blocked": "Notifications are blocked. To turn them on, open your browser settings, choose Site settings, then Notifications, and allow SMRITI.",
+    "installFirst": "To get reminders when SMRITI is closed, first add it to your Home Screen: tap the Share button, then Add to Home Screen, and open SMRITI from there."
+  },
   "caregiver": {
     "dashboard": "Dashboard",
     "patients": "Patients",
