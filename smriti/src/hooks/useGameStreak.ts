@@ -28,7 +28,11 @@ export interface UseGameStreakResult extends StreakResult {
  * streak can only ever break on a real gap, so this bound never truncates a
  * still-unbroken streak short of ~13 months.
  */
-export function useGameStreak(patientId: string | null): UseGameStreakResult {
+export function useGameStreak(
+  patientId: string | null,
+  /** Dates the server has games on for this patient (another phone's play). Only ~28 days deep. */
+  serverDates?: string[],
+): UseGameStreakResult {
   const today = isoDate(new Date());
   const from = isoDate(daysAgo(LOOKBACK_DAYS));
 
@@ -41,9 +45,9 @@ export function useGameStreak(patientId: string | null): UseGameStreakResult {
   }, [patientId, from, today]);
 
   const streak = useMemo(() => {
-    const dates = [...new Set((rows ?? []).map((r) => r.summaryDate))];
+    const dates = [...new Set([...(rows ?? []).map((r) => r.summaryDate), ...(serverDates ?? [])])];
     return computeStreak(dates, today);
-  }, [rows, today]);
+  }, [rows, serverDates, today]);
 
   return { ...streak, isLoading: rows === undefined };
 }
