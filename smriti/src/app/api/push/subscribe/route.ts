@@ -129,6 +129,12 @@ export async function POST(request: Request) {
     caregiverId = rows[0].caregiver_id;
   }
 
+  // One row per browser (endpoint is unique), so a caregiver-alerts phone and a
+  // patient-reminders phone cannot be the same browser: switching kinds in
+  // place would silently stop the other feature. Turn the old one off first.
+  const prior = await getSubscriptionByEndpoint(service, endpoint);
+  if (prior && prior.kind !== kind) return json({ error: 'endpoint_in_use', existingKind: prior.kind }, 409);
+
   const { error } = await upsertSubscription(service, {
     endpoint,
     p256dh,
