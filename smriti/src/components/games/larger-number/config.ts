@@ -26,4 +26,22 @@ export const GAME_CONFIG = {
     // 允许错两个的准确率计算公式
     return Math.round(((attempts - 2) / attempts) * 100);
   }
-} as const; 
+} as const;
+
+/**
+ * The difficulty settings a patient at app level `level` should start on:
+ * the initial settings with the per-success adjustment applied `level - 1`
+ * times — exactly what the in-game ladder reaches after that many wins.
+ */
+export function difficultyForLevel(level: number): DifficultySettings {
+  const steps = Math.max(0, Math.round(level) - 1);
+  const { attemptsIncrement, minDifferenceDecrement } = GAME_CONFIG.difficultyAdjustment;
+  const base = GAME_CONFIG.initialDifficulty;
+  const attempts = base.attempts + attemptsIncrement * steps;
+  return {
+    ...base,
+    minDifference: Math.max(1, base.minDifference - minDifferenceDecrement * steps),
+    attempts,
+    accuracy: steps === 0 ? base.accuracy : GAME_CONFIG.calculateRequiredAccuracy(attempts),
+  };
+} 

@@ -89,7 +89,7 @@ function FrogLeapPageInner() {
       />
       <main className="flex flex-1 flex-col">
         <NextIntlClientProvider locale={language} messages={FROG_LEAP_MESSAGES[language as keyof typeof FROG_LEAP_MESSAGES] ?? FROG_LEAP_MESSAGES.en}>
-          <GameComponent onComplete={onComplete} />
+          <GameComponent initialLevel={difficulty.currentLevel} onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>
     </div>

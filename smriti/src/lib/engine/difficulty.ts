@@ -30,9 +30,14 @@ export const MAX_LEVEL: Record<GameType, number> = {
   counting_boxes: 6,
   n_back: 5,
   larger_number: 6,
-  memory_span: 8,
+  // A fixed 12-word free-recall list: there is no difficulty parameter to
+  // raise, so the level cannot mean anything. Pinned to 1 rather than
+  // recording a "level 8" that changes nothing on screen.
+  memory_span: 1,
   fish_trace: 6,
-  double_decision: 8,
+  // Level == the game's field tier (1 narrow, 2 wider + 3 distractors,
+  // 3 widest + 7 distractors) — see FIELD_CONFIG in PeripheralSpeedGame.
+  double_decision: 3,
   // A fixed 5-question quiz sourced from whatever Memory Bank facts exist
   // has no meaningful "harder" tier — this game never levels, unlike every
   // other one here.

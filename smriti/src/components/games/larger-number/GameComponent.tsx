@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { RippleButton } from '@/components/ui/ripple-button';
 import { Progress } from '@/components/ui/progress';
-import { GAME_CONFIG, DifficultySettings } from './config';
+import { GAME_CONFIG, DifficultySettings, difficultyForLevel } from './config';
 import { cn } from '@/lib/utils';
 import { PlayCircle, Clock, Share2, ArrowDown } from 'lucide-react';
 import { ShareModal } from '@/components/ui/ShareModal';
@@ -30,9 +30,11 @@ type ChallengeResult = {
 export interface GameComponentProps {
   /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
   onComplete?: (accuracy: number, level: number) => void;
+  /** The patient's persisted level for this game, passed by the page (per patient). */
+  initialLevel?: number;
 }
 
-export default function GameComponent({ onComplete }: GameComponentProps) {
+export default function GameComponent({ onComplete, initialLevel }: GameComponentProps) {
     const t = useTranslations("games.largerNumber.gameUI");
     const locale = useLocale();
     const language = isUILanguage(locale) ? locale : 'en';
@@ -54,11 +56,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     const [showShareModal, setShowShareModal] = useState(false);
 
     // 难度设置
-    const [currentDifficulty, setCurrentDifficulty] = useState<DifficultySettings>({
-        ...GAME_CONFIG.initialDifficulty
-    });
+    const [currentDifficulty, setCurrentDifficulty] = useState<DifficultySettings>(() =>
+        difficultyForLevel(initialLevel ?? 1)
+    );
     const [completedLevelDifficulty, setCompletedLevelDifficulty] = useState<DifficultySettings | null>(null);
-    const [difficultyLevel, setDifficultyLevel] = useState<number>(1);
+    const [difficultyLevel, setDifficultyLevel] = useState<number>(() => Math.max(1, Math.round(initialLevel ?? 1)));
     const [showDifficultyAdjustment, setShowDifficultyAdjustment] = useState(false);
 
     // Stats tracking

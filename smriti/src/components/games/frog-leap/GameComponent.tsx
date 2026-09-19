@@ -41,9 +41,15 @@ const SETTINGS_KEY = 'frogMemorySettings';
 export interface GameComponentProps {
   /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
   onComplete?: (score: number, levelReached: number) => void;
+  /**
+   * The patient's persisted level for this game (Dexie `currentDifficulty`),
+   * passed by the page. When present it wins over any device-wide localStorage
+   * setting, which is shared by every patient on the phone.
+   */
+  initialLevel?: number;
 }
 
-export default function GameComponent({ onComplete }: GameComponentProps) {
+export default function GameComponent({ onComplete, initialLevel }: GameComponentProps) {
     const t = useTranslations('games.frogMemoryLeap.gameUI');
     const locale = useLocale();
     const language = isUILanguage(locale) ? locale : 'en';
@@ -101,6 +107,13 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
                 setLevel(parsed.startLevel || 1);
             } catch { /* ignore */ }
         }
+        if (initialLevel != null) {
+            const start = Math.max(1, Math.round(initialLevel));
+            setSettings((s) => ({ ...s, startLevel: start }));
+            setLevel(start);
+        }
+        // Mount-only: the level is read once per visit; the game levels itself up within a sitting.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -367,9 +380,9 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
     // ── Restart ──
     const restartGame = () => {
-        setLevel(1);
+        setLevel(settings.startLevel);
         setScore(0);
-        startRound(1);
+        startRound(settings.startLevel);
     };
 
     // ── Retry same level ──

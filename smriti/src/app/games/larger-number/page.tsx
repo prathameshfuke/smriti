@@ -88,7 +88,7 @@ function LargerNumberPageInner() {
       />
       <main className="flex flex-1 flex-col px-4 py-6">
         <NextIntlClientProvider locale={language} messages={LARGER_NUMBER_MESSAGES[language as keyof typeof LARGER_NUMBER_MESSAGES] ?? LARGER_NUMBER_MESSAGES.en}>
-          <GameComponent onComplete={onComplete} />
+          <GameComponent initialLevel={difficulty.currentLevel} onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>
     </div>
