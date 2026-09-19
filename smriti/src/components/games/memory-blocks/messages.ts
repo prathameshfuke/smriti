@@ -1,5 +1,7 @@
 /** next-intl messages for the copied block-memory-challenge PatternRecallGame. */
 
+import { MEMORY_BLOCKS_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     level: 'Level',
@@ -49,4 +51,5 @@ export const MEMORY_BLOCKS_MESSAGES = {
   en: { games: { blockMemoryChallenge: { gameUI: gameUI.en } } },
   hi: { games: { blockMemoryChallenge: { gameUI: gameUI.hi } } },
   as: { games: { blockMemoryChallenge: { gameUI: gameUI.as } } },
+  ...MEMORY_BLOCKS_NORTHEAST,
 };

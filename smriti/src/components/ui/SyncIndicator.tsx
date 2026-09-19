@@ -1,6 +1,7 @@
 'use client';
 
 import { Check, CloudOff, RefreshCw, Clock } from 'lucide-react';
+import { useTranslation } from '@/lib/i18n/provider';
 
 export type SyncStatus = 'synced' | 'offline' | 'syncing' | 'pending';
 
@@ -11,10 +12,10 @@ export interface SyncIndicatorProps {
 }
 
 const PRESENTATION = {
-  synced: { text: 'Synced', className: 'bg-success text-ink-inverse', Icon: Check },
-  offline: { text: 'Offline', className: 'bg-ink text-ink-inverse', Icon: CloudOff },
-  syncing: { text: 'Syncing', className: 'bg-primary text-ink-inverse', Icon: RefreshCw },
-  pending: { text: 'Waiting to sync', className: 'bg-warning text-ink-inverse', Icon: Clock },
+  synced: { key: 'sync.synced', className: 'bg-success text-ink-inverse', Icon: Check },
+  offline: { key: 'sync.offline', className: 'bg-ink text-ink-inverse', Icon: CloudOff },
+  syncing: { key: 'sync.syncing', className: 'bg-primary text-ink-inverse', Icon: RefreshCw },
+  pending: { key: 'sync.pending', className: 'bg-warning text-ink-inverse', Icon: Clock },
 } as const;
 
 /**
@@ -23,7 +24,8 @@ const PRESENTATION = {
  * should be read, so the answer is never more than a glance away.
  */
 export default function SyncIndicator({ status, lastSyncedAt }: SyncIndicatorProps) {
-  const { text, className, Icon } = PRESENTATION[status];
+  const { t } = useTranslation();
+  const { key, className, Icon } = PRESENTATION[status];
 
   return (
     <div
@@ -39,10 +41,10 @@ export default function SyncIndicator({ status, lastSyncedAt }: SyncIndicatorPro
         aria-hidden="true"
         className={status === 'syncing' ? 'animate-spin motion-reduce:animate-none' : undefined}
       />
-      <span>{text}</span>
+      <span>{t(key)}</span>
       {status === 'offline' && lastSyncedAt ? (
         <span className="opacity-80">
-          · last {new Date(lastSyncedAt).toLocaleDateString()}
+          {t('sync.lastOn', { date: new Date(lastSyncedAt).toLocaleDateString() })}
         </span>
       ) : null}
     </div>

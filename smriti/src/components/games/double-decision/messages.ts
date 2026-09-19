@@ -1,5 +1,7 @@
 /** next-intl messages for the copied double-decision PeripheralSpeedGame. */
 
+import { DOUBLE_DECISION_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     title: 'Double Decision',
@@ -121,4 +123,5 @@ export const DOUBLE_DECISION_MESSAGES = {
   en: { games: { doubleDecision: { gameUI: gameUI.en } } },
   hi: { games: { doubleDecision: { gameUI: gameUI.hi } } },
   as: { games: { doubleDecision: { gameUI: gameUI.as } } },
+  ...DOUBLE_DECISION_NORTHEAST,
 };

@@ -3,6 +3,7 @@
 import { Delete } from 'lucide-react';
 import Icon from '@/components/Icon';
 import { TOUCH_TARGET_MIN_PX } from './touchTarget';
+import { useTranslation } from '@/lib/i18n/provider';
 
 export interface PinPadProps {
   onDigit: (digit: string) => void;
@@ -18,8 +19,9 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'back'] as c
  * different touch targets or key layouts.
  */
 export default function PinPad({ onDigit, onBackspace, disabled = false }: PinPadProps) {
+  const { t } = useTranslation();
   return (
-    <div role="group" aria-label="PIN keypad" className="grid grid-cols-3 gap-3">
+    <div role="group" aria-label={t('pin.keypad')} className="grid grid-cols-3 gap-3">
       {KEYS.map((key, i) => {
         if (key === '') return <span key={`blank-${i}`} aria-hidden="true" />;
 
@@ -29,7 +31,7 @@ export default function PinPad({ onDigit, onBackspace, disabled = false }: PinPa
             key={key}
             type="button"
             disabled={disabled}
-            aria-label={isBackspace ? 'Backspace' : key}
+            aria-label={isBackspace ? t('pin.backspace') : key}
             onClick={() => (isBackspace ? onBackspace() : onDigit(key))}
             style={{ minHeight: TOUCH_TARGET_MIN_PX, minWidth: TOUCH_TARGET_MIN_PX }}
             className={

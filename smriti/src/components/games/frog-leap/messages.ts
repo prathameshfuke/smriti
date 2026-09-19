@@ -1,5 +1,7 @@
 /** next-intl messages for the copied frog-memory-leap GameComponent. */
 
+import { FROG_LEAP_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     level: 'Level {level}',
@@ -52,4 +54,5 @@ export const FROG_LEAP_MESSAGES = {
   en: { games: { frogMemoryLeap: { gameUI: gameUI.en } } },
   hi: { games: { frogMemoryLeap: { gameUI: gameUI.hi } } },
   as: { games: { frogMemoryLeap: { gameUI: gameUI.as } } },
+  ...FROG_LEAP_NORTHEAST,
 };

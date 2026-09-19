@@ -56,11 +56,11 @@ describe('i18n provider', () => {
     expect(screen.getByTestId('value').textContent).toBe('nonexistent.key');
   });
 
-  it('falls back to the English string when a locale lacks a translation', async () => {
-    // as.json intentionally carries English for untranslated keys.
+  it('serves the locale string rather than English for keys every catalog now carries', async () => {
+    // as.json used to carry English here; every locale is now complete (see i18n-parity.test.ts).
     await seedLanguage('as');
     renderWith('caregiver.dashboard');
-    expect(screen.getByTestId('value').textContent).toBe('Dashboard');
+    expect(screen.getByTestId('value').textContent).toBe("ড্যাশব'ৰ্ড");
   });
 
   it('persists the chosen language to localStorage', async () => {

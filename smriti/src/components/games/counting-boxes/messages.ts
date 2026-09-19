@@ -1,5 +1,7 @@
 /** next-intl messages for the copied counting-boxes GameComponent. */
 
+import { COUNTING_BOXES_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     observing: 'Watch the boxes',
@@ -70,4 +72,5 @@ export const COUNTING_BOXES_MESSAGES = {
   en: { games: { countingBoxes: { gameUI: gameUI.en } } },
   hi: { games: { countingBoxes: { gameUI: gameUI.hi } } },
   as: { games: { countingBoxes: { gameUI: gameUI.as } } },
+  ...COUNTING_BOXES_NORTHEAST,
 };

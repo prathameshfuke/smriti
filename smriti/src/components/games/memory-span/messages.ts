@@ -1,5 +1,7 @@
 /** next-intl messages for the copied MemoryTestGame component — one object per UI language. */
 
+import { MEMORY_SPAN_NORTHEAST } from './messages.northeast';
+
 const WORD_BANK_EN = [
   'River', 'Basket', 'Lamp', 'Bicycle', 'Umbrella', 'Kettle', 'Blanket', 'Mango',
   'Window', 'Ladder', 'Candle', 'Pillow', 'Garden', 'Bridge', 'Mirror', 'Bucket',
@@ -190,4 +192,4 @@ const as = {
   },
 };
 
-export const MEMORY_SPAN_MESSAGES = { en, hi, as };
+export const MEMORY_SPAN_MESSAGES = { en, hi, as, ...MEMORY_SPAN_NORTHEAST };

@@ -1,0 +1,452 @@
+/**
+ * Bodo (brx, Devanagari), Manipuri (mni, Bengali script) and, where the game had none, Bengali (bn)
+ * and Nepali (ne) strings for this game. brx/mni are LLM-assisted and NOT yet checked by a native
+ * speaker: every string is listed with a confidence rating in docs/translation-review.md.
+ */
+
+export const N_BACK_NORTHEAST = {
+  brx: {
+    games: {
+      dualNBack: {
+        title: "एन-बेक",
+        gameUI: {
+          title: "एन-बेक",
+          loading: "लोड जायो…",
+          starting: "सजाय जानो…",
+          startTraining: "शुरु",
+          playAgain: "फिन खेला खालाम",
+          settings: "सेटिंस",
+          gameSettings: "खेलानि सेटिंस",
+          nBackLevel: "एन-बेक लेभेल",
+          back: "{level}-बेक",
+          voiceType: "सोदोब",
+          male: "पुरुष",
+          female: "महिला",
+          trainingMode: "मा नुनो",
+          position: "जायगा",
+          audio: "सोदोब",
+          dual: "जायगा आरो सोदोब",
+          trialsPerRound: "राउन्डनि अंखन",
+          trials: "{count} राउन्ड",
+          trialSpeed: "गति",
+          seconds: "{seconds}से",
+          saveChanges: "सेभ खालाम",
+          needBothButtons: "जायगा एबा सोदोब, कमसे मोनसे चालु खालामनो हागोन।",
+          level: "लेभेल",
+          levelLabel: "लेभेल {level}",
+          trial: "राउन्ड {current}/{total}",
+          challenge: "टाइलखौ नुनो, हरफखौ सुनो, आरो {level} स्टेप सिगांनिजों मिलनाय जाबाय ला नङा बुंनो।",
+          positionMatch: "जायगा मिलाव",
+          soundMatch: "सोदोब मिलाव",
+          correct: "ठिक",
+          incorrect: "पुरा ठिक नङा",
+          missed: "मोनसे छुटबाय",
+          falseAlarms: "गलत जागायनाय",
+          accuracy: "ठिकनाय",
+          accuracyPercent: "{value}%",
+          howToPlay: "माबादि खेलानो",
+          overallPerformance: "गासैनि खालामनाय",
+          trainingResults: "खेला मोनथिबाय",
+          playingAudio: "सोदोब चालु जायो…",
+          replayAudio: "सोदोब फिन चालु खालाम",
+          isPositionHighlight: "जायगा जोलोंबाय",
+          continueTraining: "फिन नाजा खालामनो",
+          allGames: "खेलाफोरआव फिन थांनो",
+          loadPrompt: "टिउटोरियाल लोड जायो…",
+          testMyLevel: "बे लेभेल नाजा खालाम",
+          tutorial: {
+            title: "बे खेला माबादि जायो",
+            whatIsNBack: "एन-बेक मा?",
+            nBackExplanation: "टाइल मोनसे जोलोंयो आरो हरफ मोनसे सुनायो, मोनसे मोनसे। टाइलनि जायगा (एबा हरफ) कुछ स्टेप सिगांनिजों मिलनाय जाबाय ला नङा बुंनो।",
+            stepProgress: "स्टेप {current}/{total}",
+            nextStep: "उनाव",
+            prevStep: "फिन थांनो",
+            completeTutorial: "असल खेला शुरु खालाम",
+            tutorialNote: "बे अभ्यासनि थाखाय। बेआव अंक होयाखै।",
+            replayAudio: "सोदोब फिन चालु खालाम",
+            playingAudio: "सोदोब चालु जायो…",
+            positionMatch: "जायगा मिलाव",
+            audioMatch: "सोदोब मिलाव",
+            correct: "ठिक",
+            incorrect: "पुरा ठिक नङा",
+            needBothButtons: "जायगा एबा सोदोब, कमसे मोनसे चालु खालामनो हागोन।",
+            step1: "टाइल मोनसे बेआव जोलोंयो, आरो नों हरफ मोनसे सुनो। दानि मिलानो आखै, नुनो आरो सुनो।",
+            step2: "गोदान टाइल गुबुन जायगाआव जोलोंयो, गोदान हरफजों। दानिबो मिलानो आखै।",
+            step3: "मोजां नुनो: बे टाइल स्टेप मोनसे सिगांनि जायगाआव दं। बे जायगा मिलाव: \"जायगा मिलाव\" टाप खालाम।",
+            step4: "बे खेवआव जायगा गोदान, नाथाय हरफनि सोदोब स्टेप मोनसे सिगांनि बादि। बे सोदोब मिलाव: \"सोदोब मिलाव\" टाप खालाम।",
+            step5: "जायगा आरो सोदोब गुबुन स्टेप मोनसे सिगांनिजों मिलो। ननि टाप खालाम: बे पुरा मिलाव।"
+          },
+          interactiveTutorial: "इन्टारेक्टिभ टिउटोरियाल",
+          cardTitle: "जल्दी मोनथिनाय",
+          cardSubtitle: "दानिनि मोनथिनाय",
+          improveMemorySubtitle: "सिनायथि मोजां खालामनो दिनदिन अभ्यास खालाम",
+          empty: "दानिस्लायनो खेला रेकर्ड जायाखै।",
+          totalClears: "मोनथिनाय",
+          averagePassTime: "औसत समो",
+          you: "नों",
+          columns: {
+            player: "मुं",
+            level: "लेभेल",
+            accuracy: "ठिकनाय",
+            duration: "समो",
+            clearedAt: "तारिख",
+            order: "#"
+          }
+        },
+        gameMessages: {
+          keepOneMode: "जायगा एबा सोदोब, कमसे मोनसे चालु खालामनो हागोन।"
+        }
+      }
+    },
+    common: {
+      progressShare: {
+        button: "प्रगति शेयार खालाम",
+        correctResponses: "ठिक उत्तर",
+        sessionTime: "सेसननि समो",
+        customSession: "कस्टम सेसन",
+        standardMode: "साधारण मोड",
+        firstTrackedSession: "सिगांनि रेकर्ड सेसन",
+        higherThanLast: "सिगांनि खेवनिफ्राय {value} बेसी",
+        lowerThanLast: "सिगांनि खेवनिफ्राय {value} कम",
+        sessionsTracked: "{count} सेसन रेकर्ड जादों"
+      },
+      leaderboard: {
+        unitPercent: "%",
+        unitSec: "से"
+      }
+    }
+  },
+  mni: {
+    games: {
+      dualNBack: {
+        title: "এন-বেক",
+        gameUI: {
+          title: "এন-বেক",
+          loading: "লোড তৌরি…",
+          starting: "তৈরি ওইলু…",
+          startTraining: "হৌবিয়ু",
+          playAgain: "অমুক খেল তৌ",
+          settings: "সেটিংস",
+          gameSettings: "খেলগী সেটিংস",
+          nBackLevel: "এন-বেক লেবেল",
+          back: "{level}-বেক",
+          voiceType: "লোল",
+          male: "পুরুষ",
+          female: "মহিলা",
+          trainingMode: "করি উবগে",
+          position: "মফম",
+          audio: "খোংজেল",
+          dual: "মফম অমসুং খোংজেল",
+          trialsPerRound: "রাউন্দগী নম্বর",
+          trials: "রাউন্দ {count}",
+          trialSpeed: "থুনা",
+          seconds: "{seconds}সে",
+          saveChanges: "সেভ তৌ",
+          needBothButtons: "মফম নত্রগা খোংজেল, অকিবা অমা চালু তৌবিয়ু।",
+          level: "লেবেল",
+          levelLabel: "লেবেল {level}",
+          trial: "রাউন্দ {current}/{total}",
+          challenge: "টাইল উবিয়ু, অক্ষর শুনবিয়ু, অদুগা {level} স্টেপ মখাগী মান্নরবা নত্রগা মান্নদ্রবা হায়বিয়ু।",
+          positionMatch: "মফম মান্নবা",
+          soundMatch: "খোংজেল মান্নবা",
+          correct: "চুম্মি",
+          incorrect: "চুম্দ্রে",
+          missed: "অমা লোয়খ্রে",
+          falseAlarms: "অচুম্বা চেক্শিন",
+          accuracy: "চুম্বা",
+          accuracyPercent: "{value}%",
+          howToPlay: "খেল তৌবগী মরম",
+          overallPerformance: "মপুমক থবক",
+          trainingResults: "খেল লোইখ্রে",
+          playingAudio: "খোংজেল চালু ওইরি…",
+          replayAudio: "খোংজেল অমুক চালু তৌ",
+          isPositionHighlight: "মফম মৈখ্রে",
+          continueTraining: "অমুক হোৎনবিয়ু",
+          allGames: "খেলশিংদা অমুক ৎচৎলু",
+          loadPrompt: "টিউটোরিয়েল লোড তৌরি…",
+          testMyLevel: "লেবেল অসি হোৎনবিয়ু",
+          tutorial: {
+            title: "খেল অসি করিগুম্না তৌবনো",
+            whatIsNBack: "এন-বেক করিনো?",
+            nBackExplanation: "টাইল অমা মৈরি অমসুং অক্ষর অমা শুম্বা ঙমরি, অমা অমা। টাইলগী মফম (নত্রগা অক্ষর) স্টেপ অহুম মখাগীদা মান্নরবা নত্রগা মান্নদ্রবা হায়বিয়ু।",
+            stepProgress: "স্টেপ {current}/{total}",
+            nextStep: "মতুংদা",
+            prevStep: "অমুক",
+            completeTutorial: "অসল খেল হৌবিয়ু",
+            tutorialNote: "মসি অভ্যাসকী দমক। মসিদা স্কোর তৌদে।",
+            replayAudio: "খোংজেল অমুক চালু তৌ",
+            playingAudio: "খোংজেল চালু ওইরি…",
+            positionMatch: "মফম মান্নবা",
+            audioMatch: "খোংজেল মান্নবা",
+            correct: "চুম্মি",
+            incorrect: "চুম্দ্রে",
+            needBothButtons: "মফম নত্রগা খোংজেল, অকিবা অমা চালু তৌবিয়ু।",
+            step1: "টাইল অমা মসিদা মৈরি, অদুগা নহাক্না অক্ষর অমা শুম্বগনি। হৌজিক মান্নবা লৈদে, উবিয়ু অমসুং শুনবিয়ু।",
+            step2: "অহান্বা টাইল অমা অতোপ্পা মফমদা মৈরি, অহান্বা অক্ষরগা। হৌজিকতা মান্নবা লৈদে।",
+            step3: "মথৌ ইনা উবিয়ু: টাইল অসি স্টেপ অমা মখাগী মফমদা লৈ। মসি মফম মান্নবা: \"মফম মান্নবা\" তাপ তৌ।",
+            step4: "মসি মতমদা মফম অহান্বা, অদুবু অক্ষরগী খোংজেল স্টেপ অমা মখাগী অসিগুম্না। মসি খোংজেল মান্নবা: \"খোংজেল মান্নবা\" তাপ তৌ।",
+            step5: "মফম অমসুং খোংজেল অনিসু স্টেপ অমা মখাগীগা মান্নরি। অনিবু তাপ তৌ: মসি মপুম মান্নবানি।"
+          },
+          interactiveTutorial: "ইন্টারেক্টিভ টিউটোরিয়েল",
+          cardTitle: "থুনা লোইবা",
+          cardSubtitle: "হৌজিকগী লোইবা",
+          improveMemorySubtitle: "নিংশিং ফজহনবা লগাতার অভ্যাস তৌবিয়ু",
+          empty: "হৌজিক খেল রেকর্ড ওইদ্রে।",
+          totalClears: "লোইবা",
+          averagePassTime: "গড় মতম",
+          you: "নহাক",
+          columns: {
+            player: "মিং",
+            level: "লেবেল",
+            accuracy: "চুম্বা",
+            duration: "মতম",
+            clearedAt: "তারিখ",
+            order: "#"
+          }
+        },
+        gameMessages: {
+          keepOneMode: "মফম নত্রগা খোংজেল, অকিবা অমা চালু তৌবিয়ু।"
+        }
+      }
+    },
+    common: {
+      progressShare: {
+        button: "অগ্রগতি শেয়ার তৌ",
+        correctResponses: "চুম্বা উত্তর",
+        sessionTime: "সেসনগী মতম",
+        customSession: "কাস্টম সেসন",
+        standardMode: "সাধারণ মোড",
+        firstTrackedSession: "অহান্বা রেকর্দ তৌবা সেসন",
+        higherThanLast: "মখাগী মতমদগী {value} হেন্না",
+        lowerThanLast: "মখাগী মতমদগী {value} কম",
+        sessionsTracked: "সেসন {count} রেকর্ড ওইখ্রে"
+      },
+      leaderboard: {
+        unitPercent: "%",
+        unitSec: "সে"
+      }
+    }
+  },
+  bn: {
+    games: {
+      dualNBack: {
+        title: "এন-ব্যাক",
+        gameUI: {
+          title: "এন-ব্যাক",
+          loading: "লোড হচ্ছে…",
+          starting: "তৈরি হন…",
+          startTraining: "শুরু",
+          playAgain: "আবার খেলুন",
+          settings: "সেটিংস",
+          gameSettings: "খেলার সেটিংস",
+          nBackLevel: "এন-ব্যাক স্তর",
+          back: "{level}-ব্যাক",
+          voiceType: "কণ্ঠস্বর",
+          male: "পুরুষ",
+          female: "মহিলা",
+          trainingMode: "কী লক্ষ করবেন",
+          position: "অবস্থান",
+          audio: "শব্দ",
+          dual: "অবস্থান ও শব্দ",
+          trialsPerRound: "রাউন্ডের সংখ্যা",
+          trials: "{count}টি রাউন্ড",
+          trialSpeed: "গতি",
+          seconds: "{seconds}সে",
+          saveChanges: "সংরক্ষণ করুন",
+          needBothButtons: "অবস্থান বা শব্দের অন্তত একটি চালু রাখুন।",
+          level: "স্তর",
+          levelLabel: "স্তর {level}",
+          trial: "রাউন্ড {current}/{total}",
+          challenge: "টাইলটি দেখুন, অক্ষরটি শুনুন, আর বলুন এটি {level} ধাপ আগের সঙ্গে মিলছে কি না।",
+          positionMatch: "একই অবস্থান",
+          soundMatch: "একই শব্দ",
+          correct: "সঠিক",
+          incorrect: "ঠিক হয়নি",
+          missed: "একটি বাদ পড়েছে",
+          falseAlarms: "ভুল সংকেত",
+          accuracy: "নির্ভুলতা",
+          accuracyPercent: "{value}%",
+          howToPlay: "কীভাবে খেলবেন",
+          overallPerformance: "সামগ্রিক ফল",
+          trainingResults: "খেলা শেষ",
+          playingAudio: "শব্দ বাজছে…",
+          replayAudio: "শব্দ আবার বাজান",
+          isPositionHighlight: "অবস্থান জ্বলে উঠেছে",
+          continueTraining: "চেষ্টা চালিয়ে যান",
+          allGames: "খেলায় ফিরে যান",
+          loadPrompt: "নির্দেশিকা লোড হচ্ছে…",
+          testMyLevel: "এই স্তর চেষ্টা করুন",
+          tutorial: {
+            title: "এই খেলা কীভাবে কাজ করে",
+            whatIsNBack: "এন-ব্যাক কী?",
+            nBackExplanation: "একটি টাইল জ্বলে ওঠে আর একটি অক্ষর শোনা যায়, একবারে একটি করে। আপনি বলবেন টাইলের অবস্থান (বা অক্ষর) কয়েক ধাপ আগের মতোই কি না।",
+            stepProgress: "ধাপ {current}/{total}",
+            nextStep: "পরবর্তী",
+            prevStep: "ফিরে যান",
+            completeTutorial: "আসল খেলা শুরু করুন",
+            tutorialNote: "এটি অনুশীলন মাত্র। এখানে কোনো নম্বর দেওয়া হয় না।",
+            replayAudio: "শব্দ আবার বাজান",
+            playingAudio: "শব্দ বাজছে…",
+            positionMatch: "একই অবস্থান",
+            audioMatch: "একই শব্দ",
+            correct: "সঠিক",
+            incorrect: "ঠিক হয়নি",
+            needBothButtons: "অবস্থান বা শব্দের অন্তত একটি চালু রাখুন।",
+            step1: "এখানে একটি টাইল জ্বলে উঠল আর আপনি একটি অক্ষর শুনলেন। এখনো তুলনা করার কিছু নেই, শুধু দেখুন আর শুনুন।",
+            step2: "অন্য জায়গায় নতুন একটি টাইল জ্বলে উঠল, নতুন অক্ষরসহ। এখনো তুলনা করার কিছু নেই।",
+            step3: "ভালো করে দেখুন: এই টাইলটি এক ধাপ আগের জায়গাতেই আছে। এটি অবস্থান মিল: \"একই অবস্থান\" চাপুন।",
+            step4: "এবার অবস্থান নতুন, কিন্তু অক্ষরের শব্দ এক ধাপ আগের মতোই। এটি শব্দ মিল: \"একই শব্দ\" চাপুন।",
+            step5: "অবস্থান ও শব্দ দুটোই এক ধাপ আগের সঙ্গে মিলেছে। দুটোই চাপুন: এটিই পূর্ণ মিল।"
+          },
+          interactiveTutorial: "ইন্টারেক্টিভ নির্দেশিকা",
+          cardTitle: "দ্রুততম সমাপ্তি",
+          cardSubtitle: "সাম্প্রতিক সমাপ্তি",
+          improveMemorySubtitle: "স্মৃতিশক্তি বাড়াতে নিয়মিত অনুশীলন করুন",
+          empty: "এখনো কোনো খেলা রেকর্ড হয়নি।",
+          totalClears: "সমাপ্তি",
+          averagePassTime: "গড় সময়",
+          you: "আপনি",
+          columns: {
+            player: "নাম",
+            level: "স্তর",
+            accuracy: "নির্ভুলতা",
+            duration: "সময়",
+            clearedAt: "তারিখ",
+            order: "#"
+          }
+        },
+        gameMessages: {
+          keepOneMode: "অবস্থান বা শব্দের অন্তত একটি চালু রাখুন।"
+        }
+      }
+    },
+    common: {
+      progressShare: {
+        button: "অগ্রগতি শেয়ার করুন",
+        correctResponses: "সঠিক উত্তর",
+        sessionTime: "সেশনের সময়",
+        customSession: "কাস্টম সেশন",
+        standardMode: "সাধারণ মোড",
+        firstTrackedSession: "প্রথম রেকর্ড করা সেশন",
+        higherThanLast: "গতবারের চেয়ে {value} বেশি",
+        lowerThanLast: "গতবারের চেয়ে {value} কম",
+        sessionsTracked: "{count}টি সেশন রেকর্ড হয়েছে"
+      },
+      leaderboard: {
+        unitPercent: "%",
+        unitSec: "সে"
+      }
+    }
+  },
+  ne: {
+    games: {
+      dualNBack: {
+        title: "एन-ब्याक",
+        gameUI: {
+          title: "एन-ब्याक",
+          loading: "लोड हुँदैछ…",
+          starting: "तयार हुनुहोस्…",
+          startTraining: "सुरु",
+          playAgain: "फेरि खेल्नुहोस्",
+          settings: "सेटिङ",
+          gameSettings: "खेलको सेटिङ",
+          nBackLevel: "एन-ब्याक तह",
+          back: "{level}-ब्याक",
+          voiceType: "आवाज",
+          male: "पुरुष",
+          female: "महिला",
+          trainingMode: "के हेर्ने",
+          position: "स्थान",
+          audio: "आवाज",
+          dual: "स्थान र आवाज",
+          trialsPerRound: "राउन्डको संख्या",
+          trials: "{count} राउन्ड",
+          trialSpeed: "गति",
+          seconds: "{seconds}से",
+          saveChanges: "सुरक्षित गर्नुहोस्",
+          needBothButtons: "स्थान वा आवाजमध्ये कम्तीमा एउटा खुला राख्नुहोस्।",
+          level: "तह",
+          levelLabel: "तह {level}",
+          trial: "राउन्ड {current}/{total}",
+          challenge: "टाइल हेर्नुहोस्, अक्षर सुन्नुहोस्, र {level} चरण अघिकोसँग मिल्छ कि मिल्दैन भन्नुहोस्।",
+          positionMatch: "उही स्थान",
+          soundMatch: "उही आवाज",
+          correct: "सही",
+          incorrect: "ठ्याक्कै भएन",
+          missed: "एउटा छुट्यो",
+          falseAlarms: "गलत संकेत",
+          accuracy: "शुद्धता",
+          accuracyPercent: "{value}%",
+          howToPlay: "कसरी खेल्ने",
+          overallPerformance: "समग्र प्रदर्शन",
+          trainingResults: "खेल सकियो",
+          playingAudio: "आवाज बज्दैछ…",
+          replayAudio: "आवाज फेरि बजाउनुहोस्",
+          isPositionHighlight: "स्थान बल्यो",
+          continueTraining: "प्रयास जारी राख्नुहोस्",
+          allGames: "खेलहरूमा फर्कनुहोस्",
+          loadPrompt: "निर्देशन लोड हुँदैछ…",
+          testMyLevel: "यो तह प्रयास गर्नुहोस्",
+          tutorial: {
+            title: "यो खेल कसरी चल्छ",
+            whatIsNBack: "एन-ब्याक के हो?",
+            nBackExplanation: "एक पटकमा एउटा टाइल बल्छ र एउटा अक्षर बज्छ। टाइलको स्थान (वा अक्षर) केही चरण अघिको जस्तै हो कि होइन भन्नुहोस्।",
+            stepProgress: "चरण {current}/{total}",
+            nextStep: "अर्को",
+            prevStep: "फर्कनुहोस्",
+            completeTutorial: "वास्तविक खेल सुरु गर्नुहोस्",
+            tutorialNote: "यो अभ्यास मात्र हो। यहाँ अंक गनिँदैन।",
+            replayAudio: "आवाज फेरि बजाउनुहोस्",
+            playingAudio: "आवाज बज्दैछ…",
+            positionMatch: "उही स्थान",
+            audioMatch: "उही आवाज",
+            correct: "सही",
+            incorrect: "ठ्याक्कै भएन",
+            needBothButtons: "स्थान वा आवाजमध्ये कम्तीमा एउटा खुला राख्नुहोस्।",
+            step1: "यहाँ एउटा टाइल बल्यो र तपाईंले एउटा अक्षर सुन्नुभयो। अहिले तुलना गर्ने केही छैन, हेर्नुहोस् र सुन्नुहोस्।",
+            step2: "अर्कै ठाउँमा नयाँ टाइल बल्यो, नयाँ अक्षरसहित। अझै तुलना गर्ने केही छैन।",
+            step3: "ध्यान दिएर हेर्नुहोस्: यो टाइल एक चरण अघिकै ठाउँमा छ। यो स्थान मिल्यो: \"उही स्थान\" थिच्नुहोस्।",
+            step4: "यस पटक स्थान नयाँ छ, तर अक्षरको आवाज एक चरण अघिकै जस्तो छ। यो आवाज मिल्यो: \"उही आवाज\" थिच्नुहोस्।",
+            step5: "स्थान र आवाज दुवै एक चरण अघिसँग मिल्यो। दुवै थिच्नुहोस्: यही पूर्ण मिलान हो।"
+          },
+          interactiveTutorial: "अन्तरक्रियात्मक निर्देशन",
+          cardTitle: "छिटो सकिएका",
+          cardSubtitle: "हालैका सकिएका",
+          improveMemorySubtitle: "स्मरणशक्ति बढाउन नियमित अभ्यास गर्नुहोस्",
+          empty: "अहिलेसम्म कुनै खेल रेकर्ड भएको छैन।",
+          totalClears: "सकिएका",
+          averagePassTime: "औसत समय",
+          you: "तपाईं",
+          columns: {
+            player: "नाम",
+            level: "तह",
+            accuracy: "शुद्धता",
+            duration: "समय",
+            clearedAt: "मिति",
+            order: "#"
+          }
+        },
+        gameMessages: {
+          keepOneMode: "स्थान वा आवाजमध्ये कम्तीमा एउटा खुला राख्नुहोस्।"
+        }
+      }
+    },
+    common: {
+      progressShare: {
+        button: "प्रगति साझा गर्नुहोस्",
+        correctResponses: "सही उत्तर",
+        sessionTime: "सत्रको समय",
+        customSession: "अनुकूल सत्र",
+        standardMode: "सामान्य मोड",
+        firstTrackedSession: "पहिलो रेकर्ड गरिएको सत्र",
+        higherThanLast: "अघिल्लो पटकभन्दा {value} बढी",
+        lowerThanLast: "अघिल्लो पटकभन्दा {value} कम",
+        sessionsTracked: "{count} सत्र रेकर्ड भए"
+      },
+      leaderboard: {
+        unitPercent: "%",
+        unitSec: "से"
+      }
+    }
+  }
+};

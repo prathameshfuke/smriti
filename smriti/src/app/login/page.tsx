@@ -4,10 +4,12 @@ import { Suspense, useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import appIcon from '@/appicon.png';
+import { useTranslation } from '@/lib/i18n/provider';
 
 type Role = 'patient' | 'caregiver' | null;
 
 function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
+  const { t } = useTranslation();
   return (
     <main className="flex min-h-dvh flex-col bg-paper50 px-5 py-8">
       <p className="flex items-center gap-2.5 font-serif-display text-[1.375rem] font-medium text-ink950">
@@ -16,8 +18,8 @@ function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
       </p>
 
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
-        <h1 className="font-serif-display text-[2.5rem] font-medium leading-[1.1] text-ink950">Who is using SMRITI?</h1>
-        <p className="mt-3 text-patient-body text-ink700">Choose one. You can switch later.</p>
+        <h1 className="font-serif-display text-[2.5rem] font-medium leading-[1.1] text-ink950">{t('login.title')}</h1>
+        <p className="mt-3 text-patient-body text-ink700">{t('login.subtitle')}</p>
 
         <div className="mt-10 flex flex-col gap-4">
           <button
@@ -25,8 +27,8 @@ function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
             onClick={() => onSelect('patient')}
             className="flex min-h-24 w-full flex-col items-start justify-center rounded-card bg-terra600 px-6 py-4 text-left text-paper50 transition-[transform,background-color] duration-150 hover:bg-terra700 active:scale-[0.98] motion-reduce:active:scale-100"
           >
-            <span className="text-patient-body font-bold">I am the Patient</span>
-            <span className="mt-1 text-caregiver-body text-paper50/90">Play games and see my reminders</span>
+            <span className="text-patient-body font-bold">{t('login.patient')}</span>
+            <span className="mt-1 text-caregiver-body text-paper50/90">{t('login.patientHint')}</span>
           </button>
 
           <button
@@ -34,8 +36,8 @@ function RoleSelector({ onSelect }: { onSelect: (role: Role) => void }) {
             onClick={() => onSelect('caregiver')}
             className="flex min-h-24 w-full flex-col items-start justify-center rounded-card border-2 border-ink700 bg-white px-6 py-4 text-left text-ink950 transition-[transform,background-color] duration-150 hover:bg-paper100 active:scale-[0.98] motion-reduce:active:scale-100"
           >
-            <span className="text-patient-body font-bold">I am the Caregiver</span>
-            <span className="mt-1 text-caregiver-body text-ink700">Check progress and set things up</span>
+            <span className="text-patient-body font-bold">{t('login.caregiver')}</span>
+            <span className="mt-1 text-caregiver-body text-ink700">{t('login.caregiverHint')}</span>
           </button>
         </div>
       </div>
