@@ -901,3 +901,71 @@ ALTER TABLE ai_conversation_log ADD COLUMN IF NOT EXISTS session_id UUID;
 
 CREATE INDEX IF NOT EXISTS idx_ai_log_session ON ai_conversation_log(patient_id, session_id, created_at);
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 016: Web Push subscriptions (reminders while the app is closed)
+-- =============================================
+
+-- One row per browser/device that agreed to receive Web Push. Numbered 016
+-- because 012-015 are already taken above. Written only by
+-- POST /api/push/subscribe (service-role client, after it has verified either
+-- the caregiver's session or the phone's signed device-trust tokens), read by
+-- the reminder tick (/api/push/tick) and by sendPushToCaregiver()
+-- (src/lib/push/send.ts). Nothing here is personal data: an endpoint URL,
+-- two public-key strings, a language code and a time zone.
+--
+-- kind = 'patient_device': a phone that shows reminders for `patient_ids`
+--   (a shared phone lists several). `caregiver_id` is the first patient's
+--   caregiver; reminders follow `patient_ids`, not the owner.
+-- kind = 'caregiver': a caregiver's own phone, used for alert delivery.
+--
+-- `timezone` is the phone's IANA zone, because reminder times are wall-clock
+-- times ("09:00") and the server runs in UTC.
+CREATE TABLE push_subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  endpoint TEXT NOT NULL UNIQUE CHECK (char_length(endpoint) <= 2048),
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('patient_device', 'caregiver')),
+  caregiver_id UUID NOT NULL REFERENCES caregivers(id) ON DELETE CASCADE,
+  patient_ids UUID[] NOT NULL DEFAULT '{}',
+  language TEXT NOT NULL DEFAULT 'en',
+  timezone TEXT NOT NULL DEFAULT 'Asia/Kolkata',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_push_subscriptions_caregiver ON push_subscriptions(caregiver_id, kind);
+
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- A caregiver can see and remove their own subscriptions. Inserts and updates
+-- happen only through the API route (service role bypasses RLS), which is what
+-- checks device-trust tokens; a kiosk phone has no Supabase session to satisfy
+-- a policy anyway.
+CREATE POLICY caregiver_push_subscriptions ON push_subscriptions
+  FOR SELECT USING (caregiver_id IN (
+    SELECT id FROM caregivers WHERE auth_id = auth.uid()
+  ));
+CREATE POLICY caregiver_push_subscriptions_delete ON push_subscriptions
+  FOR DELETE USING (caregiver_id IN (
+    SELECT id FROM caregivers WHERE auth_id = auth.uid()
+  ));
+
+-- Which reminder occurrences have already been pushed to which subscription,
+-- so a tick that runs again inside the same window does not send twice.
+-- `occurrence_key` is "<reminder id>:<YYYY-MM-DD>", the same key adherence and
+-- acknowledgements use. The tick prunes rows older than three days. Service
+-- role only: RLS is on with no policy, so no browser session can read it.
+CREATE TABLE push_deliveries (
+  subscription_id UUID NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
+  occurrence_key TEXT NOT NULL,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (subscription_id, occurrence_key)
+);
+
+CREATE INDEX idx_push_deliveries_sent_at ON push_deliveries(sent_at);
+
+ALTER TABLE push_deliveries ENABLE ROW LEVEL SECURITY;
+```
