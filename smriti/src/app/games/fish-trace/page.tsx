@@ -89,7 +89,7 @@ function FishTracePageInner() {
       />
       <main className="flex flex-1 flex-col">
         <NextIntlClientProvider locale={language} messages={FISH_TRACE_MESSAGES[language as keyof typeof FISH_TRACE_MESSAGES] ?? FISH_TRACE_MESSAGES.en}>
-          <GameComponent onComplete={onComplete} />
+          <GameComponent initialLevel={difficulty.currentLevel} onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>
     </div>

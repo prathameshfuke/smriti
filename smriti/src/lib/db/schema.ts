@@ -224,9 +224,10 @@ export interface LocalFamilyMessage {
  * unlike `aiConversationLog` there is no `patientId` scoping here.
  */
 export interface LocalSpeechCache {
-  /** `${language} ${text}` — see `lib/ai/speech-cache.ts`. Using the
-   * exact content as the key means `put()` naturally dedupes identical
-   * lines instead of needing separate lookup-then-insert logic. */
+  /** `v2:${language}:${keyed hash of text}` — see `lib/ai/speech-cache.ts`.
+   * A keyed hash (not the text) so the primary key, which can't be
+   * encrypted, doesn't hold the spoken sentence; equal lines still map to
+   * one row, so `put()` dedupes them. */
   id: string;
   text: string;
   language: string;
@@ -381,6 +382,22 @@ export class SmritiDB extends Dexie {
       },
       true,
     );
+  }
+
+  /**
+   * HMAC-SHA256 of `value` under the storage key, hex. A stable, unguessable
+   * id for content that must be findable by value but must not be readable
+   * from the key column. Null when WebCrypto or the key isn't available, in
+   * which case callers should skip the cache rather than store plain text.
+   */
+  async keyedHash(value: string): Promise<string | null> {
+    await this.open();
+    const subtle = globalThis.crypto?.subtle;
+    const raw = this.storageKey;
+    if (!subtle || !raw) return null;
+    const key = await subtle.importKey('raw', raw as BufferSource, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = new Uint8Array(await subtle.sign('HMAC', key, new TextEncoder().encode(value)));
+    return Array.from(mac, (b) => b.toString(16).padStart(2, '0')).join('');
   }
 
   /** Drops the backing store. Exposed for test isolation. */

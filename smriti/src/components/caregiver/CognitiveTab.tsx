@@ -59,8 +59,12 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
   // doc comment for the cross-device caveat (a summary only ever exists
   // locally on the device that wrote it; `/api/sync` never sends
   // `daily_summaries` back down — lib/db/sync.ts).
-  const trend = useCognitiveTrend(patientId, range);
-  const streak = useGameStreak(patientId);
+  const serverDates = useMemo(
+    () => (serverScoreRows ?? []).filter((r) => r.totalRounds > 0).map((r) => r.date),
+    [serverScoreRows],
+  );
+  const trend = useCognitiveTrend(patientId, range, serverScoreRows);
+  const streak = useGameStreak(patientId, serverDates);
   // Same live Dexie query the Reminders tab uses (useLiveQuery-backed, so a
   // second subscription here is cheap) — this tab only ever needs the
   // headline percentage, not the missed-reminder detail.

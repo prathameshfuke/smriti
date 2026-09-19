@@ -92,7 +92,7 @@ function CountingBoxesPageInner() {
           <GameTutorial gameId="counting_boxes" steps={TUTORIALS.counting_boxes} />
         </div>
         <NextIntlClientProvider locale={language} messages={COUNTING_BOXES_MESSAGES[language as keyof typeof COUNTING_BOXES_MESSAGES] ?? COUNTING_BOXES_MESSAGES.en}>
-          <GameComponent onComplete={onComplete} />
+          <GameComponent initialLevel={difficulty.currentLevel} onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>
     </div>

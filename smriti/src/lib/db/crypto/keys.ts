@@ -40,7 +40,15 @@ export interface KeyringEntry {
 }
 
 export const KEYRING_ID = 'storage';
-export const ENCRYPTION_MIGRATION_VERSION = 1;
+export const ENCRYPTION_MIGRATION_VERSION = 2;
+
+/**
+ * Tables that are only a cache and whose primary key used to be the plain
+ * text itself (`speechCache`: "en Your husband Ravi takes metformin"). A key
+ * can't be encrypted, so those rows are dropped once and refetched under a
+ * keyed-hash id instead of being re-encrypted around a readable key.
+ */
+const PURGED_AT_VERSION_2 = ['speechCache'];
 
 type Keyring = Table<KeyringEntry, string>;
 
@@ -173,6 +181,11 @@ export async function migrateToEncrypted(
   if ((entry?.migratedVersion ?? 0) >= ENCRYPTION_MIGRATION_VERSION) return;
 
   const idb = db.backendDB();
+  if ((entry?.migratedVersion ?? 0) < 2) {
+    for (const name of PURGED_AT_VERSION_2) {
+      if (idb.objectStoreNames.contains(name)) await clearStore(idb, name);
+    }
+  }
   for (const [name, fields] of Object.entries(fieldsByTable)) {
     if (!idb.objectStoreNames.contains(name)) continue;
     const dropped = await rewriteStore(idb, name, fields, key);
@@ -180,6 +193,16 @@ export async function migrateToEncrypted(
   }
 
   await keyring.update(KEYRING_ID, { migratedVersion: ENCRYPTION_MIGRATION_VERSION });
+}
+
+function clearStore(idb: IDBDatabase, name: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = idb.transaction(name, 'readwrite');
+    tx.objectStore(name).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
 }
 
 function rewriteStore(idb: IDBDatabase, name: string, fields: readonly string[], key: Uint8Array): Promise<number> {

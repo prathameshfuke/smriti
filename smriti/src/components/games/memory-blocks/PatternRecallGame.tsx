@@ -32,9 +32,11 @@ const BEST_SCORE_KEY = 'memoryBlocksBestScore'
 export interface PatternRecallGameProps {
   /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
   onComplete?: (score: number, levelReached: number) => void;
+  /** The patient's persisted level for this game, passed by the page (per patient, unlike device-wide settings). */
+  initialLevel?: number;
 }
 
-export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
+export function PatternRecallGame({ onComplete, initialLevel }: PatternRecallGameProps = {}) {
     const t = useTranslations('games.blockMemoryChallenge.gameUI')
     const locale = useLocale()
     const language = isUILanguage(locale) ? locale : 'en'
@@ -42,7 +44,9 @@ export function PatternRecallGame({ onComplete }: PatternRecallGameProps = {}) {
     const tapSelect = useTapSelect()
     const [gameState, setGameState] = useState<'idle' | 'showing' | 'guessing' | 'complete' | 'failed'>('idle')
     const [level, setLevel] = useState(START_LEVEL)
-    const [startLevel, setStartLevel] = useState(START_LEVEL)
+    // App level 1 is the original 3-block pattern; each level adds one block.
+    const [startLevel, setStartLevel] = useState(() =>
+        Math.min(MAX_START_LEVEL, START_LEVEL + Math.max(0, Math.round(initialLevel ?? 1) - 1)))
     const [blocks, setBlocks] = useState<Block[]>(createInitialBlocks())
     const [pattern, setPattern] = useState<number[]>([])
     const [userPattern, setUserPattern] = useState<number[]>([])

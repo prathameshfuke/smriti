@@ -3,7 +3,8 @@
 import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db/schema';
-import { countSessionDays, rowsToPoints, type TrendPoint } from '@/lib/dashboard/trend';
+import { countSessionDays, mergeServerPoints, rowsToPoints, type TrendPoint } from '@/lib/dashboard/trend';
+import type { ScoreRow } from '@/lib/dashboard/cognitiveScore';
 
 export type TrendRange = '30d' | '90d' | '180d';
 
@@ -45,13 +46,17 @@ export interface UseCognitiveTrendResult {
  * response never sends `daily_summaries` back down to Dexie — only
  * patients/reminders/alerts (see lib/db/sync.ts's `SyncResponseBody`). A
  * caregiver opening this patient on a second device that never played
- * locally will see the chart's low-data/empty state indefinitely even
- * though the server has a full history. Fixing that is a sync-layer change
- * out of scope here; this hook stays props-out/no-opinion so a future
- * server-backed source could be swapped in behind the same
- * `UseCognitiveTrendResult` shape without touching the chart component.
+ * locally would see an empty chart. Callers on the caregiver screens pass
+ * the rows `/api/patients` already returns (`serverRows`); they are merged
+ * in, but only cover the server's ~28-day window, so 90d/180d ranges show
+ * that much history on a phone that never played locally.
  */
-export function useCognitiveTrend(patientId: string | null, range: TrendRange): UseCognitiveTrendResult {
+export function useCognitiveTrend(
+  patientId: string | null,
+  range: TrendRange,
+  /** The server's rows for this patient (from /api/patients), merged in so another phone's games show too. */
+  serverRows?: ScoreRow[],
+): UseCognitiveTrendResult {
   const toDate = isoDate(new Date());
   const fromDate = isoDate(daysAgo(RANGE_DAYS[range] - 1));
 
@@ -63,7 +68,10 @@ export function useCognitiveTrend(patientId: string | null, range: TrendRange): 
       .toArray();
   }, [patientId, fromDate, toDate]);
 
-  const points = useMemo(() => rowsToPoints(rows ?? []), [rows]);
+  const points = useMemo(
+    () => mergeServerPoints(rowsToPoints(rows ?? []), serverRows, fromDate, toDate),
+    [rows, serverRows, fromDate, toDate],
+  );
   const sessionDays = useMemo(() => countSessionDays(points), [points]);
 
   return { points, sessionDays, isLoading: rows === undefined };
