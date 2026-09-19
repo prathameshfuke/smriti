@@ -180,7 +180,10 @@
         "step3": "When the boxes disappear, enter how many you counted."
       },
       "iAmReady": "I'm ready!"
-    }
+    },
+    "tile": "Tile {n}",
+    "card": "Card {n}",
+    "pathPuzzle": "Path connecting puzzle"
   },
   "reminder": {
     "medication": "Time for your medicine",
@@ -210,7 +213,8 @@
     "offline": "Offline",
     "syncing": "Syncing",
     "pending": "Waiting to sync",
-    "notSyncedYet": "Not synced yet"
+    "notSyncedYet": "Not synced yet",
+    "lastOn": "· last {date}"
   },
   "disclaimer": "SMRITI supports cognitive care but does not diagnose or treat any medical condition. Always consult a qualified clinician.",
   "lang": {
@@ -226,7 +230,11 @@
     "back": "Back",
     "goBack": "Go back",
     "cancel": "Cancel",
-    "loading": "Loading"
+    "loading": "Loading",
+    "close": "Close",
+    "somethingWrong": "Something went wrong. Let us go back home.",
+    "goHome": "Go home",
+    "chooseLanguage": "Choose language"
   },
   "companion": {
     "title": "Ask Smriti",
@@ -275,5 +283,17 @@
     "messagesTitle": "Messages from family",
     "from": "From {name}",
     "seen": "Seen"
+  },
+  "pin": {
+    "keypad": "PIN keypad",
+    "backspace": "Backspace"
+  },
+  "login": {
+    "title": "Who is using SMRITI?",
+    "subtitle": "Choose one. You can switch later.",
+    "patient": "I am the Patient",
+    "patientHint": "Play games and see my reminders",
+    "caregiver": "I am the Caregiver",
+    "caregiverHint": "Check progress and set things up"
   }
 }

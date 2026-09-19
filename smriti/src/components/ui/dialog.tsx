@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { useTranslation } from '@/lib/i18n/provider';
 
 /**
  * Minimal shadcn-compatible Dialog family (no Radix dependency) — vendored
@@ -47,6 +48,7 @@ export function DialogTrigger({
 }
 
 export function DialogContent({ className, children }: { className?: string; children: React.ReactNode }) {
+  const { t } = useTranslation();
   const ctx = React.useContext(DialogContext);
   const open = !!ctx?.open;
   const setOpen = ctx?.setOpen;
@@ -83,7 +85,7 @@ export function DialogContent({ className, children }: { className?: string; chi
         <div className="-mr-2 -mt-2 flex justify-end">
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t('common.close')}
             onClick={() => ctx.setOpen(false)}
             className="flex h-12 w-12 items-center justify-center rounded-full text-2xl text-ink-muted hover:bg-surface-muted focus-visible:outline focus-visible:outline-4 focus-visible:outline-primary"
           >

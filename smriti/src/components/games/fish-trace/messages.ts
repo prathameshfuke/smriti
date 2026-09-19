@@ -1,5 +1,7 @@
 /** next-intl messages for the copied fish-trace GameComponent. */
 
+import { FISH_TRACE_NORTHEAST } from './messages.northeast';
+
 const gameUI = {
   en: {
     title: 'Fish Trace',
@@ -70,4 +72,5 @@ export const FISH_TRACE_MESSAGES = {
   en: { games: { fishTrace: gameUI.en } },
   hi: { games: { fishTrace: gameUI.hi } },
   as: { games: { fishTrace: gameUI.as } },
+  ...FISH_TRACE_NORTHEAST,
 };

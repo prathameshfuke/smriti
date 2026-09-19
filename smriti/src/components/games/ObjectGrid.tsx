@@ -1,8 +1,9 @@
 'use client';
 
-import type { SmritiObject } from '@/lib/engine/objects';
+import { objectName, type SmritiObject } from '@/lib/engine/objects';
 import { TOUCH_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import { useTapSelect } from '@/hooks/useTapSelect';
+import { useTranslation } from '@/lib/i18n/provider';
 
 export type RevealState = 'reveal' | 'recall';
 
@@ -43,6 +44,7 @@ export default function ObjectGrid({
   flashCorrect,
   targetLabel,
 }: ObjectGridProps) {
+  const { t, language } = useTranslation();
   const tapEnabled = revealState === 'recall';
   const tapSelect = useTapSelect();
 
@@ -80,7 +82,7 @@ export default function ObjectGrid({
               key={i}
               type="button"
               disabled={!tapEnabled}
-              aria-label={isOpen && obj ? obj.name.en : `Tile ${i + 1}`}
+              aria-label={isOpen && obj ? objectName(obj, language) : t('game.tile', { n: i + 1 })}
               {...tap}
               style={{
                 ...tap.style,
