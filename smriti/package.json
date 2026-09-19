@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:ui": "vitest --ui",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "audio:synthesize": "tsx scripts/synthesize-prompts.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -52,6 +53,7 @@
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^30.0.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5",
     "vitest": "^4.1.11"
   }
