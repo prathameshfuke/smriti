@@ -1,3 +1,4 @@
+import type { Table } from 'dexie';
 import {
   db,
   type LocalPatient,
@@ -331,6 +332,53 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
   };
 }
 
+/** Two rows are the same row when every field but the local `synced` flag matches. */
+function sameRow(a: object, b: object): boolean {
+  const strip = (r: object) => JSON.stringify(Object.entries(r).filter(([k]) => k !== 'synced').sort(([x], [y]) => (x < y ? -1 : 1)));
+  return strip(a) === strip(b);
+}
+
+/**
+ * Flags rows as synced only if they are still exactly what was sent. The
+ * request takes seconds; a game round logged meanwhile updates the day's
+ * summary, and writing the sent snapshot back (with `synced: true`) used to
+ * roll that update back and mark the newer numbers as already uploaded. A row
+ * that changed in flight keeps `synced: false` and goes up on the next sync.
+ * Only the flag is written, never the snapshot.
+ */
+async function markSyncedIfUnchanged<T extends { id: string; synced: boolean }>(
+  table: Table<T, string>,
+  sent: T[],
+): Promise<void> {
+  if (sent.length === 0) return;
+  const current = await table.bulkGet(sent.map((r) => r.id));
+  for (let i = 0; i < sent.length; i++) {
+    const now = current[i];
+    if (now && sameRow(now, sent[i])) await table.update(sent[i].id, { synced: true } as never);
+  }
+}
+
+/**
+ * Sessions, events and acks are sent from their `synced` flags, never from
+ * syncQueue, yet every one of them was also queued and nothing removed the
+ * copy — a second, ever-growing copy of every game round on the phone.
+ * Drops the queue rows of records the server now has (or that are gone).
+ */
+async function pruneDeliveredQueue(tableNames: string[]): Promise<void> {
+  const tables: Record<string, Table<{ id: string; synced: boolean }, string>> = {
+    game_sessions: db.gameSessions as never,
+    telemetry_events: db.telemetryEvents as never,
+    reminder_acks: db.reminderAcks as never,
+  };
+  for (const name of tableNames) {
+    const queued = await db.syncQueue.where('tableName').equals(name).toArray();
+    if (queued.length === 0) continue;
+    const rows = await tables[name].bulkGet(queued.map((q) => q.recordId));
+    const done = queued.filter((_, i) => !rows[i] || rows[i]!.synced).map((q) => q.id);
+    if (done.length) await db.syncQueue.bulkDelete(done);
+  }
+}
+
 /**
  * Marks every row across every patient as synced, and applies whatever the
  * server sent back — one transaction for the whole batch.
@@ -369,18 +417,15 @@ async function applySyncResponse(payloads: PatientSyncPayload[], body: SyncRespo
         if (!errors.reminderSchedules && payload.scheduleQueueIds.length) {
           await db.syncQueue.bulkDelete(payload.scheduleQueueIds);
         }
-        if (!errors.sessions) {
-          await db.gameSessions.bulkPut(payload.sessions.map((s) => ({ ...s, synced: true })) as never[]);
-        }
-        if (!errors.events) {
-          await db.telemetryEvents.bulkPut(payload.events.map((e) => ({ ...e, synced: true })) as never[]);
-        }
-        if (!errors.dailySummaries) {
-          await db.dailySummaries.bulkPut(payload.dailySummaries.map((d) => ({ ...d, synced: true })) as never[]);
-        }
-        if (!errors.reminderAcks) {
-          await db.reminderAcks.bulkPut(payload.reminderAcks.map((a) => ({ ...a, synced: true })) as never[]);
-        }
+        if (!errors.sessions) await markSyncedIfUnchanged(db.gameSessions, payload.sessions);
+        if (!errors.events) await markSyncedIfUnchanged(db.telemetryEvents, payload.events);
+        if (!errors.dailySummaries) await markSyncedIfUnchanged(db.dailySummaries, payload.dailySummaries);
+        if (!errors.reminderAcks) await markSyncedIfUnchanged(db.reminderAcks, payload.reminderAcks);
+        const delivered: string[] = [];
+        if (!errors.sessions) delivered.push('game_sessions');
+        if (!errors.events) delivered.push('telemetry_events');
+        if (!errors.reminderAcks) delivered.push('reminder_acks');
+        await pruneDeliveredQueue(delivered);
         if (!errors.memoryBankEntries) {
           // A partial `.update`, not `.bulkPut` of the full object: `payload.memoryBankEntries`
           // here holds the upload-swapped copy (photoUrl -> Storage URL) built for the wire
