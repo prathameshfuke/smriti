@@ -21,10 +21,12 @@ vi.mock('next/navigation', () => ({
 
 const seen: Record<string, Record<string, unknown>> = {};
 function stub(name: string) {
-  return (props: Record<string, unknown>) => {
+  const Stub = (props: Record<string, unknown>) => {
     seen[name] = props;
     return <div data-testid={name} />;
   };
+  Stub.displayName = `Stub(${name})`;
+  return Stub;
 }
 vi.mock('@/components/games/n-back/GameComponent', () => ({ default: stub('n_back') }));
 vi.mock('@/components/games/counting-boxes/GameComponent', () => ({ default: stub('counting_boxes') }));

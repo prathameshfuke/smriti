@@ -13,7 +13,6 @@ import { cacheSpeech, findCachedSpeech } from '@/lib/ai/speech-cache';
  */
 
 const M = (t: string, f: string) => `MARK|${t}|${f}`;
-const IDS = new Set(['id', 'patientId', 'caregiverId', 'sessionId', 'reminderId', 'authUserId', 'createdBy', 'consentedBy', 'issuedBy']);
 
 let db: SmritiDB;
 beforeEach(() => { db = new SmritiDB(); });
