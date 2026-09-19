@@ -61,7 +61,7 @@ Everything works with the screen off the internet. When connectivity returns, it
 | | SMRITI | BrainHQ / Lumosity |
 |---|---|---|
 | Works fully offline | Yes | No — online-dependent |
-| Assamese / Hindi audio-first UI | Yes | No — English-only |
+| Audio-first UI in Assamese, Hindi, Bengali, Nepali, Bodo, Manipuri + English | Yes (Bodo/Manipuri text awaiting native review) | No — English-only |
 | Designed for caregiver-mediated sessions | Yes | No — solo play |
 | Games mapped to validated clinical assessments (CANTAB, MoCA, TMT) | Yes | Partial |
 | Built for low-literacy, low-vision rural users | Yes | No — Western-normed UX |
@@ -82,6 +82,8 @@ Everything works with the screen off the internet. When connectivity returns, it
 - Audio-first — no reading required
 - 100% playable offline
 - NER-cultural imagery (gamosa, one-horned rhino, bamboo baskets, dhol)
+- 7 languages: English, Hindi, Assamese, Bengali, Nepali, Bodo, Manipuri — every screen has real text in each, and fixed prompts can be pre-synthesized to bundled offline audio
+- Reminders that can arrive even when the app is closed (Web Push), with a plain-language opt-in
 - "Ask Smriti" AI companion for conversation & reassurance
 - Personalized reminiscence quizzes from real family photos
 
@@ -93,6 +95,7 @@ Everything works with the screen off the internet. When connectivity returns, it
 - Longitudinal cognitive graphs (30/90/180 day)
 - Reminder adherence tracking
 - Sudden cognitive drop detection (>2 SD threshold)
+- Push notifications to the caregiver's own phone when an alert is created (cognitive drop, missed sessions, low adherence) — generic wording, no clinical detail on the lock screen
 - Family notes & shared updates
 - AI-generated caregiver digests
 - Google / magic-link authentication, Supabase RLS per caregiver
@@ -117,6 +120,7 @@ flowchart TB
 
     subgraph Edge["Vercel — Next.js API Routes"]
         direction TB
+        Push["push (subscribe + tick)"]
         Sync["sync"]
         Auth["auth"]
         Patients["patients"]
@@ -140,6 +144,7 @@ flowchart TB
     Caregiver["Caregiver Dashboard"]
 
     SW -->|"sync when online"| Sync
+    Push -.->|"Web Push: closed-app reminders + caregiver alerts"| SW
     Sync --> PG
     Auth --> SBAuth
     Patients --> PG
@@ -243,6 +248,37 @@ flowchart LR
 </p>
 <p align="center"><sub>Ask Smriti · Caregiver access · Family message · Seen / done · Could not connect</sub></p>
 
+## Reminders and Alerts When the App Is Closed
+
+Two Web Push paths use one service worker and one `push_subscriptions` table:
+
+| Path | Who receives it | Trigger |
+|---|---|---|
+| **Patient reminders** | The patient's installed phone | A scheduler calls `GET /api/push/tick` every 5 minutes; the server sends due medicine, water, activity and appointment reminders |
+| **Caregiver alerts** | The caregiver's own phone | Sent right after an alert row is created in `/api/sync` (cognitive drop, missed sessions, low adherence) |
+
+- Notifications are generic ("Time for your medicine"); no medicine names or scores appear on a lock screen.
+- The page and the service worker share one due-ness function and an atomic claim store, so a reminder never notifies twice.
+- Offline: the service worker also registers Periodic Background Sync and reads reminders from IndexedDB with no network. This is best-effort — Chromium installed PWAs only, at the browser's pace, often 12 hours or more. The dependable path is closed-and-online via Web Push; the open-app poll covers the rest.
+- iOS needs the app added to the Home Screen (iOS 16.4+); the opt-in card says so.
+- A phone can be a patient-reminder device or a caregiver-alert device, not both; the API returns 409 rather than silently replacing the other.
+- No paid dependency: SMS and WhatsApp are not free with the current stack (Supabase SMS needs a paid provider; WhatsApp Business is paid; India SMS needs DLT registration). A free-tier email fallback is a possible next step.
+
+Setup steps (migration 016, VAPID keys, `CRON_SECRET`, scheduler) are in [06_DEPLOYMENT.md](smriti/docs/06_DEPLOYMENT.md#web-push-setup-closed-app-reminders-and-caregiver-alerts).
+
+## Languages and Voice
+
+| Language | UI text | Bundled/synthesized voice | Voice input |
+|---|---|---|---|
+| English, Hindi, Assamese | Full | Bhashini TTS | Hindi, Assamese (Bhashini ASR) |
+| Bengali | Full | Bhashini TTS | Bhashini ASR |
+| Bodo, Manipuri | Full — **machine-assisted, awaiting native-speaker review** ([translation-review.md](smriti/docs/translation-review.md)); Manipuri is written in Bengali script | Bhashini TTS exists; audio not yet generated | Not available (no Bhashini ASR) |
+| Nepali | Full | No Bhashini TTS — needs human recording | Not available via Bhashini |
+
+- Playback order for fixed prompts: bundled clip, then the local speech cache, then live Bhashini, then the device voice, then silent with on-screen text. Another language's audio is never substituted.
+- Generate the bundled clips with `npm run audio:synthesize` (needs the `BHASHINI_*` variables). It is throttled, resumable, and writes `public/audio/manifest.json` and `docs/audio-coverage.json`.
+- Not yet covered in Bodo/Manipuri: caregiver screens and the family page stay in English.
+
 ## Offline-First Sync
 
 ```mermaid
@@ -334,12 +370,13 @@ Full schema, indexes, and Row Level Security policies live in [docs/03_DATABASE.
 | PWA / offline | `next-pwa` + Workbox service worker |
 | Backend | Supabase — PostgreSQL, Auth, Realtime, Row Level Security |
 | AI companion | Groq primary, OpenRouter fallback (model slugs change — see `src/lib/ai/llm-client.ts`) |
-| Speech synthesis | Bhashini TTS (Assamese/Hindi/English), browser `speechSynthesis` fallback |
+| Speech synthesis | Bhashini TTS (Assamese, Hindi, English, Bengali, Bodo, Manipuri), pre-synthesized bundled clips, browser `speechSynthesis` fallback |
+| Push notifications | Web Push (`web-push`, VAPID) + custom service-worker handlers |
 | Forms & validation | react-hook-form + zod |
 | Charts | Recharts |
 | Motion | Framer Motion |
 | Audio | Howler.js |
-| i18n | next-intl + locale JSON (English, Hindi, Assamese) |
+| i18n | next-intl + locale JSON (English, Hindi, Assamese, Bengali, Nepali, Bodo, Manipuri) |
 | Testing | Vitest, Testing Library, fake-indexeddb |
 | Accessibility typography | Atkinson Hyperlegible (low-vision optimized), Fraunces, Noto Sans Bengali/Devanagari |
 | Deployment | Vercel + Supabase — **$0/month** on free tiers |
@@ -355,7 +392,7 @@ smriti/
 │   ├── manifest.json         # PWA manifest
 │   ├── icons/                # App icons (192, 512, apple-touch)
 │   ├── images/                # Game icon set
-│   └── audio/                 # Pre-recorded voice prompts (as/hi/en)
+│   └── audio/                 # Pre-synthesized voice prompts + manifest.json (generate with npm run audio:synthesize)
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx            # Landing page
@@ -376,6 +413,7 @@ smriti/
 │   │       ├── alerts/               # Cognitive-drop detection
 │   │       ├── family-share/          # Family invite + notes
 │   │       ├── device-trust/           # Kiosk device trust tokens
+│   │       ├── push/                    # Web Push subscribe + scheduled tick
 │   │       └── ai/                      # Companion, digests, transcription
 │   ├── components/
 │   │   ├── ui/                 # Design-system primitives
@@ -386,9 +424,11 @@ smriti/
 │   │   ├── db/                # Dexie schema + sync engine
 │   │   ├── engine/               # Difficulty, scoring, alerts
 │   │   ├── ai/                     # LLM client (Groq/OpenRouter)
-│   │   ├── audio/                    # Playback manager
+│   │   ├── audio/                    # Playback manager, bundled-prompt manifest
+│   │   ├── push/                       # Web Push sender, subscriptions, tick, alert delivery
 │   │   ├── i18n/                       # Locales + provider
 │   │   └── supabase/                    # Client factories, RLS-aware
+│   ├── sw/                      # Custom service-worker code (push, notification click, periodic sync)
 │   ├── hooks/                  # useOfflineStatus, useSync, ...
 │   └── stores/                  # Zustand stores
 └── docs/                          # PRD, architecture, DB, game design, deployment
@@ -422,6 +462,7 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `npm test` | Run the Vitest suite once |
 | `npm run test:watch` | Vitest in watch mode |
 | `npm run test:ui` | Vitest browser UI |
+| `npm run audio:synthesize` | Pre-synthesize fixed voice prompts with Bhashini (needs `BHASHINI_*`; supports `--dry-run`, `--lang`, `--force`) |
 
 ## Environment Variables
 
@@ -435,6 +476,9 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `BHASHINI_USER_ID` / `BHASHINI_ULCA_API_KEY` | Assamese/Hindi speech-to-text and Assamese/Hindi/English text-to-speech (primary path) | ULCA credential pair from [Bhashini](https://bhashini.gov.in) — used for the config call in `src/lib/ai/bhashini-auth.ts`, which resolves the real service and mints the dynamic key the compute call sends |
 | `BHASHINI_INFERENCE_API_KEY` | Legacy fallback for the case above | Kept alongside the pair above: live-probed, this ULCA account's discovery has no registered ASR service for Assamese at all, while this older static key is confirmed still working for it — `bhashini-asr-client.ts`/`bhashini-client.ts` fall back to it only when the primary discovery call fails |
 | Google OAuth credentials | Caregiver "Sign in with Google" | See `src/app/api/auth/google/route.ts` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push | Public VAPID key from `npx web-push generate-vapid-keys`; read at **build** time, so redeploy after setting |
+| `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web Push | Private key (server only) and a contact such as `mailto:you@example.com`. Push is a silent no-op if unset |
+| `CRON_SECRET` | Closed-app reminders | Any long random string you choose; the scheduler sends it as `Authorization: Bearer …` to `/api/push/tick`. The route returns 503 if unset |
 
 > [!NOTE]
 > Games and reminders work fully offline without any of these — only sync and the caregiver dashboard need them. All AI calls are routed through `src/lib/ai/llm-client.ts`; never call Groq/OpenRouter directly from a feature file.
@@ -455,10 +499,11 @@ Vitest + Testing Library, with `fake-indexeddb` standing in for Dexie's IndexedD
 | [02_ARCHITECTURE.md](smriti/docs/02_ARCHITECTURE.md) | System design, offline data flow |
 | [03_DATABASE.md](smriti/docs/03_DATABASE.md) | Full schema, RLS policies, migrations |
 | [04_GAME_DESIGN.md](smriti/docs/04_GAME_DESIGN.md) | Clinical specs, difficulty algorithms |
-| [06_DEPLOYMENT.md](smriti/docs/06_DEPLOYMENT.md) | Deploying to Vercel + Supabase |
+| [06_DEPLOYMENT.md](smriti/docs/06_DEPLOYMENT.md) | Deploying to Vercel + Supabase, Web Push setup |
 | [07_AGENT_PROMPTS.md](smriti/docs/07_AGENT_PROMPTS.md) | Build guide for AI pair-programming |
 | [08_API_SPEC.md](smriti/docs/08_API_SPEC.md) | API route reference |
 | [09_PITCH_GUIDE.md](smriti/docs/09_PITCH_GUIDE.md) | Hackathon presentation guide |
+| [translation-review.md](smriti/docs/translation-review.md) | Every Bodo/Manipuri string with a confidence rating for native-speaker review |
 
 ## Roadmap
 
@@ -467,7 +512,15 @@ Vitest + Testing Library, with `fake-indexeddb` standing in for Dexie's IndexedD
 - [x] Traffic-light triage dashboard
 - [x] Bhashini TTS integration — companion answers + reminder narration, cached locally, browser-TTS fallback
 - [ ] Bhashini ASR integration (needs browser recording switched from webm/Opus to wav/flac — Bhashini's ASR only documents those formats)
-- [ ] Manipuri + Bodo language support
+- [x] Bengali, Nepali, Bodo and Manipuri UI text (Bodo/Manipuri need native-speaker review before clinical use)
+- [x] Web Push reminders when the app is closed, and Web Push alerts to caregivers
+- [x] Offline voice-prompt manifest and synthesis tooling
+- [ ] Generate and ship the bundled audio; native check of Bodo/Manipuri clips; human recording for Nepali
+- [ ] Voice input for Bodo, Manipuri and Nepali (no Bhashini ASR)
+- [ ] Real-device verification of closed-app reminders and alerts (installed PWA on Android and iOS)
+- [ ] Caregiver screens and family page in the other languages
+- [ ] Reminder adherence sync to a caregiver's second device; per-device merge of daily summaries
+- [ ] Free-tier email fallback for caregiver alerts; SOS / wandering alerts; shared care team for ASHA workers
 - [ ] Per-domain Elo rating with dynamic K-value
 - [ ] ABHA health-record linkage exploration
 - [ ] Pilot deployment with LGBRIMH Tezpur + ARDSI Guwahati (50 patients, IRB-approved protocol)
