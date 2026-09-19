@@ -8,6 +8,7 @@ import appIcon from '@/appicon.png';
 import GameTile from '@/components/ui/GameTile';
 import PinPad from '@/components/ui/PinPad';
 import ReminderCard from '@/components/ui/ReminderCard';
+import NotificationOptIn from '@/components/ui/NotificationOptIn';
 import PinDots from '@/components/ui/PinDots';
 import StreakFlame from '@/components/ui/StreakFlame';
 import Skeleton from '@/components/ui/Skeleton';
@@ -407,6 +408,8 @@ export default function HomePage() {
           {t('home.caregiver')}
         </button>
       </header>
+
+      <NotificationOptIn />
 
       {pendingReminder ? (
         <ReminderCard

@@ -6,6 +6,9 @@ const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
   skipWaiting: true,
+  // src/sw/index.ts -> public/worker-<hash>.js, importScripts'd into the generated
+  // sw.js: push, notificationclick and periodicsync handlers (reminders while closed).
+  customWorkerDir: 'sw',
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     // next-pwa only auto-registers a NetworkFirst cache for the exact
