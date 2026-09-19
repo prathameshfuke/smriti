@@ -4,8 +4,10 @@
  * Only personal or health content is listed, and never an indexed field:
  * IndexedDB builds indexes from the stored value, so an encrypted field can't
  * be queried with `where()`. Ids, foreign keys, timestamps and `synced` flags
- * stay readable so every existing query keeps working. `speechCache` is left
- * out because it holds generic spoken phrases, not anything about a person.
+ * stay readable so every existing query keeps working. `speechCache` is
+ * encrypted too: it caches spoken companion answers and reminder wording, which
+ * quote Memory Bank facts and medicines. Its ids are keyed hashes, not the
+ * text (see `lib/ai/speech-cache.ts`).
  *
  * Adding a field here is safe for existing installs: rows written before are
  * still read as plain text (see `middleware.ts`) and get encrypted the next
@@ -23,5 +25,6 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   reminderSchedules: ['label', 'facilityName', 'locationNotes', 'bringNotes'],
   telemetryEvents: ['metadata'],
   syncQueue: ['payload'],
+  speechCache: ['text', 'audioBase64'],
   deviceTrust: ['signature'],
 };

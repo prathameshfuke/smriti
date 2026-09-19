@@ -164,16 +164,18 @@ type GameComponentProps = {
     t?: ReturnType<typeof useTranslations>;
     /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
     onComplete?: (accuracy: number, level: number) => void;
+  /** The patient's persisted level for this game, passed by the page (per patient, unlike device-wide settings). */
+  initialLevel?: number;
 };
 
 // 游戏设置自定义钩子
-function useGameSettings() {
+function useGameSettings(initialLevel?: number) {
     // 获取当前语言
     const locale = useLocale();
     
     // 默认游戏设置
     const [settings, setSettings] = useState<GameSettingsType>({
-        selectedNBack: GAME_CONFIG.difficulty.initialLevel,      // 默认N-back等级
+        selectedNBack: Math.min(GAME_CONFIG.difficulty.maxLevel, Math.max(GAME_CONFIG.difficulty.initialLevel, Math.round(initialLevel ?? 1))), // patient's persisted level
         voiceType: locale === "zh" ? "female" : "male",      // 中文环境默认使用女声，但不是中文女声
         selectedTypes: ["position", "audio"], // 默认启用双模式
         trialsPerRound: GAME_CONFIG.trials.perRound, // 默认每轮试验次数
@@ -197,7 +199,7 @@ function useGameSettings() {
     return { settings, updateSettings };
 }
 
-export default function GameComponent({ t: propT, onComplete }: GameComponentProps) {
+export default function GameComponent({ t: propT, onComplete, initialLevel }: GameComponentProps) {
     const router = useRouter();
     // 如果提供了 t prop，则使用它，否则使用 useTranslations 获取
     const defaultT = useTranslations('games.dualNBack.gameUI');
@@ -209,7 +211,7 @@ export default function GameComponent({ t: propT, onComplete }: GameComponentPro
     const language = isUILanguage(locale) ? locale : 'en';
     const { isOnline } = useOfflineStatus();
 
-    const { settings, updateSettings } = useGameSettings();
+    const { settings, updateSettings } = useGameSettings(initialLevel);
     const tapSelect = useTapSelect();
 
     // 原useGameLogic中的状态

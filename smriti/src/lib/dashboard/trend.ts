@@ -1,5 +1,6 @@
 import type { GameType } from '@/lib/supabase/types';
 import type { LocalDailySummary } from '@/lib/db/schema';
+import type { ScoreRow } from '@/lib/dashboard/cognitiveScore';
 
 /**
  * Cognitive-trend data, pure and framework-free (no React, no Dexie import
@@ -39,6 +40,39 @@ export function summaryToPoint(row: LocalDailySummary): TrendPoint {
 
 export function rowsToPoints(rows: LocalDailySummary[]): TrendPoint[] {
   return rows.map(summaryToPoint);
+}
+
+/**
+ * Adds the server's game-day rows (what `/api/patients` sends for a patient)
+ * to this device's own points, so a caregiver on a different phone from the
+ * patient still sees a trend, calendar and streak. A game-day present in both
+ * keeps whichever copy has more rounds (same rule as `mergeScoreRows`). The
+ * server rows carry no session count, so those days count as one session.
+ */
+export function mergeServerPoints(
+  local: TrendPoint[],
+  serverRows: ScoreRow[] | undefined,
+  fromDate: string,
+  toDate: string,
+): TrendPoint[] {
+  if (!serverRows || serverRows.length === 0) return local;
+  const byKey = new Map<string, TrendPoint>();
+  for (const p of local) byKey.set(`${p.date}|${p.gameType}`, p);
+  for (const r of serverRows) {
+    if (r.totalRounds <= 0 || r.date < fromDate || r.date > toDate) continue;
+    const key = `${r.date}|${r.gameType}`;
+    const existing = byKey.get(key);
+    if (existing && existing.totalRounds >= r.totalRounds) continue;
+    byKey.set(key, {
+      date: r.date,
+      accuracy: (r.correctRounds / r.totalRounds) * 100,
+      gameType: r.gameType as GameType,
+      maxDifficultyReached: r.maxDifficultyReached,
+      sessionCount: existing?.sessionCount ?? 1,
+      totalRounds: r.totalRounds,
+    });
+  }
+  return [...byKey.values()];
 }
 
 /**

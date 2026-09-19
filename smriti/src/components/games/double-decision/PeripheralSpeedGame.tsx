@@ -458,9 +458,11 @@ function SettingsDialog({
 export interface PeripheralSpeedGameProps {
   /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
   onComplete?: (accuracy: number, maxFieldReached: number) => void;
+  /** The patient's persisted level for this game, passed by the page (per patient, unlike device-wide settings). */
+  initialLevel?: number;
 }
 
-export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {}) {
+export function PeripheralSpeedGame({ onComplete, initialLevel }: PeripheralSpeedGameProps = {}) {
   const t = useTranslations('games.doubleDecision.gameUI')
   const locale = useLocale()
   const language = isUILanguage(locale) ? locale : 'en'
@@ -481,7 +483,9 @@ export function PeripheralSpeedGame({ onComplete }: PeripheralSpeedGameProps = {
   const [bestAccuracy, setBestAccuracy] = useState<number | null>(null)
   const [bestRating, setBestRating] = useState<number | null>(null)
   const [countdown, setCountdown] = useState(3)
-  const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
+  // Level maps 1:1 onto the game's three field tiers (see MAX_LEVEL.double_decision).
+  const startTier = Math.min(3, Math.max(1, Math.round(initialLevel ?? 1)))
+  const [settings, setSettings] = useState<GameSettings>({ ...DEFAULT_SETTINGS, startingFieldLevel: startTier })
   const [activeSettings, setActiveSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
   const [totalTrials, setTotalTrials] = useState(DEFAULT_SETTINGS.totalTrials)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)

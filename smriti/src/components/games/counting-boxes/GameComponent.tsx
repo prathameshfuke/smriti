@@ -166,9 +166,11 @@ function randomInRange(min: number, max: number): number {
 export interface GameComponentProps {
   /** Bridges completion into this app's telemetry/difficulty engine — added glue, not part of the original game logic. */
   onComplete?: (accuracyPct: number, levelsPlayed: number) => void;
+  /** The patient's persisted level for this game, passed by the page (per patient, unlike device-wide settings). */
+  initialLevel?: number;
 }
 
-export default function GameComponent({ onComplete }: GameComponentProps) {
+export default function GameComponent({ onComplete, initialLevel }: GameComponentProps) {
     // 翻译
     const t = useTranslations('games.countingBoxes.gameUI');
     const locale = useLocale();
@@ -177,7 +179,8 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
 
     // 游戏状态
     const [gameState, setGameState] = useState<GameState>('start');
-    const [level, setLevel] = useState(1);
+    const startLevel = Math.min(LEVEL_CONFIGS.length, Math.max(1, Math.round(initialLevel ?? 1)));
+    const [level, setLevel] = useState(startLevel);
     const [correctBlockCount, setCorrectBlockCount] = useState(0);
     const [timerDisplay, setTimerDisplay] = useState('');
     const [userAnswer, setUserAnswer] = useState('');
@@ -589,12 +592,12 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
             totalTime: 0,
             levelResults: []
         });
-        setLevel(1);
+        setLevel(startLevel);
         setUserAnswer('');
         setGameState('observing');
         generateLevel();
         startTimer();
-    }, [generateLevel, startTimer]);
+    }, [generateLevel, startTimer, startLevel]);
 
     // 检查答案 - 新机制：答对答错都进入下一关
     const checkAnswer = useCallback(

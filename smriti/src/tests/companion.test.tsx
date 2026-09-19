@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import 'fake-indexeddb/auto';
 import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
 import { db } from '@/lib/db/schema';
+import { findCachedSpeech } from '@/lib/ai/speech-cache';
 import { usePatientStore } from '@/stores/patientStore';
 import { I18nProvider } from '@/lib/i18n/provider';
 
@@ -219,7 +220,7 @@ describe('CompanionPage', () => {
 
     // The reply arrived with its audio, so no separate /api/ai/speak request.
     expect(fetchMock.mock.calls.map((c) => String(c[0]))).toEqual(['/api/ai/converse']);
-    expect(await db.speechCache.get('en Hello!')).toMatchObject({ audioBase64: 'QUJD' });
+    expect(await findCachedSpeech('en', 'Hello!')).toMatchObject({ audioBase64: 'QUJD' });
   });
 
   it('shows its own reviewed wording for the fixed replies, and never caches them', async () => {

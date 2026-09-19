@@ -11,15 +11,19 @@ import type { UILanguage } from '@/lib/i18n/languages';
 
 const CACHE_LIMIT = 200;
 
-function cacheKey(language: UILanguage, text: string): string {
-  return `${language} ${text}`;
+/** Keyed hash, never the text: the primary key can't be encrypted (see LocalSpeechCache.id). */
+async function cacheKey(language: UILanguage, text: string): Promise<string | null> {
+  const hash = await db.keyedHash(`${language}\n${text}`);
+  return hash ? `v2:${language}:${hash}` : null;
 }
 
 export async function findCachedSpeech(
   language: UILanguage,
   text: string,
 ): Promise<LocalSpeechCache | null> {
-  const hit = await db.speechCache.get(cacheKey(language, text));
+  const id = await cacheKey(language, text);
+  if (!id) return null;
+  const hit = await db.speechCache.get(id);
   return hit ?? null;
 }
 
@@ -29,8 +33,11 @@ export async function cacheSpeech(params: {
   audioBase64: string;
   audioFormat: string;
 }): Promise<void> {
+  const id = await cacheKey(params.language, params.text);
+  // No key (no WebCrypto): skip caching instead of storing the sentence in the clear.
+  if (!id) return;
   await db.speechCache.put({
-    id: cacheKey(params.language, params.text),
+    id,
     text: params.text,
     language: params.language,
     audioBase64: params.audioBase64,

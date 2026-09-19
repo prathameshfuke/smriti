@@ -92,7 +92,7 @@ function DoubleDecisionPageInner() {
       />
       <main className="flex flex-1 flex-col px-4 py-6">
         <NextIntlClientProvider locale={language} messages={DOUBLE_DECISION_MESSAGES[language as keyof typeof DOUBLE_DECISION_MESSAGES] ?? DOUBLE_DECISION_MESSAGES.en}>
-          <PeripheralSpeedGame onComplete={onComplete} />
+          <PeripheralSpeedGame initialLevel={difficulty.currentLevel} onComplete={onComplete} />
         </NextIntlClientProvider>
       </main>
     </div>
