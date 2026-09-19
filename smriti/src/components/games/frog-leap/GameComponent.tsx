@@ -395,15 +395,17 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     return (
         <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
 
-            {/* Top HUD */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 bg-transparent shrink-0 z-20">
+            {/* Top HUD — fixed min-height (64px settings button + py padding) so
+                this row is the same height idle vs playing; PatientNav above
+                already carries the game title, so idle no longer repeats it here. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 min-h-[80px] md:min-h-[88px] bg-transparent shrink-0 z-20">
                 {phase !== 'idle' && (
                     <span className="text-patient-sm font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary-light/40 text-primary-dark shrink-0">
                         {t('level', { level: level.toString() })}
                     </span>
                 )}
                 <div className="font-serif-display font-semibold text-patient-sm md:text-patient-body text-ink truncate">
-                    {phase === 'idle' ? t('start') : message}
+                    {phase !== 'idle' ? message : null}
                 </div>
                 {phase !== 'idle' && (
                     <div className="flex gap-3 text-patient-sm font-semibold md:ml-auto">
