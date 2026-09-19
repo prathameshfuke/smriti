@@ -283,16 +283,20 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
     return (
         <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
 
-            {/* Top HUD */}
-            <div className="flex justify-between items-center px-6 py-3 bg-transparent shrink-0 z-20">
-                <div className="flex items-center gap-3">
+            {/* Top HUD — fixed min-height (64px settings button + py padding) so
+                this row is the same height idle vs playing; PatientNav above
+                already carries the game title, so idle no longer repeats it here.
+                Message is clamped to one line so a long translated status string
+                can't wrap and grow the row past that reserved height. */}
+            <div className="flex justify-between items-center px-6 py-3 min-h-[88px] bg-transparent shrink-0 z-20">
+                <div className="flex items-center gap-3 min-w-0">
                     {phase !== 'idle' && (
-                        <span className="text-patient-sm font-bold px-2.5 py-1 rounded-full bg-primary-light/40 text-primary-dark">
+                        <span className="text-patient-sm font-bold px-2.5 py-1 rounded-full bg-primary-light/40 text-primary-dark shrink-0">
                             {t('level')} {level}
                         </span>
                     )}
-                    <div className="font-serif-display font-semibold text-patient-body text-ink">
-                        {phase === 'idle' ? t('title') : message}
+                    <div className="font-serif-display font-semibold text-patient-body text-ink truncate">
+                        {phase !== 'idle' ? message : null}
                     </div>
                 </div>
                 <div className="flex gap-3 items-center">
@@ -323,6 +327,11 @@ export default function GameComponent({ onComplete }: GameComponentProps) {
             {/* Play Area */}
             <div
                 className="relative flex-1 w-full min-h-[360px] overflow-hidden bg-[#0D9488]/10"
+                style={{
+                    backgroundImage: "url('/games/assets/frog/bg_pond.png')",
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                }}
                 ref={containerRef}
             >
                 {/* Score Popup Animation */}
