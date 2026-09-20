@@ -136,7 +136,9 @@ function CaregiverDashboardPageInner() {
       {error ? (
         <div className="flex max-w-md flex-col gap-4 py-8">
           <p className="text-caregiver-body text-ink">
-            Could not load your patients. Check the connection, then try again.
+            {typeof navigator !== 'undefined' && !navigator.onLine
+              ? 'You are offline, and this summary has not been loaded on this device yet. Games, reminders and the Memory Bank still work. It will load once you are connected.'
+              : 'Could not load your patients. Check the connection, then try again.'}
           </p>
           <BigButton label="Try again" variant="secondary" onClick={load} />
         </div>

@@ -449,7 +449,9 @@ describe('POST /api/ai/converse', () => {
     return new Request('http://localhost/api/ai/converse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ deviceTrustToken: makeDeviceToken('p1'), ...body }),
+      // The phone sends its decrypted Memory Bank with each message: the
+      // cloud copy is end-to-end encrypted and unreadable to the server.
+      body: JSON.stringify({ deviceTrustToken: makeDeviceToken('p1'), facts: memoryRows, ...body }),
     });
   }
 
@@ -492,6 +494,20 @@ describe('POST /api/ai/converse', () => {
     currentConsent = consentRow({ ai_companion: false, voice_processing: false });
     expect((await POST(converse({ message: 'hello' }))).status).toBe(403);
     expect(callChat).not.toHaveBeenCalled();
+  });
+
+  it('never reads the (encrypted) Memory Bank from the database', async () => {
+    serviceFromMock.mockImplementation((table: string) => {
+      if (table === 'memory_bank_entries') throw new Error('memory bank must come from the phone');
+      return makeChain({ data: [], error: null });
+    });
+    const callChat = await modelSays({ reply: 'Raju is your son.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'who is Raju' }))).json();
+
+    expect(body.kind).toBe('answer');
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Raju (son)');
   });
 
   it('answers small talk warmly instead of refusing it', async () => {

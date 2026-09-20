@@ -31,6 +31,10 @@ export function useOfflineStatus(): { isOnline: boolean } {
         commit(false);
       }
     };
+    // Checked once straight away: a phone can report a connection with no
+    // usable signal behind it, and waiting a full poll interval left offline
+    // screens (Ask Smriti's Memory Bank buttons) hidden for half a minute.
+    if (navigator.onLine) void checkHealth();
     const interval = setInterval(() => void checkHealth(), POLL_INTERVAL_MS);
 
     return () => {

@@ -209,13 +209,23 @@ export async function POST(request: Request) {
       if (error) errors.reminderAcks = error.message;
     }
     if (patient.memoryBankEntries?.length) {
-      // Not ignoreDuplicates: unlike the append-only categories above, an
-      // edit or soft-delete re-sends the same id and must actually overwrite
-      // the existing row, not be silently skipped as a duplicate.
-      const { error } = await supabase
-        .from('memory_bank_entries')
-        .upsert(patient.memoryBankEntries as never[], { onConflict: 'id' });
-      if (error) errors.memoryBankEntries = error.message;
+      const incoming = patient.memoryBankEntries.map((e) => ({ ...e, patient_id: patient.patientId }));
+      if (!incoming.every(isEncryptedMemoryBankRow)) {
+        // The phone encrypts before sending (lib/memoryBank/cloudSync.ts).
+        // Plain text here means an old or broken client: refuse rather than
+        // store personal facts readable in the database.
+        errors.memoryBankEntries = 'memory bank entries must be encrypted';
+      } else {
+        const { rows, error: readError } = await newerThanStored(supabase, incoming);
+        if (readError) {
+          errors.memoryBankEntries = readError;
+        } else if (rows.length) {
+          // Not ignoreDuplicates: an edit or soft-delete re-sends the same id
+          // and must overwrite the row, as long as it is the newer edit.
+          const { error } = await supabase.from('memory_bank_entries').upsert(rows as never[], { onConflict: 'id' });
+          if (error) errors.memoryBankEntries = error.message;
+        }
+      }
     }
     if (patient.consent) {
       const error = await saveConsent(supabase, patient.patientId, caregiver.id, patient.consent);
@@ -281,7 +291,10 @@ export async function POST(request: Request) {
           .from('memory_bank_entries')
           .select('id, patient_id, category, title, detail, photo_url, relationship, active, created_by, updated_at')
           .in('patient_id', patientIds)
-          .gte('updated_at', since)
+          // Received time, not `updated_at`: that is the edit time on the
+          // phone (last-write-wins), and an edit made offline and uploaded
+          // late would be older than the cursor and never reach other phones.
+          .gte('server_updated_at', since)
       : Promise.resolve({ data: [] }),
     patientIds.length
       ? supabase.from('patient_consents').select('*').in('patient_id', patientIds).gte('updated_at', since)
@@ -568,4 +581,36 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
     title: 'Low reminder adherence',
     description: `Only ${overallPct}% of reminders were marked done in the last 7 days.`,
   });
+}
+
+const ENCRYPTED_PREFIX = 'enc1:';
+
+function isEncryptedMemoryBankRow(row: Record<string, unknown>): boolean {
+  const enc = (v: unknown) => typeof v === 'string' && v.startsWith(ENCRYPTED_PREFIX);
+  const encOrNull = (v: unknown) => v == null || enc(v);
+  return enc(row.title) && enc(row.detail) && encOrNull(row.relationship) && encOrNull(row.photo_url);
+}
+
+/**
+ * Last-write-wins, the same rule the phone applies when pulling: a row is
+ * only written if no stored row with that id has a newer `updated_at`. An
+ * edit made offline on one phone and synced hours later can't overwrite a
+ * newer edit another phone already uploaded.
+ */
+async function newerThanStored(
+  supabase: NonNullable<Awaited<ReturnType<typeof authenticateRequest>>>['supabase'],
+  rows: Array<Record<string, unknown> & { id: string }>,
+): Promise<{ rows: Array<Record<string, unknown> & { id: string }>; error?: string }> {
+  const { data, error } = await supabase
+    .from('memory_bank_entries')
+    .select('id, updated_at')
+    .in('id', rows.map((r) => r.id));
+  if (error) return { rows: [], error: error.message };
+  const stored = new Map((data ?? []).map((r) => [r.id, new Date(r.updated_at).getTime()]));
+  return {
+    rows: rows.filter((r) => {
+      const existing = stored.get(r.id);
+      return existing === undefined || new Date(String(r.updated_at)).getTime() >= existing;
+    }),
+  };
 }

@@ -27,4 +27,6 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   syncQueue: ['payload'],
   speechCache: ['text', 'audioBase64'],
   deviceTrust: ['signature'],
+  apiCache: ['body'],
+  cloudKeys: ['key'],
 };

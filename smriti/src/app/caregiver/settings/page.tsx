@@ -1,5 +1,6 @@
 'use client';
 
+import { useOfflineDataStore } from '@/stores/offlineDataStore';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { getDevicePatients } from '@/lib/auth/localSession';
@@ -207,11 +208,24 @@ export default function CaregiverSettingsPage() {
     // copies come back on the next pull, and quizzes are regenerated.
     // Memory Bank entries, photos and telemetry stay: they can hold edits not
     // synced yet, they are only ever read for the signed-in patient, and they
-    // are encrypted at rest (lib/db/crypto/fields.ts).
+    // are encrypted at rest (lib/db/crypto/fields.ts). The cached dashboard
+    // data and the unlocked Memory Bank backup key go: signing back in asks
+    // for the backup passphrase again.
     await db.transaction(
       'rw',
-      [db.caregivers, db.patients, db.reminderSchedules, db.aiConversationLog, db.familyMessages, db.reminiscenceQuizzes],
+      [
+        db.caregivers,
+        db.patients,
+        db.reminderSchedules,
+        db.aiConversationLog,
+        db.familyMessages,
+        db.reminiscenceQuizzes,
+        db.apiCache,
+        db.cloudKeys,
+      ],
       async () => {
+        await db.apiCache.clear();
+        await db.cloudKeys.clear();
         await db.caregivers.clear();
         await db.patients.clear();
         await db.reminderSchedules.clear();
@@ -221,6 +235,7 @@ export default function CaregiverSettingsPage() {
       },
     );
     useCaregiverStore.getState().setCurrentCaregiver(null);
+    useOfflineDataStore.getState().markFresh();
     usePatientStore.setState({ currentPatient: null, allPatients: [] });
     useSettingsStore.setState({ caregiverSessionVerifiedAt: null });
     router.push('/caregiver/login');

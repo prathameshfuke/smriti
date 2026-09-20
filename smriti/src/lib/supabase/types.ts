@@ -177,7 +177,28 @@ export type MemoryBankEntry = {
   relationship: string | null;
   active: boolean;
   created_by: string;
+  /** Edit time on the phone; last-write-wins compares this. */
   updated_at: Timestamptz;
+  /** Set by the server on every write; the sync pull cursor (MIGRATION 017). */
+  server_updated_at: Timestamptz;
+}
+
+/**
+ * One caregiver's Memory Bank key, wrapped with a key derived from their
+ * backup passphrase (see lib/memoryBank/cloudCrypto.ts, MIGRATION 014). The
+ * server never sees the passphrase or the unwrapped key.
+ */
+export type MemoryBankKey = {
+  caregiver_id: string;
+  wrapped_key: string;
+  salt: string;
+  /** The same key wrapped under the recovery code (MIGRATION 018). NULL on
+   * accounts set up before recovery codes existed. */
+  recovery_wrapped_key: string | null;
+  recovery_salt: string | null;
+  kdf: 'pbkdf2-sha256';
+  kdf_iterations: number;
+  created_at: Timestamptz;
 }
 
 /**
@@ -261,7 +282,7 @@ export type FamilyNote = {
  * Columns Postgres fills in itself. They are never part of an insert payload:
  * `accuracy_pct` is a generated column, the timestamps have defaults.
  */
-type ServerManaged = 'created_at' | 'updated_at' | 'sync_received_at' | 'accuracy_pct';
+type ServerManaged = 'created_at' | 'updated_at' | 'server_updated_at' | 'sync_received_at' | 'accuracy_pct';
 
 /** Insert payload: server-managed columns dropped, `id` optional where defaulted. */
 type Insertable<T> = Omit<T, ServerManaged & keyof T>;
@@ -298,6 +319,7 @@ export interface Database {
       reminder_acks: TableShape<ReminderAck>;
       alerts: TableShape<Alert>;
       memory_bank_entries: TableShape<MemoryBankEntry>;
+      memory_bank_keys: TableShape<MemoryBankKey>;
       ai_conversation_log: TableShape<AiConversationLog>;
       patient_consents: TableShape<PatientConsent>;
       reminiscence_quizzes: TableShape<ReminiscenceQuiz>;

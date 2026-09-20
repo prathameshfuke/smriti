@@ -4,7 +4,10 @@
 // falls through to the install-time precache — the worst case on 2G/3G.
 const withPWA = require('next-pwa')({
   dest: 'public',
-  register: true,
+  // Registered by components/layout/ServiceWorkerRegister instead: next-pwa
+  // only injects registration into the Pages Router bundle, which this App
+  // Router app never loads.
+  register: false,
   skipWaiting: true,
   // src/sw/index.ts -> public/worker-<hash>.js, importScripts'd into the generated
   // sw.js: push, notificationclick and periodicsync handlers (reminders while closed).
@@ -25,7 +28,9 @@ const withPWA = require('next-pwa')({
       handler: 'NetworkFirst',
       options: {
         cacheName: 'pages',
-        expiration: { maxEntries: 50 },
+        expiration: { maxEntries: 80 },
+        // `/games/x?level=2` must still find the cached `/games/x`.
+        matchOptions: { ignoreSearch: true },
         networkTimeoutSeconds: 3,
       },
     },
