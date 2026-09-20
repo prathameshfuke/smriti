@@ -10,6 +10,7 @@ import {
   type LocalMemoryBankEntry,
   type LocalAiConversationLog,
   type LocalConsent,
+  type SyncStateRecord,
 } from './schema';
 import { createBrowserClient } from '@/lib/supabase/client';
 import { toHHMM } from '@/lib/supabase/types';
@@ -30,6 +31,76 @@ const SYNC_TIMEOUT_MS = 15_000;
 export interface SyncResult {
   success: boolean;
   error?: string;
+  /** Row categories the server rejected this run, e.g. `['events']`. */
+  failedCategories?: string[];
+}
+
+export interface SyncRunOptions {
+  /** Skip the run entirely while the post-failure backoff window is open.
+   * Automatic triggers pass true; a caregiver tapping "Sync now" does not. */
+  respectBackoff?: boolean;
+}
+
+const SYNC_STATE_KEY = 'global';
+
+const EMPTY_SYNC_STATE: SyncStateRecord = {
+  lastSyncedAt: null,
+  consecutiveFailures: 0,
+  lastError: null,
+  failedCategories: [],
+  lastAttemptAt: null,
+};
+
+/** Backoff after consecutive failures: 30s, 1m, 2m, 4m, capped at 15m. */
+const BASE_BACKOFF_MS = 30_000;
+const MAX_BACKOFF_MS = 15 * 60_000;
+
+export function backoffMs(consecutiveFailures: number): number {
+  if (consecutiveFailures <= 0) return 0;
+  return Math.min(MAX_BACKOFF_MS, BASE_BACKOFF_MS * 2 ** (consecutiveFailures - 1));
+}
+
+export async function getSyncState(): Promise<SyncStateRecord> {
+  const row = await db.syncState.get(SYNC_STATE_KEY);
+  return { ...EMPTY_SYNC_STATE, ...(row ?? {}) };
+}
+
+async function putSyncState(patch: Partial<SyncStateRecord>): Promise<void> {
+  const current = await getSyncState();
+  await db.syncState.put({ ...current, ...patch }, SYNC_STATE_KEY);
+}
+
+/**
+ * Records the outcome of one run, so a reload still knows when sync last
+ * worked and a repeated failure can be backed off instead of retried at the
+ * same interval forever.
+ */
+async function recordOutcome(result: SyncResult): Promise<void> {
+  const now = new Date().toISOString();
+  if (result.success) {
+    await putSyncState({
+      lastSyncedAt: now,
+      consecutiveFailures: 0,
+      lastError: null,
+      failedCategories: [],
+      lastAttemptAt: now,
+    });
+    return;
+  }
+  const state = await getSyncState();
+  await putSyncState({
+    consecutiveFailures: state.consecutiveFailures + 1,
+    lastError: result.error ?? 'unknown sync error',
+    failedCategories: result.failedCategories ?? [],
+    lastAttemptAt: now,
+  });
+}
+
+/** True while the backoff window after the last failure is still open. */
+async function inBackoffWindow(): Promise<boolean> {
+  const state = await getSyncState();
+  if (state.consecutiveFailures === 0 || !state.lastAttemptAt) return false;
+  return Date.now() - new Date(state.lastAttemptAt).getTime() < backoffMs(state.consecutiveFailures);
 }
 
 /** Waits this long at most for the server's rate-limit window before one retry. */
@@ -488,7 +559,13 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
 
     const failedPatientIds = Object.keys(body.syncErrors ?? {});
     if (failedPatientIds.length > 0) {
-      return { success: false, error: `sync rejected for patient(s): ${failedPatientIds.join(', ')}` };
+      // Name the categories, not just the patient id: "sync rejected for
+      // patient(s): p1" told a caregiver nothing they could act on, and hid
+      // which of their records are still stuck on this phone.
+      const failedCategories = [
+        ...new Set(Object.values(body.syncErrors ?? {}).flatMap((e) => Object.keys(e))),
+      ];
+      return { success: false, error: `sync rejected: ${failedCategories.join(', ')}`, failedCategories };
     }
     return { success: true };
   } catch (err) {
@@ -542,9 +619,12 @@ function getDeviceId(): string {
  * active patients issuing one POST per patient meant every patient after
  * the first got a 429 on every sync attempt, forever.
  */
-export async function syncAllPatients(): Promise<SyncResult> {
+export async function syncAllPatients(options: SyncRunOptions = {}): Promise<SyncResult> {
   if (typeof navigator !== 'undefined' && !navigator.onLine) {
     return { success: false, error: 'offline' };
+  }
+  if (options.respectBackoff && (await inBackoffWindow())) {
+    return { success: false, error: 'backoff' };
   }
 
   const accessToken = await getAccessToken();
@@ -556,5 +636,7 @@ export async function syncAllPatients(): Promise<SyncResult> {
   if (patients.length === 0) return { success: true };
   // Every patient goes, including those with nothing to upload — see syncToServer.
   const payloads = await Promise.all(patients.map((p) => gatherUnsyncedRows(p.id)));
-  return postSync(payloads, accessToken);
+  const result = await postSync(payloads, accessToken);
+  await recordOutcome(result);
+  return result;
 }

@@ -67,6 +67,9 @@ beforeEach(async () => {
   await db.reminderAcks.clear();
   await db.gameSessions.clear();
   await db.patients.clear();
+  // The sync outcome is persisted now (backoff, last-synced); a failure left
+  // behind by one test would otherwise suppress the next test's sync.
+  await db.syncState.clear();
   usePatientStore.setState(usePatientStore.getInitialState(), true);
   useGameStore.setState(useGameStore.getInitialState(), true);
   getSession.mockReset();
@@ -189,7 +192,7 @@ describe('syncToServer', () => {
     const { syncToServer } = await import('@/lib/db/sync');
     const result = await syncToServer('p1');
 
-    expect(result).toEqual({ success: false, error: 'sync rejected for patient(s): p1' });
+    expect(result).toMatchObject({ success: false, error: 'sync rejected: sessions', failedCategories: ['sessions'] });
     expect((await db.telemetryEvents.get('e4'))?.synced).toBe(true);
     expect((await db.gameSessions.get('s4'))?.synced).toBe(false);
   });

@@ -19,12 +19,32 @@ const CONFIRM_MS = 2500;
  * your account… sign in again", so a caregiver signed in again for problems
  * signing in could never fix.
  */
-function failureDetail(error: string | null): string {
+const CATEGORY_LABEL: Record<string, string> = {
+  patient: 'patient details',
+  profile: 'patient details',
+  reminderSchedules: 'reminders',
+  sessions: 'game sessions',
+  events: 'game rounds',
+  dailySummaries: 'daily progress',
+  reminderAcks: 'reminder responses',
+  memoryBankEntries: 'memory bank entries',
+};
+
+function categoryList(categories: string[]): string {
+  const names = [...new Set(categories.map((c) => CATEGORY_LABEL[c] ?? c))];
+  if (names.length <= 1) return names[0] ?? 'some changes';
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+}
+
+function failureDetail(error: string | null, failedCategories: string[] = []): string {
   if (error === 'no_session') return 'You are signed out on this device. Sign in again from Settings, then sync.';
   if (error === 'offline') return 'This device is offline. Changes will sync when it is back online.';
   if (error === 'rate_limited') return 'A sync just ran. Wait a few seconds, then try again.';
+  if (error === 'backoff') return 'The last sync failed. The app will try again shortly.';
   if (error?.startsWith('sync rejected')) {
-    return 'Your account did not accept some changes. They are still saved on this device and will be sent again.';
+    // Naming the categories tells the caregiver what is actually stuck —
+    // "some changes" left them with nothing to check or report.
+    return `Your account did not accept ${categoryList(failedCategories)}. They are still saved on this device and will be sent again.`;
   }
   return 'Could not reach your account. Check the connection, then try again.';
 }
@@ -37,7 +57,7 @@ function failureDetail(error: string | null): string {
  */
 export default function SyncStatus({ variant = 'card' }: SyncStatusProps) {
   const { t } = useTranslation();
-  const { syncStatus, lastSynced, pendingCount, lastError, syncNow } = useSync();
+  const { syncStatus, lastSynced, pendingCount, lastError, failedCategories, syncNow } = useSync();
   const [confirmed, setConfirmed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -53,6 +73,10 @@ export default function SyncStatus({ variant = 'card' }: SyncStatusProps) {
   // upload a session's rows mid-play); distinguished from a real network/auth
   // failure so the message tells the caregiver something they can act on.
   const [gameActive, setGameActive] = useState(false);
+
+  // A failure from an automatic sync (or one from before this reload) is
+  // shown too, not only one the caregiver just triggered by tapping.
+  const standingFailure = !!lastError && !syncing && !offline;
 
   const onSync = async () => {
     setFailed(false);
@@ -86,8 +110,8 @@ export default function SyncStatus({ variant = 'card' }: SyncStatusProps) {
           : t('sync.notSyncedYet');
   const detail = gameActive
     ? 'A game is in progress. Finish it, then sync.'
-    : failed && !syncing
-    ? failureDetail(lastError)
+    : (failed || standingFailure) && !syncing
+    ? failureDetail(lastError, failedCategories)
     : offline
     ? 'Everything is saved on this device and will sync when you are back online.'
     : syncing

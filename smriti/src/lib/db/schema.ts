@@ -155,6 +155,30 @@ export interface LocalAiConversationLog {
   pendingSync?: boolean;
 }
 
+/**
+ * What the last sync run did, kept across reloads. Before this existed the
+ * "last synced" time lived in React state only, so it vanished on every
+ * reload, and a failure left no trace at all: the next automatic attempt
+ * retried at the same fixed interval with no idea the last five had failed,
+ * and the caregiver was never told which records were stuck.
+ *
+ * One row, addressed by a constant key (out-of-line key, same as
+ * `deviceTrust` — see `DeviceTrustToken`'s doc comment). Per-patient pull
+ * watermarks are a different thing entirely and live in `SyncCursor` below.
+ */
+export interface SyncStateRecord {
+  /** When the last fully accepted sync finished, by the server's clock. */
+  lastSyncedAt: string | null;
+  /** Failures in a row since the last success; drives the backoff window. */
+  consecutiveFailures: number;
+  /** Why the last attempt failed, cleared on success. */
+  lastError: string | null;
+  /** Which row categories the server rejected last time, for the UI. */
+  failedCategories: string[];
+  /** When the last attempt ran, successful or not. */
+  lastAttemptAt: string | null;
+}
+
 /** Per-patient pull cursor for `/api/sync`: the server time of the last
  * successful sync, so each sync only downloads what changed since. Lives in
  * Dexie (not localStorage) so deleting the local database also resets it and
@@ -321,6 +345,8 @@ export class SmritiDB extends Dexie {
   keyring!: Table<KeyringEntry, string>;
   consents!: Table<LocalConsent, string>;
   syncCursors!: Table<SyncCursor, string>;
+  /** Out-of-line keys. One row, see `SyncStateRecord`. */
+  syncState!: Table<SyncStateRecord, string>;
   /** Out-of-line keys (request path). Last good caregiver API responses,
    * shown when offline — see lib/api/client.ts. */
   apiCache!: Table<LocalApiCacheEntry, string>;
@@ -391,6 +417,11 @@ export class SmritiDB extends Dexie {
     this.version(9).stores({
       apiCache: '',
       cloudKeys: '',
+    });
+    // New store only. Survives reloads so the last sync outcome — when it
+    // last worked, and why it last failed — is not lost with React state.
+    this.version(10).stores({
+      syncState: '',
     });
 
     // Personal and health fields are encrypted before they reach IndexedDB
