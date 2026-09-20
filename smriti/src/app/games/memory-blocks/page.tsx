@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PatientNav from '@/components/layout/PatientNav';
 import { PatternRecallGame } from '@/components/games/memory-blocks/PatternRecallGame';
 import { MEMORY_BLOCKS_MESSAGES } from '@/components/games/memory-blocks/messages';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { useTranslation } from '@/lib/i18n/provider';
 import { usePatientStore } from '@/stores/patientStore';
@@ -29,11 +29,7 @@ function MemoryBlocksPageInner() {
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
 
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.memory_blocks ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('memory_blocks');
 
   useEffect(() => {
     if (currentPatient) startSession(currentPatient.id);
@@ -64,12 +60,7 @@ function MemoryBlocksPageInner() {
         metadata: { score, levelReached },
       });
     }
-    const next = adjustDifficulty(difficulty, 'memory_blocks', normalizedAccuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'memory_blocks', next.currentLevel);
-    }
+    void applySession(normalizedAccuracy);
   };
 
   const goHome = async () => {

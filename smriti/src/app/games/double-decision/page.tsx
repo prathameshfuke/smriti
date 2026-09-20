@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PatientNav from '@/components/layout/PatientNav';
 import { PeripheralSpeedGame } from '@/components/games/double-decision/PeripheralSpeedGame';
 import { DOUBLE_DECISION_MESSAGES } from '@/components/games/double-decision/messages';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { useTranslation } from '@/lib/i18n/provider';
 import { usePatientStore } from '@/stores/patientStore';
@@ -29,11 +29,7 @@ function DoubleDecisionPageInner() {
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
 
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.double_decision ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('double_decision');
 
   useEffect(() => {
     if (currentPatient) startSession(currentPatient.id);
@@ -62,12 +58,7 @@ function DoubleDecisionPageInner() {
         metadata: { accuracy, maxFieldReached },
       });
     }
-    const next = adjustDifficulty(difficulty, 'double_decision', accuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'double_decision', next.currentLevel);
-    }
+    void applySession(accuracy);
   };
 
   const goHome = async () => {

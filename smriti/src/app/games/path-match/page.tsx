@@ -8,7 +8,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import PathCanvas from '@/components/games/PathCanvas';
 import SessionComplete from '@/components/games/SessionComplete';
 import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { generatePointLayout } from '@/lib/games/pathMatchLayout';
@@ -58,11 +58,7 @@ function PathMatchPageInner() {
   const activeSession = useGameStore((s) => s.activeSession);
 
   const [phase, setPhase] = useState<Phase>('instruction');
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.path_match ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('path_match');
   const [round, setRound] = useState(1);
   /** 1-indexed: the point the patient must tap next. */
   const [currentTarget, setCurrentTarget] = useState(1);
@@ -190,23 +186,13 @@ function PathMatchPageInner() {
   const stars = starsFromRate(score);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
-    }
+    void applySession(score * 100);
     setRound((r) => r + 1);
     setPhase('instruction');
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'path_match', score * 100, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'path_match', next.currentLevel);
-    }
+    void applySession(score * 100);
     setPhase('session_complete');
   };
 
