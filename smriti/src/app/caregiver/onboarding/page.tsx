@@ -11,6 +11,7 @@ import PinDots from '@/components/ui/PinDots';
 import { fieldClass, labelClass } from '@/components/ui/Panel';
 import { db, type LocalCaregiver, type LocalPatient } from '@/lib/db/schema';
 import { useCaregiverStore } from '@/stores/caregiverStore';
+import { useMemoryBankStore } from '@/stores/memoryBankStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { setDeviceTrustToken } from '@/lib/auth/deviceTrust';
@@ -43,6 +44,10 @@ interface WizardData {
   caregiverName: string;
   role: CaregiverRole | null;
   patientName: string;
+  /** Optional. Saved as a `life_fact` Memory Bank entry rather than a patient
+   * column: "where do I live" is answered from the Memory Bank, and only
+   * Memory Bank facts reach Ask Smriti. */
+  homeAddress: string;
   ageYears: string;
   gender: Gender | null;
   educationYears: string;
@@ -55,10 +60,19 @@ interface WizardData {
   consent: ConsentChoices;
 }
 
+/** Collapses control characters, Unicode line separators and runs of
+ * whitespace to single spaces. Ask Smriti lays facts out as numbered
+ * lines ("F1. Home: \u2026"), so a line break pasted in with an address would
+ * look to the model like the start of another fact. */
+function flattenToOneLine(value: string): string {
+  return value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu, ' ').replace(/\s+/gu, ' ').trim();
+}
+
 const initialData: WizardData = {
   caregiverName: '',
   role: null,
   patientName: '',
+  homeAddress: '',
   ageYears: '',
   gender: null,
   educationYears: '',
@@ -181,6 +195,24 @@ export default function CaregiverOnboardingPage() {
       syncedAt: null,
     };
     await addPatient(patient);
+
+    // Written through the same store the Memory Bank screen uses, so it
+    // syncs and encrypts exactly like a caregiver-entered fact.
+    const homeAddress = flattenToOneLine(data.homeAddress);
+    if (homeAddress) {
+      await useMemoryBankStore.getState().addEntry({
+        id: uuid(),
+        patientId,
+        category: 'life_fact',
+        title: 'Home',
+        detail: homeAddress,
+        photoUrl: null,
+        relationship: null,
+        active: true,
+        createdBy: caregiverId,
+        updatedAt: now,
+      });
+    }
     const consent = await saveConsent(patientId, caregiverId, data.consent, { push: false });
     usePatientStore.getState().setCurrentPatient(patient);
 
@@ -313,6 +345,22 @@ export default function CaregiverOnboardingPage() {
               placeholder="Patient name"
               className={fieldClass}
             />
+          </div>
+          <div>
+            <label htmlFor="patient-address" className={labelClass}>
+              Home address (optional)
+            </label>
+            <input
+              id="patient-address"
+              value={data.homeAddress}
+              onChange={(e) => setData((d) => ({ ...d, homeAddress: e.target.value }))}
+              placeholder="House, street, town"
+              className={fieldClass}
+            />
+            <p className="mt-2 text-caregiver-sm text-ink-muted">
+              Saved as a Life Fact so Ask Smriti can answer &ldquo;where do I live?&rdquo;. You can change
+              it later in the Memory Bank.
+            </p>
           </div>
           <div>
             <label htmlFor="patient-age" className={labelClass}>

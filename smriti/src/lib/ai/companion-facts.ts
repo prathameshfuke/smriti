@@ -27,3 +27,42 @@ export function memoryEntryToFact(entry: MemoryEntryLike): CompanionFact {
     relationship: entry.relationship,
   };
 }
+
+/** Prefix marking a fact about the patient themselves rather than a Memory
+ * Bank row. `selectFacts` keeps these in every prompt regardless of ranking:
+ * they are two short lines, and "what is my name" is the one question a
+ * person with memory loss is most likely to ask when nothing else surfaces. */
+export const SELF_FACT_PREFIX = 'self:';
+
+export interface PatientIdentity {
+  displayName: string;
+}
+
+/**
+ * The patient's own name, as a fact.
+ *
+ * It is the answer to "what is my name" — the plainest question this app
+ * exists for — and until now it reached nothing: the name is captured during
+ * onboarding into `patients.displayName`, while Ask Smriti only ever sees
+ * Memory Bank rows, so the companion truthfully said it had nothing written
+ * down. Derived here rather than copied into a Memory Bank entry, so
+ * renaming the patient can never leave a stale fact behind, and built from
+ * the same shape on the phone and on the server.
+ *
+ * Their address is not here: it is a caregiver-written `life_fact` entry
+ * (onboarding offers it), so it stays editable and translatable like every
+ * other fact.
+ */
+export function patientIdentityFacts(patient: PatientIdentity | null | undefined): CompanionFact[] {
+  const name = patient?.displayName?.trim();
+  if (!name) return [];
+  return [
+    {
+      id: `${SELF_FACT_PREFIX}name`,
+      kind: 'life_fact',
+      title: 'Their own name',
+      detail: name,
+      relationship: null,
+    },
+  ];
+}
