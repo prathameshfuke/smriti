@@ -3,6 +3,20 @@ import { createBrowserClient, createServiceRoleClient } from '@/lib/supabase/cli
 import { POST as syncRoute } from '@/app/api/sync/route';
 
 /**
+ * Skipped unless real credentials are present. Without
+ * NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY /
+ * SUPABASE_SERVICE_ROLE_KEY (vitest.config.ts loads .env.local), these
+ * cannot run at all, and failing them on a fresh checkout hides real
+ * regressions in the noise. A run WITH those variables still executes them
+ * exactly as before.
+ */
+const HAS_SUPABASE_CREDENTIALS = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+/**
  * Real Supabase integration test for the caregiver dashboard sync path — no
  * vi.mock() anywhere in this file. Drives a played round through the exact
  * same /api/sync POST handler the app calls, against the real project, then
@@ -14,7 +28,7 @@ import { POST as syncRoute } from '@/app/api/sync/route';
  * itself goes through the route with a real Bearer access token, so RLS is
  * genuinely exercised for the part that matters.
  */
-describe('Game session sync against the real Supabase project', () => {
+describe.skipIf(!HAS_SUPABASE_CREDENTIALS)('Game session sync against the real Supabase project', () => {
   const cleanup: Array<() => Promise<void>> = [];
 
   afterEach(async () => {

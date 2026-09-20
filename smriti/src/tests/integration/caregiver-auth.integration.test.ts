@@ -2,6 +2,20 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { createBrowserClient, createServiceRoleClient } from '@/lib/supabase/client';
 
 /**
+ * Skipped unless real credentials are present. Without
+ * NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY /
+ * SUPABASE_SERVICE_ROLE_KEY (vitest.config.ts loads .env.local), these
+ * cannot run at all, and failing them on a fresh checkout hides real
+ * regressions in the noise. A run WITH those variables still executes them
+ * exactly as before.
+ */
+const HAS_SUPABASE_CREDENTIALS = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+/**
  * Real Supabase integration test — no vi.mock() anywhere in this file.
  *
  * Runs against whatever project NEXT_PUBLIC_SUPABASE_URL/ANON_KEY and
@@ -15,7 +29,7 @@ import { createBrowserClient, createServiceRoleClient } from '@/lib/supabase/cli
  * and sends no real email on every run. Every created user is deleted in
  * `afterEach`, so this leaves nothing behind in the project between runs.
  */
-describe('Caregiver auth against the real Supabase project', () => {
+describe.skipIf(!HAS_SUPABASE_CREDENTIALS)('Caregiver auth against the real Supabase project', () => {
   const createdUserIds: string[] = [];
 
   afterEach(async () => {
