@@ -1,7 +1,13 @@
 import { db } from '@/lib/db/schema';
 import { fromBase64, toBase64 } from '@/lib/db/crypto/cipher';
 import { createBrowserClient } from '@/lib/supabase/client';
-import { createCloudKey, unwrapCloudKey, type WrappedCloudKey } from './cloudCrypto';
+import {
+  createCloudKey,
+  rewrapWithPassphrase,
+  unwrapCloudKey,
+  unwrapWithRecoveryCode,
+  type WrappedCloudKey,
+} from './cloudCrypto';
 
 /**
  * Where the Memory Bank cloud key lives:
@@ -45,7 +51,7 @@ const LOOKUP_TIMEOUT_MS = 8_000;
 async function fetchWrappedKey(caregiverId: string): Promise<WrappedCloudKey | null> {
   const { data, error } = await createBrowserClient()
     .from('memory_bank_keys')
-    .select('wrapped_key, salt, kdf, kdf_iterations')
+    .select('wrapped_key, salt, kdf, kdf_iterations, recovery_wrapped_key, recovery_salt')
     .eq('caregiver_id', caregiverId)
     // A connection with no signal behind it can hang; the backup panel then
     // says "offline" instead of waiting.
@@ -70,14 +76,53 @@ export async function getCloudKeyStatus(caregiverId: string): Promise<CloudKeySt
  * server (another phone set one up), so two phones can never end up with
  * different keys: `unlockCloudKey` is the path for that case.
  */
-export async function setUpCloudKey(caregiverId: string, passphrase: string): Promise<void> {
-  const { key, wrapped } = await createCloudKey(passphrase);
+export async function setUpCloudKey(caregiverId: string, passphrase: string): Promise<{ recoveryCode: string }> {
+  const { key, wrapped, recoveryCode } = await createCloudKey(passphrase);
   const { error } = await createBrowserClient()
     .from('memory_bank_keys')
     .insert({ caregiver_id: caregiverId, ...wrapped } as never);
   if (error) throw error;
   await saveLocalCloudKey(caregiverId, key);
   await markAllMemoryBankUnsynced();
+  return { recoveryCode };
+}
+
+/**
+ * The way back in when the passphrase is forgotten: the recovery code shown
+ * once at setup opens the same key, and the caregiver then chooses a new
+ * passphrase. The entries themselves are untouched — only the wrapping
+ * around the key changes — so nothing has to be re-encrypted or re-uploaded.
+ *
+ * Throws WrongRecoveryCodeError, or NoRecoveryCodeError for an account set up
+ * before recovery codes existed (MIGRATION 018).
+ */
+export async function recoverWithCode(
+  caregiverId: string,
+  recoveryCode: string,
+  newPassphrase: string,
+): Promise<void> {
+  const wrapped = await fetchWrappedKey(caregiverId);
+  if (!wrapped) throw new Error('no_key');
+  const key = await unwrapWithRecoveryCode(recoveryCode, wrapped);
+  const rewrapped = await rewrapWithPassphrase(key, newPassphrase, wrapped);
+  const { error } = await createBrowserClient()
+    .from('memory_bank_keys')
+    .update({
+      wrapped_key: rewrapped.wrapped_key,
+      salt: rewrapped.salt,
+      kdf_iterations: rewrapped.kdf_iterations,
+      kdf: rewrapped.kdf,
+    } as never)
+    .eq('caregiver_id', caregiverId);
+  if (error) throw error;
+  await saveLocalCloudKey(caregiverId, key);
+  await markAllMemoryBankUnsynced();
+}
+
+/** Whether this account can still be recovered without the passphrase. */
+export async function hasRecoveryCode(caregiverId: string): Promise<boolean> {
+  const wrapped = await fetchWrappedKey(caregiverId).catch(() => null);
+  return Boolean(wrapped?.recovery_wrapped_key);
 }
 
 /** Unlocks the account's existing key on this phone. Throws WrongPassphraseError. */

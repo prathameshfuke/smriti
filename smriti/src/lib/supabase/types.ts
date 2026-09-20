@@ -192,6 +192,10 @@ export type MemoryBankKey = {
   caregiver_id: string;
   wrapped_key: string;
   salt: string;
+  /** The same key wrapped under the recovery code (MIGRATION 018). NULL on
+   * accounts set up before recovery codes existed. */
+  recovery_wrapped_key: string | null;
+  recovery_salt: string | null;
   kdf: 'pbkdf2-sha256';
   kdf_iterations: number;
   created_at: Timestamptz;

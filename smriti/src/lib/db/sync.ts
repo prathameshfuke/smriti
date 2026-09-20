@@ -426,8 +426,14 @@ async function applySyncResponse(
     // The caregiver's Memory Bank list is held in memory, so an entry edited
     // on another phone only appeared there after a reload. Imported lazily:
     // the store pulls in React, which server-side callers of this file don't need.
-    const { useMemoryBankStore } = await import('@/stores/memoryBankStore');
-    const shown = useMemoryBankStore.getState().entries[0]?.patientId;
+    const [{ useMemoryBankStore }, { usePatientStore }] = await Promise.all([
+      import('@/stores/memoryBankStore'),
+      import('@/stores/patientStore'),
+    ]);
+    // Keyed on the patient being viewed, not on what the list already holds:
+    // restoring a backup on a new phone starts from an empty list, which is
+    // exactly the case that most needs the entries to appear.
+    const shown = usePatientStore.getState().currentPatient?.id;
     if (shown && memoryBankChanged.has(shown)) await useMemoryBankStore.getState().loadEntries(shown);
   }
 }

@@ -1084,3 +1084,52 @@ WHERE id = 'memory-bank-photos';
 --   DELETE FROM memory_bank_entries WHERE title NOT LIKE 'enc1:%';
 --   ALTER TABLE memory_bank_entries VALIDATE CONSTRAINT memory_bank_entries_encrypted_check;
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 018: Memory Bank recovery code
+-- =============================================
+
+-- MIGRATION 017 left a forgotten backup passphrase unrecoverable. The same
+-- Memory Bank key is now wrapped a second time, under a 24-character
+-- recovery code shown once at setup and written down by the caregiver
+-- (src/lib/memoryBank/cloudCrypto.ts). Recovering re-wraps the key under a
+-- new passphrase; the entries are never re-encrypted.
+--
+-- The code is as powerful as the passphrase, so it is never stored anywhere
+-- but on the caregiver's paper: the server only ever sees the key wrapped
+-- under it. Losing BOTH the passphrase and the code, with no phone left that
+-- holds the key, still means the cloud copy cannot be decrypted by anyone.
+
+ALTER TABLE memory_bank_keys
+  ADD COLUMN recovery_wrapped_key TEXT,
+  ADD COLUMN recovery_salt TEXT;
+
+-- Both or neither: a half-written recovery wrapping would fail at the worst
+-- possible moment. Rows from MIGRATION 017 keep both NULL (passphrase only).
+ALTER TABLE memory_bank_keys ADD CONSTRAINT memory_bank_keys_recovery_pair_check
+  CHECK ((recovery_wrapped_key IS NULL) = (recovery_salt IS NULL));
+
+-- Recovery re-wraps the key under a new passphrase, which MIGRATION 017's
+-- insert-only policies did not allow. A caregiver may only ever rewrite
+-- their own row, and only the passphrase wrapping: the recovery wrapping is
+-- pinned to what is already stored, so an update cannot quietly drop the
+-- recovery path or swap in a different key for it.
+CREATE POLICY caregiver_update_own_key ON memory_bank_keys
+  FOR UPDATE
+  USING (caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid()))
+  WITH CHECK (caregiver_id IN (SELECT id FROM caregivers WHERE auth_id = auth.uid()));
+
+CREATE OR REPLACE FUNCTION memory_bank_keys_keep_recovery()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.recovery_wrapped_key = OLD.recovery_wrapped_key;
+  NEW.recovery_salt = OLD.recovery_salt;
+  NEW.caregiver_id = OLD.caregiver_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_memory_bank_keys_keep_recovery BEFORE UPDATE ON memory_bank_keys
+  FOR EACH ROW EXECUTE FUNCTION memory_bank_keys_keep_recovery();
+```
