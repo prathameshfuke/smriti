@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, vi } from 'vitest';
 
 beforeAll(() => {
   process.env.DEVICE_TRUST_SECRET = 'test-only-secret-do-not-use-in-production';
@@ -61,6 +61,21 @@ describe('deviceTrustServer', () => {
       expect(() => signDeviceTrust('patient-1', 'caregiver-auth-uid')).toThrow(/DEVICE_TRUST_SECRET/);
     } finally {
       process.env.DEVICE_TRUST_SECRET = previous;
+    }
+  });
+
+  it('without DEVICE_TRUST_SECRET a token is rejected (not thrown) and the reason is logged', async () => {
+    const { signDeviceTrust, verifyDeviceTrust } = await import('@/lib/auth/deviceTrustServer');
+    const token = signDeviceTrust('patient-1', 'caregiver-auth-uid');
+    const saved = process.env.DEVICE_TRUST_SECRET;
+    delete process.env.DEVICE_TRUST_SECRET;
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      expect(verifyDeviceTrust(token)).toBe(false);
+      expect(log).toHaveBeenCalledWith(expect.stringContaining('DEVICE_TRUST_SECRET is not set'));
+    } finally {
+      log.mockRestore();
+      process.env.DEVICE_TRUST_SECRET = saved;
     }
   });
 });

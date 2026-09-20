@@ -71,10 +71,20 @@ export function verifyDeviceTrust(token: DeviceTrustToken | null | undefined): b
 
   if (Date.now() - token.issuedAt > MAX_AGE_MS) return false;
 
-  const expected = computeSignature(token.patientId, token.issuedBy, token.issuedAt);
   try {
+    const expected = computeSignature(token.patientId, token.issuedBy, token.issuedAt);
     return signaturesMatch(token.signature, expected);
-  } catch {
+  } catch (err) {
+    // A missing DEVICE_TRUST_SECRET used to escape as a bare 500 from every
+    // voice route, so Hindi and Assamese lines quietly fell to the browser
+    // voice (silent on most devices) with nothing in the logs. Say why.
+    if (!process.env.DEVICE_TRUST_SECRET) {
+      console.error(
+        '[device-trust] DEVICE_TRUST_SECRET is not set on the server: every kiosk voice request (speech, transcription, companion) is rejected until it is.',
+      );
+    } else if (err instanceof Error) {
+      console.error('[device-trust] verification failed:', err.message);
+    }
     return false;
   }
 }
