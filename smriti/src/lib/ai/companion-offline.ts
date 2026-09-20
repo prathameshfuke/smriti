@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { db } from '@/lib/db/schema';
 import { matchSeverity } from './distress-keywords';
-import { memoryEntryToFact, patientIdentityFacts } from './companion-facts';
+import { isIdentityQuestion, memoryEntryToFact, patientIdentityFacts, SELF_FACT_PREFIX } from './companion-facts';
 import { bestLocalFact, describeFact, type CompanionFact } from './companion-retrieval';
 import { cacheAnswer } from './companion-cache';
 
@@ -60,7 +60,17 @@ export async function answerOffline(
   } catch {
     return { kind: 'none' };
   }
-  const fact = bestLocalFact(question, facts);
+  // "Who am I" in any of the app's languages: the name is held right here,
+  // and word matching cannot carry an Assamese question to an English
+  // "Their own name". Only ever the patient's own identity fact — see
+  // isIdentityQuestion.
+  const identity = isIdentityQuestion(question)
+    ? facts.find((f) => f.id === `${SELF_FACT_PREFIX}name`)
+    : undefined;
+  // The self fact is reached only that way. Left in the ranking it would win
+  // "what is my daughter's name" on the word "name" in its own English title
+  // and read the patient their own name as their daughter's.
+  const fact = identity ?? bestLocalFact(question, facts.filter((f) => !f.id.startsWith(SELF_FACT_PREFIX)));
   if (!fact) return { kind: 'none' };
 
   const text = describeFact(fact);

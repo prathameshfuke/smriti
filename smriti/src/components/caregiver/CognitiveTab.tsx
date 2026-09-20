@@ -40,6 +40,15 @@ export interface CognitiveTabProps {
   onError: () => void;
   /** Game-days already synced (possibly from another phone), merged with this phone's. */
   serverScoreRows?: ScoreRow[];
+  /**
+   * True until BOTH score sources have settled: this phone's Dexie rows and
+   * the page's `/api/patients` fetch. The score is a single number over the
+   * union of the two, so painting it from whichever arrives first shows a
+   * wrong number that then silently changes (the 67-then-52 flicker).
+   */
+  serverRowsLoading?: boolean;
+  /** The `/api/patients` fetch failed: show a message, not a forever-skeleton. */
+  serverRowsFailed?: boolean;
 }
 
 /**
@@ -49,7 +58,16 @@ export interface CognitiveTabProps {
  * this tab (digest fetch/refresh); the alert list and its resolve action stay
  * on the page shell since the header's "needs attention" copy depends on them.
  */
-export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolveFailed, onError, serverScoreRows }: CognitiveTabProps) {
+export default function CognitiveTab({
+  patientId,
+  alerts,
+  onResolveAlert,
+  resolveFailed,
+  onError,
+  serverScoreRows,
+  serverRowsLoading = false,
+  serverRowsFailed = false,
+}: CognitiveTabProps) {
   const [range, setRange] = useState<TrendRange>('30d');
   const [digests, setDigests] = useState<DigestEntry[] | null>(null);
   const [digestGenerating, setDigestGenerating] = useState(false);
@@ -175,7 +193,11 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
       ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-        <CognitiveScoreCard score={cognitiveScore} isLoading={scoreTrend.isLoading} />
+        <CognitiveScoreCard
+          score={cognitiveScore}
+          isLoading={scoreTrend.isLoading || serverRowsLoading}
+          hasError={serverRowsFailed}
+        />
 
         <div className="flex min-w-0 flex-col gap-5">
           <section aria-label="At a glance" className="grid grid-cols-3 divide-x divide-line200 rounded-card border border-line200 bg-surface-card">
@@ -201,7 +223,10 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
             </div>
           </section>
 
-          <Panel title="Last 7 days" description="Accuracy on each day they played.">
+          <Panel
+            title="Last 7 days"
+            description="Accuracy on each day they played. A shorter, day-by-day view than the 14-day cognitive score above."
+          >
             <WeekActivity variant="full" days={lastSevenDays.map((d) => d.accuracy)} dates={lastSevenDays.map((d) => d.date)} />
           </Panel>
         </div>

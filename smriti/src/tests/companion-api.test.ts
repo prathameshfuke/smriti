@@ -569,6 +569,116 @@ describe('POST /api/ai/converse', () => {
     expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Their own name: Ramesh Das');
   });
 
+  // Empty Memory Bank + a profile name: the case the whole self-fact exists
+  // for. `facts: []` is a phone with nothing written down yet.
+  it('answers "what is my name" in English with an empty Memory Bank', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'Your name is Ramesh Das.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (
+      await POST(converse({ message: 'what is my name', facts: [], patientName: 'Ramesh Das' }))
+    ).json();
+
+    const system = callChat.mock.calls[0][0].messages[0].content;
+    expect(system).toContain('F1. Their own name: Ramesh Das');
+    expect(system).not.toContain('The Memory Bank is empty');
+    expect(body).toMatchObject({ kind: 'answer', text: 'Your name is Ramesh Das.', grounded: true, factIds: ['self:name'] });
+  });
+
+  it('answers "who am I" with an empty Memory Bank, where no word matches the fact', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'You are Ramesh Das.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'who am I', facts: [], patientName: 'Ramesh Das' }))).json();
+
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Their own name: Ramesh Das');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true, factIds: ['self:name'] });
+  });
+
+  it('answers the Hindi "मेरा नाम क्या है" with an empty Memory Bank', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({
+      reply: 'आपका नाम रमेश दास है।',
+      type: 'memory',
+      facts: ['F1'],
+    });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (
+      await POST(
+        converse({
+          message: 'मेरा नाम क्या है',
+          language: 'hi',
+          facts: [],
+          patientName: 'Ramesh Das',
+        }),
+      )
+    ).json();
+
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Their own name: Ramesh Das');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true, factIds: ['self:name'], answerLanguage: 'hi' });
+  });
+
+  it('answers the Assamese "মোৰ নাম কি" with an empty Memory Bank', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({
+      reply: 'আপোনাৰ নাম ৰমেশ দাস।',
+      type: 'memory',
+      facts: ['F1'],
+    });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (
+      await POST(
+        converse({
+          message: 'মোৰ নাম কি',
+          language: 'as',
+          facts: [],
+          patientName: 'Ramesh Das',
+        }),
+      )
+    ).json();
+
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Their own name: Ramesh Das');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true, factIds: ['self:name'], answerLanguage: 'as' });
+  });
+
+  it('still refuses a fact captured nowhere, even with a name to fall back on', async () => {
+    withMemoryBank();
+    // The name fact answers "what is my name" — it must not become a licence
+    // to answer anything else. The model's honest refusal is passed through
+    // ungrounded, citing nothing.
+    await modelSays({ reply: 'I do not have that written down — please ask your caregiver.', type: 'unknown', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (
+      await POST(converse({ message: "what is my doctor's phone number", facts: [], patientName: 'Ramesh Das' }))
+    ).json();
+
+    expect(body).toMatchObject({
+      kind: 'answer',
+      text: 'I do not have that written down — please ask your caregiver.',
+      grounded: false,
+      factIds: [],
+    });
+    expect(body.text).not.toMatch(/\d/);
+  });
+
+  it('blocks an invented answer to a fact captured nowhere, name fact or not', async () => {
+    withMemoryBank();
+    // Verifier rejects: the number is in no fact, and the name fact does not support it.
+    await modelSays({ reply: 'Your doctor’s number is 98640 12345.', type: 'memory', facts: ['F1'] }, false);
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (
+      await POST(converse({ message: "what is my doctor's phone number", facts: [], patientName: 'Ramesh Das' }))
+    ).json();
+
+    expect(body).toMatchObject({ kind: 'unknown', text: '', grounded: false, factIds: [] });
+  });
+
   it('adds no name fact when the phone sends none, rather than inventing one', async () => {
     withMemoryBank();
     const callChat = await modelSays({ reply: 'It is not written down.', type: 'unknown', facts: [] });

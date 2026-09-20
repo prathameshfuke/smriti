@@ -294,23 +294,35 @@ export default function GameComponent({ onComplete, initialLevel }: GameComponen
         : 5;
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
+        // No overflow-hidden on the card: it would make the card its own
+        // containing block and the sticky HUD below would scroll away with it.
+        // The play area clips its own fish.
+        // The min-heights below are lifted on short screens (a 320x480 Android,
+        // or any phone in landscape): 64px nav + 88 HUD + 280 board + 96 controls
+        // is 528px of floor, so Start fell below the fold and the patient had to
+        // scroll to begin the game.
+        <div className="w-full flex-1 min-h-[460px] [@media(max-height:560px)]:min-h-0 flex flex-col border border-line200 bg-surface-card rounded-card">
 
             {/* Top HUD — fixed min-height (64px settings button + py padding) so
                 this row is the same height idle vs playing; PatientNav above
                 already carries the game title, so idle no longer repeats it here.
-                Message is clamped to one line so a long translated status string
-                can't wrap and grow the row past that reserved height. */}
-            <div className="flex justify-between items-center px-6 py-3 min-h-[88px] bg-transparent shrink-0 z-20">
+                The instruction gets its own full-width line below that row: sharing
+                one line with the level pill and the score left it ~214px of a 332px
+                string, so "Watch the glowing fish" reached the patient as
+                "Watch the glowi...". It wraps to at most two lines instead. */}
+            {/* Sticky under PatientNav (64px): the root layout appends the
+                disclaimer after the game, so the page is ~100px taller than the
+                screen and a small scroll used to push the level and the
+                instruction up under the nav — the patient lost the instruction
+                mid-round and had to scroll back for it. */}
+            <div className="sticky top-16 flex flex-col gap-1 px-4 py-3 min-h-[88px] [@media(max-height:560px)]:min-h-[64px] [@media(max-height:560px)]:py-1.5 bg-surface-card shrink-0 z-20">
+              <div className="flex justify-between items-center gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                     {phase !== 'idle' && (
                         <span className="text-patient-sm font-bold px-2.5 py-1 rounded-full bg-primary-light/40 text-primary-dark shrink-0">
                             {t('level')} {level}
                         </span>
                     )}
-                    <div className="font-serif-display font-semibold text-patient-body text-ink truncate">
-                        {phase !== 'idle' ? message : null}
-                    </div>
                 </div>
                 <div className="flex gap-3 items-center">
                     {phase !== 'idle' && (
@@ -335,15 +347,21 @@ export default function GameComponent({ onComplete, initialLevel }: GameComponen
                         />
                     )}
                 </div>
+              </div>
+              <div className="font-serif-display font-semibold text-patient-body text-ink leading-tight line-clamp-2">
+                {phase !== 'idle' ? message : null}
+              </div>
             </div>
 
             {/* Play Area */}
             <div
-                className="relative flex-1 w-full min-h-[360px] overflow-hidden bg-[#0D9488]/10"
+                className="relative flex-1 w-full min-h-[280px] [@media(max-height:560px)]:min-h-[150px] overflow-hidden"
+                /* Open water, drawn here rather than shared with Frog Leap: the two
+                   games sat side by side in the games list showing the identical pond
+                   photo, so a patient could not tell which one they had opened. */
                 style={{
-                    backgroundImage: "url('/games/assets/frog/bg_pond.png')",
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
+                    backgroundImage:
+                        'radial-gradient(120% 80% at 50% 0%, #7FD6E8 0%, rgba(127,214,232,0) 60%), linear-gradient(180deg, #2CA6C4 0%, #17778F 55%, #0C4F63 100%)',
                 }}
                 ref={containerRef}
             >
@@ -484,7 +502,7 @@ export default function GameComponent({ onComplete, initialLevel }: GameComponen
             {/* Bottom Controls */}
             {/* min-h, not h-24: the result stack (stars, score, Try again) is taller
                 than 96px and spilled over the board, worse at Large text. */}
-            <div className="min-h-24 py-2 shrink-0 flex items-center justify-center bg-transparent relative z-20">
+            <div className="min-h-24 [@media(max-height:560px)]:min-h-16 py-2 shrink-0 flex items-center justify-center bg-transparent relative z-20">
                 <AnimatePresence mode="popLayout">
                     {phase === 'idle' && (
                         <motion.div

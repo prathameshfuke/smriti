@@ -174,7 +174,7 @@ function CaregiverLoginCallbackInner() {
 
   if (status === 'setup-pin') {
     return (
-      <main className="mx-auto flex min-h-dvh max-w-patient flex-col justify-center gap-4 px-4 py-6">
+      <main className="mx-auto flex min-h-dvh w-full max-w-patient flex-col justify-center gap-4 px-4 py-6">
         <div className="text-center">
           <h1 className="font-serif-display text-caregiver-heading font-semibold text-ink">
             Set Up Quick Access
@@ -215,7 +215,7 @@ function CaregiverLoginCallbackInner() {
   }
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-patient flex-col justify-center gap-6 px-4 py-6">
+    <main className="mx-auto flex min-h-dvh w-full max-w-patient flex-col justify-center gap-6 px-4 py-6">
       <div className="text-center">
         <h1 className="font-serif-display text-caregiver-heading font-semibold text-ink">
           {status === 'error' ? 'Login link problem' : 'Signing you in…'}

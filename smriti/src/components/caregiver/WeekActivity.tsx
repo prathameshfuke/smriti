@@ -18,15 +18,21 @@ function weekday(iso: string): string {
  * sparkline in the patient list; `full` adds weekday labels and values.
  * Today (the last bar) is the darker terracotta. A plain-text summary is
  * always present for screen readers.
+ *
+ * The summary line averages the DAILY accuracies over the days played — one
+ * day, one vote. It is deliberately neither the same window (7 days, not
+ * SCORE_WINDOW_DAYS) nor the same aggregation (day-mean, not rounds-weighted
+ * over every round) as the cognitive score's Accuracy part, so the two will
+ * legitimately differ; the wording says which one this is.
  */
 export default function WeekActivity({ days, dates, variant = 'mini' }: WeekActivityProps) {
   const played = days.filter((d): d is number => d !== null);
   const summary =
     played.length === 0
       ? 'No games played in the last 7 days'
-      : `Played on ${played.length} of the last 7 days, average accuracy ${Math.round(
+      : `Played on ${played.length} of the last 7 days, ${Math.round(
           played.reduce((a, b) => a + b, 0) / played.length,
-        )}%`;
+        )}% average of those days' accuracy`;
 
   if (variant === 'mini') {
     return (

@@ -35,6 +35,13 @@ export interface CognitiveScore {
   level: number;
   regularity: number;
   daysPlayed: number;
+  /**
+   * True when no levelled game was played in the window, so `level` is a
+   * copy of `accuracy` (the fallback below) rather than a real measurement.
+   * The UI must NOT print it as "N% of top level" in that case — two
+   * identical-looking numbers that are in fact one number.
+   */
+  levelFromAccuracy: boolean;
   /** Fewer than 3 days played: the number is shown, marked as an early estimate. */
   enoughData: boolean;
   previousScore: number | null;
@@ -72,6 +79,7 @@ interface WindowScore {
   level: number;
   regularity: number;
   daysPlayed: number;
+  levelFromAccuracy: boolean;
 }
 
 function scoreWindow(rows: ScoreRow[]): WindowScore | null {
@@ -111,6 +119,7 @@ function scoreWindow(rows: ScoreRow[]): WindowScore | null {
     level,
     regularity,
     daysPlayed: days.size,
+    levelFromAccuracy: levelRatios.length === 0,
   };
 }
 
