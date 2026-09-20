@@ -955,6 +955,73 @@ describe('Caregiver onboarding wizard', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('saves an entered home address as a Life Fact, so Ask Smriti can answer "where do I live"', async () => {
+    await db.memoryBankEntries.clear();
+    render(<CaregiverOnboardingPage />);
+    agreeToOnboardingConsent();
+
+    fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Ranjita' } });
+    fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    fireEvent.change(screen.getByPlaceholderText('Patient name'), { target: { value: 'Aai' } });
+    fireEvent.change(screen.getByPlaceholderText('House, street, town'), {
+      target: { value: '12 MG Road, Guwahati' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Age'), { target: { value: '72' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.click(screen.getByRole('button', { name: '10 min' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    const pinPads = screen.getAllByRole('group', { name: 'PIN keypad' });
+    for (const pad of pinPads) {
+      for (const digit of ['1', '2', '3', '4']) {
+        fireEvent.click(within(pad).getByRole('button', { name: digit }));
+      }
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
+
+    await waitFor(() => expect(screen.getByText(/trust this device/i)).toBeInTheDocument());
+
+    const entries = await db.memoryBankEntries.toArray();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({
+      category: 'life_fact',
+      title: 'Home',
+      detail: '12 MG Road, Guwahati',
+      active: true,
+      synced: false,
+    });
+  });
+
+  it('writes no Memory Bank entry when the address is left blank', async () => {
+    await db.memoryBankEntries.clear();
+    render(<CaregiverOnboardingPage />);
+    agreeToOnboardingConsent();
+
+    fireEvent.change(screen.getByPlaceholderText('Your name'), { target: { value: 'Ranjita' } });
+    fireEvent.click(screen.getByRole('button', { name: 'ASHA Worker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    fireEvent.change(screen.getByPlaceholderText('Patient name'), { target: { value: 'Aai' } });
+    fireEvent.change(screen.getByPlaceholderText('Age'), { target: { value: '72' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.click(screen.getByRole('button', { name: '10 min' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    const pinPads = screen.getAllByRole('group', { name: 'PIN keypad' });
+    for (const pad of pinPads) {
+      for (const digit of ['1', '2', '3', '4']) {
+        fireEvent.click(within(pad).getByRole('button', { name: digit }));
+      }
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Finish setup' }));
+
+    await waitFor(() => expect(screen.getByText(/trust this device/i)).toBeInTheDocument());
+
+    expect(await db.memoryBankEntries.count()).toBe(0);
+  });
+
   it('on the happy path writes the caregiver, patient and PIN, then navigates home', async () => {
     render(<CaregiverOnboardingPage />);
     agreeToOnboardingConsent();

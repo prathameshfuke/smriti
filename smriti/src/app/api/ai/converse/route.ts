@@ -6,7 +6,7 @@ import { matchSeverity, TELE_MANAS_RESPONSE } from '@/lib/ai/distress-keywords';
 import { translateText } from '@/lib/ai/bhashini-nmt-client';
 import { synthesizeSpeech } from '@/lib/ai/bhashini-client';
 import { authorizeCompanionCaller } from '@/lib/ai/companion-auth';
-import { memoryEntryToFact } from '@/lib/ai/companion-facts';
+import { memoryEntryToFact, patientIdentityFacts, SELF_FACT_PREFIX } from '@/lib/ai/companion-facts';
 import {
   MAX_FACTS_PER_QUESTION,
   rankFacts,
@@ -57,6 +57,10 @@ interface ConverseRequestBody {
   patientId?: string;
   /** Active Memory Bank entries from the phone (see lib/ai/request-facts.ts). */
   facts?: unknown;
+  /** The patient's own name, so "what is my name" has something to answer
+   * from. Sent by the phone alongside the facts, for the same reason they
+   * are: the caller is already authorized for this patient. */
+  patientName?: unknown;
 }
 
 /**
@@ -144,7 +148,14 @@ async function selectFacts(
     }
   }
 
-  const ordered = [...facts.filter((f) => carried.has(f.id)), ...selectFactsForPrompt(queries, facts)];
+  // Identity facts are never ranked out. "मेरा नाम क्या है" shares no word
+  // with an English "Their own name", so on a Memory Bank large enough to
+  // need trimming, lexical retrieval would drop the one fact that answers it.
+  const ordered = [
+    ...facts.filter((f) => f.id.startsWith(SELF_FACT_PREFIX)),
+    ...facts.filter((f) => carried.has(f.id)),
+    ...selectFactsForPrompt(queries, facts),
+  ];
   const seen = new Set<string>();
   return ordered.filter((f) => !seen.has(f.id) && seen.add(f.id)).slice(0, MAX_FACTS_PER_QUESTION);
 }
@@ -266,7 +277,10 @@ export async function POST(request: Request) {
   // The Memory Bank is the only source of personal facts — nothing else is
   // retrieved. Its cloud copy is end-to-end encrypted, so the facts come from
   // the phone's own decrypted copy, sent with this request (lib/ai/request-facts.ts).
-  const facts = parseRequestFacts(body.facts).map(memoryEntryToFact);
+  const facts = [
+    ...patientIdentityFacts({ displayName: cleanContext(body.patientName) ?? '' }),
+    ...parseRequestFacts(body.facts).map(memoryEntryToFact),
+  ];
   const promptFacts = await selectFacts(facts, message, history, language);
 
   const date = cleanContext(body.clientContext?.date);

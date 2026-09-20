@@ -537,6 +537,48 @@ describe('POST /api/ai/converse', () => {
     expect(body).toMatchObject({ kind: 'answer', grounded: true, factIds: ['m:e1'] });
   });
 
+  // -------------------------------------------------------------------------
+  // The patient's own name (lib/ai/companion-facts.ts)
+  // -------------------------------------------------------------------------
+  it('puts the patient\u2019s own name in the prompt, so "what is my name" has something to answer from', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'Your name is Ramesh Das.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    const body = await (await POST(converse({ message: 'what is my name', patientName: 'Ramesh Das' }))).json();
+
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('Their own name: Ramesh Das');
+    expect(body).toMatchObject({ kind: 'answer', grounded: true });
+  });
+
+  it('keeps the name fact first, so a Memory Bank too big to send whole cannot rank it out', async () => {
+    // More entries than fit in one prompt, none of them matching the question.
+    const many = Array.from({ length: 20 }, (_, i) => ({
+      id: `big${i}`,
+      title: `Neighbour ${i}`,
+      detail: 'Lives on the next street',
+      relationship: 'neighbour',
+      category: 'person',
+    }));
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'Your name is Ramesh Das.', type: 'memory', facts: ['F1'] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    await POST(converse({ message: '\u092e\u0947\u0930\u093e \u0928\u093e\u092e \u0915\u094d\u092f\u093e \u0939\u0948', language: 'hi', facts: many, patientName: 'Ramesh Das' }));
+
+    expect(callChat.mock.calls[0][0].messages[0].content).toContain('F1. Their own name: Ramesh Das');
+  });
+
+  it('adds no name fact when the phone sends none, rather than inventing one', async () => {
+    withMemoryBank();
+    const callChat = await modelSays({ reply: 'It is not written down.', type: 'unknown', facts: [] });
+    const { POST } = await import('@/app/api/ai/converse/route');
+
+    await POST(converse({ message: 'what is my name' }));
+
+    expect(callChat.mock.calls[0][0].messages[0].content).not.toContain('Their own name');
+  });
+
   it('sends the conversation so far, so a follow-up keeps its subject', async () => {
     withMemoryBank();
     const callChat = await modelSays({ reply: 'He lives in Guwahati.', type: 'memory', facts: ['F1'] });

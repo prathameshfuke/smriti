@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 import { db } from '@/lib/db/schema';
 import { matchSeverity } from './distress-keywords';
-import { memoryEntryToFact } from './companion-facts';
+import { memoryEntryToFact, patientIdentityFacts } from './companion-facts';
 import { bestLocalFact, describeFact, type CompanionFact } from './companion-retrieval';
 import { cacheAnswer } from './companion-cache';
 
@@ -17,9 +17,9 @@ const ON_DEVICE_DISTRESS_MODEL = 'on-device-distress';
 const OFFLINE_DISTRESS_LOG =
   'Shown the Tele-MANAS helpline (14416) on the phone while offline.';
 
-async function localFacts(patientId: string): Promise<CompanionFact[]> {
+async function localFacts(patientId: string, patientName?: string | null): Promise<CompanionFact[]> {
   const entries = await db.memoryBankEntries.where('patientId').equals(patientId).filter((e) => e.active).toArray();
-  return entries.map(memoryEntryToFact);
+  return [...patientIdentityFacts(patientName ? { displayName: patientName } : null), ...entries.map(memoryEntryToFact)];
 }
 
 /**
@@ -32,7 +32,11 @@ async function localFacts(patientId: string): Promise<CompanionFact[]> {
  * uploaded by the next sync, so a distress phrase said offline is still
  * flagged to them.
  */
-export async function answerOffline(patientId: string, question: string): Promise<OfflineAnswer> {
+export async function answerOffline(
+  patientId: string,
+  question: string,
+  patientName?: string | null,
+): Promise<OfflineAnswer> {
   const log = (answer: string, model: string, grounded: boolean) =>
     cacheAnswer({
       id: uuid(),
@@ -52,7 +56,7 @@ export async function answerOffline(patientId: string, question: string): Promis
 
   let facts: CompanionFact[];
   try {
-    facts = await localFacts(patientId);
+    facts = await localFacts(patientId, patientName);
   } catch {
     return { kind: 'none' };
   }

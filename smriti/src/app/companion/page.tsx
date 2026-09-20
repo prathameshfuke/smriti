@@ -206,7 +206,7 @@ export default function CompanionPage() {
     }
 
     if (!isOnline) {
-      const offline = await answerOffline(patientId, text);
+      const offline = await answerOffline(patientId, text, currentPatient?.displayName);
       if (offline.kind === 'distress') reply(t('companion.distress'), 'fixed');
       else if (offline.kind === 'memoryBook') reply(offline.text, 'memoryBook');
       else reply(t('companion.unavailable'), 'fixed');
@@ -230,6 +230,9 @@ export default function CompanionPage() {
           // The cloud Memory Bank is encrypted; answers are grounded in this
           // phone's own copy, sent for this request only.
           facts: toRequestFacts(await db.memoryBankEntries.where('patientId').equals(patientId).toArray()),
+          // Their own name is not a Memory Bank row, so it travels beside
+          // the facts — otherwise "what is my name" has nothing to answer from.
+          patientName: currentPatient?.displayName,
         }),
         signal: AbortSignal.timeout(CONVERSE_FETCH_TIMEOUT_MS),
       });

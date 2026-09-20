@@ -189,6 +189,17 @@ describe('CompanionPage', () => {
     expect(String((first.clientContext as { date: string }).date)).toMatch(/\d{4}/);
   });
 
+  it('sends the patient\u2019s own name with the message, so "what is my name" can be answered', async () => {
+    installMediaRecorder();
+    const fetchMock = stubConverse(() => converseReply({ text: 'Your name is Aai.' }));
+    const { default: CompanionPage } = await import('@/app/companion/page');
+    render(<CompanionPage />);
+
+    await ask('what is my name');
+    expect(await screen.findByText('Your name is Aai.')).toBeInTheDocument();
+    expect(converseCalls(fetchMock)[0]).toMatchObject({ patientName: 'Aai' });
+  });
+
   it('starts a fresh conversation when asked, sending no earlier turns', async () => {
     installMediaRecorder();
     const fetchMock = stubConverse(() => converseReply({ text: 'Hello!' }));

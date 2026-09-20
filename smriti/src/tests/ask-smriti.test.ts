@@ -174,6 +174,19 @@ describe('answerOffline', () => {
     expect(logs).toEqual([expect.objectContaining({ pendingSync: true, modelUsed: 'on-device-distress' })]);
   });
 
+  it('answers "what is my name" offline from the patient\u2019s own name', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(await answerOffline('p1', 'what is my name', 'Ramesh Das')).toEqual({
+      kind: 'memoryBook',
+      text: 'Their own name: Ramesh Das',
+    });
+  });
+
+  it('still says nothing when the phone has no name for the patient', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(await answerOffline('p1', 'what is my name')).toEqual({ kind: 'none' });
+  });
+
   it('says nothing rather than guess when no entry clearly matches', async () => {
     const { answerOffline } = await import('@/lib/ai/companion-offline');
     expect(await answerOffline('p1', 'what is the weather today')).toEqual({ kind: 'none' });
