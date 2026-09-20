@@ -491,14 +491,16 @@ export default function CompanionPage() {
                 style={{ height: MIC_SIZE_PX, width: MIC_SIZE_PX }}
                 className={
                   'relative flex items-center justify-center rounded-full text-ink-inverse transition-[transform,background-color] duration-150 active:scale-95 motion-reduce:active:scale-100 ' +
-                  (phase === 'recording' ? 'bg-primary-dark motion-safe:animate-pulse-ring' : 'bg-primary')
+                  (phase === 'recording'
+                    ? 'bg-primary-dark motion-safe:animate-pulse-ring'
+                    : 'bg-surface-card border-4 border-primary')
                 }
               >
                 {phase === 'recording' ? (
                   <Icon icon={Square} size={44} />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src="/images/ask-smriti.png" alt="" className="h-14 w-14" />
+                  <img src="/images/ask-smriti.png" alt="" className="h-20 w-20" />
                 )}
               </span>
               <span aria-hidden="true" className="text-patient-body font-bold text-ink">

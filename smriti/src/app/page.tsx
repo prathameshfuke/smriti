@@ -78,7 +78,11 @@ function PatientPreview() {
         <p className="mt-6 font-serif-display text-[2rem] font-medium leading-[1.1] text-ink950">Hello, Maya</p>
         <p className="mt-2 text-lg font-bold text-ink950">Tuesday, 3 March</p>
         <p className="text-lg text-ink700">12 day streak</p>
-        <div className="mt-5 flex min-h-14 items-center justify-center rounded-control bg-terra600 text-lg font-bold text-paper50">
+        <div className="mt-5 flex min-h-14 items-center justify-center gap-3 rounded-control bg-terra600 text-lg font-bold text-paper50">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/ask-smriti.png" alt="" className="h-7 w-7" />
+          </span>
           Ask Smriti
         </div>
         <div className="mt-3 flex min-h-14 items-center justify-center rounded-control border-2 border-ink700 bg-white text-lg font-bold text-ink950">
