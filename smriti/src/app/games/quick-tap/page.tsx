@@ -8,7 +8,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
 import GameTutorial, { TUTORIALS } from '@/components/games/GameTutorial';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { penalizedAccuracy, scoreQuickTapRound, starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { narrate } from '@/lib/audio/narrate';
@@ -87,11 +87,7 @@ function QuickTapPageInner() {
   const activeSession = useGameStore((s) => s.activeSession);
 
   const [phase, setPhase] = useState<Phase>('instruction');
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.quick_tap ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('quick_tap');
   const [round, setRound] = useState(1);
   const [target, setTarget] = useState<SmritiObject | null>(null);
   const [sequence, setSequence] = useState<SequenceItem[]>([]);
@@ -222,23 +218,13 @@ function QuickTapPageInner() {
   const stars = starsFromRate(hitRate);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
-    }
+    void applySession(hitRate * 100);
     setRound((r) => r + 1);
     setPhase('instruction');
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'quick_tap', hitRate * 100, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'quick_tap', next.currentLevel);
-    }
+    void applySession(hitRate * 100);
     setPhase('session_complete');
   };
 

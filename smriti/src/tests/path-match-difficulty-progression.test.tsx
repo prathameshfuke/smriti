@@ -53,19 +53,14 @@ beforeEach(async () => {
 
 /** Enter the game fresh, play exactly one perfect round, then Finish Session (simulates going home). */
 async function oneVisitPerfectRound(): Promise<number> {
-  // Captured *before* this visit's own actions, not a fresh patient()  call —
-  // path-match/page.tsx calls `void usePatientStore.getState().updateDifficulty(...)`
-  // (fire-and-forget; it awaits two Dexie writes before updating the store).
-  // patient().updatedAt is a hardcoded constant, so comparing against it only
-  // ever proves visit 1's update landed: by visit 2+ the store already holds
-  // a real timestamp left over from the *previous* visit, so that comparison
-  // is trivially true immediately, with no guarantee THIS visit's own write
-  // has finished before the next visit mounts and reads currentDifficulty.
-  // Snapshotting the value right before this visit's own update fixes that
-  // for every visit, not just the first. Real patients take real
-  // seconds-to-minutes between games — this race is a test-timing artifact,
-  // not a production concern, so the fix lives here, not in app code.
-  const updatedAtBeforeThisVisit = usePatientStore.getState().currentPatient?.updatedAt;
+  // Captured *before* this visit's own actions: the level change is written
+  // to Dexie and the store after the round ends, and the next visit must not
+  // mount until that write has landed. A difficulty change deliberately does
+  // NOT bump `updatedAt` any more (it is local-only state — see
+  // stores/patientStore.ts), so the level itself is what this waits on.
+  // Real patients take minutes between games; this race is a test-timing
+  // artifact, not a production concern, so the wait lives here, not in app code.
+  const levelBeforeThisVisit = usePatientStore.getState().currentPatient?.currentDifficulty?.path_match ?? 1;
   const { default: PathMatchPage } = await import('@/app/games/path-match/page');
   const { unmount } = render(
     <I18nProvider>
@@ -89,7 +84,9 @@ async function oneVisitPerfectRound(): Promise<number> {
   fireEvent.click(screen.getByText(/finish for now/i));
   await waitFor(() => expect(screen.getByText(/back to home/i)).toBeInTheDocument());
   await waitFor(() =>
-    expect(usePatientStore.getState().currentPatient?.updatedAt).not.toBe(updatedAtBeforeThisVisit),
+    expect(usePatientStore.getState().currentPatient?.currentDifficulty?.path_match ?? 1).not.toBe(
+      levelBeforeThisVisit,
+    ),
   );
 
   unmount();

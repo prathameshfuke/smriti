@@ -16,11 +16,16 @@ export default defineConfig({
     environmentOptions: { jsdom: { url: 'http://localhost:3000' } },
     setupFiles: ['./src/tests/setup.ts'],
     globals: true,
-    env: {
-      NEXT_PUBLIC_SUPABASE_URL: env.NEXT_PUBLIC_SUPABASE_URL,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      SUPABASE_SERVICE_ROLE_KEY: env.SUPABASE_SERVICE_ROLE_KEY,
-    },
+    // Only the vars that are actually set are passed through. Listing them
+    // unconditionally handed the tests the literal string "undefined" for a
+    // missing key, which reads as "configured" to any truthiness check — so
+    // the integration tests tried to run without credentials and failed on
+    // "Invalid supabaseUrl" instead of skipping.
+    env: Object.fromEntries(
+      (['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY'] as const)
+        .filter((key) => env[key])
+        .map((key) => [key, env[key]]),
+    ),
   },
   resolve: {
     alias: {

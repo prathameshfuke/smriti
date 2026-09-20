@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useOfflineStatus } from './useOfflineStatus';
 import { db } from '@/lib/db/schema';
-import { syncAllPatients } from '@/lib/db/sync';
+import { syncAllPatients, getSyncState } from '@/lib/db/sync';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
 
@@ -36,6 +36,8 @@ export function useSync(): {
   /** Why the last sync failed (`SyncResult.error`), or null after a success. */
   lastError: string | null;
   /** Resolves true only when the sync actually reached the server. */
+  /** Row categories the server rejected last run, e.g. `['events']`. */
+  failedCategories: string[];
   syncNow: () => Promise<boolean>;
 } {
   const { isOnline } = useOfflineStatus();
@@ -43,6 +45,7 @@ export function useSync(): {
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
+  const [failedCategories, setFailedCategories] = useState<string[]>([]);
   // Starts false, not `isOnline`: the goal is "attempt a sync shortly after
   // this hook first sees the device online," and the device being online
   // from the very first render (by far the common case — most sessions
@@ -59,21 +62,27 @@ export function useSync(): {
     setPendingCount(count);
   }, []);
 
-  const syncNow = useCallback(async () => {
+  const syncNow = useCallback(async (options: { automatic?: boolean } = {}) => {
     if (useGameStore.getState().isSessionActive) return false;
     setIsSyncing(true);
     // Several components mount this hook at once (desktop rail and the
     // dashboard's phone card are both in the DOM). They share one in-flight
     // sync instead of racing two uploads of the same unsynced rows.
-    inFlightSync ??= syncAllPatients().finally(() => {
+    // Automatic triggers respect the post-failure backoff window; a
+    // caregiver tapping "Sync now" always gets a real attempt.
+    inFlightSync ??= syncAllPatients({ respectBackoff: options.automatic }).finally(() => {
       inFlightSync = null;
     });
     const result = await inFlightSync;
     // Only a genuine success (including "nothing to sync") updates the
     // timestamp — otherwise the caregiver sees a fresh "last synced" time
     // while their pending records never actually reached the server.
-    if (result.success) setLastSynced(new Date().toISOString());
+    // The time comes from the persisted sync state, so it survives a reload
+    // instead of resetting to "never".
+    const state = await getSyncState();
+    if (result.success) setLastSynced(state.lastSyncedAt ?? new Date().toISOString());
     setLastError(result.success ? null : (result.error ?? 'unknown'));
+    setFailedCategories(result.failedCategories ?? []);
     await refreshPendingCount();
     setIsSyncing(false);
     return result.success;
@@ -83,18 +92,28 @@ export function useSync(): {
     queueMicrotask(() => void refreshPendingCount());
   }, [refreshPendingCount]);
 
+  // The last sync outcome lives in Dexie, so a reload shows the real "last
+  // synced" time and any standing failure instead of a blank slate.
+  useEffect(() => {
+    void getSyncState().then((state) => {
+      setLastSynced(state.lastSyncedAt);
+      setLastError(state.lastError);
+      setFailedCategories(state.failedCategories ?? []);
+    });
+  }, []);
+
   useEffect(() => {
     const cameOnline = isOnline && !wasOnlineRef.current;
     wasOnlineRef.current = isOnline;
     if (!cameOnline) return;
 
-    const timer = setTimeout(() => void syncNow(), AFTER_ONLINE_DELAY_MS);
+    const timer = setTimeout(() => void syncNow({ automatic: true }), AFTER_ONLINE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [isOnline, syncNow]);
 
   useEffect(() => {
     if (!isOnline) return;
-    const interval = setInterval(() => void syncNow(), PERIODIC_INTERVAL_MS);
+    const interval = setInterval(() => void syncNow({ automatic: true }), PERIODIC_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [isOnline, syncNow]);
 
@@ -106,5 +125,5 @@ export function useSync(): {
         ? 'pending'
         : 'synced';
 
-  return { syncStatus, lastSynced, pendingCount, lastError, syncNow };
+  return { syncStatus, lastSynced, pendingCount, lastError, failedCategories, syncNow };
 }

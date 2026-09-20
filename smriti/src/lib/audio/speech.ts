@@ -64,17 +64,22 @@ export function speak(text: string, language: UILanguage = 'en', rate = 1): void
   speakWithVoice(text, language, rate);
 }
 
-/** The Web Speech tier: silent when no installed voice matches a non-English
- * language, rather than reading the line in the wrong one. */
-function speakWithVoice(text: string, language: UILanguage, rate: number): void {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+/** How long to wait for a browser to fill in its voice list before giving up. */
+const VOICE_WAIT_MS = 2000;
 
-  const tag = LANG_TAG[language];
-  const voices = window.speechSynthesis.getVoices();
-  const voice = voices.find((v) => v.lang.toLowerCase().startsWith(tag));
+let pendingVoiceWait: (() => void) | null = null;
 
-  if (!voice && language !== 'en') return;
+/** Test seam: drops any wait left over from a previous case. */
+export function resetVoiceWait(): void {
+  pendingVoiceWait?.();
+  pendingVoiceWait = null;
+}
 
+function voiceFor(tag: string): SpeechSynthesisVoice | undefined {
+  return window.speechSynthesis.getVoices().find((v) => v.lang.toLowerCase().startsWith(tag));
+}
+
+function utter(text: string, voice: SpeechSynthesisVoice | undefined, rate: number): void {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.rate = rate;
   if (voice) {
@@ -82,4 +87,51 @@ function speakWithVoice(text: string, language: UILanguage, rate: number): void 
     utterance.lang = voice.lang;
   }
   window.speechSynthesis.speak(utterance);
+}
+
+/** The Web Speech tier: silent when no installed voice matches a non-English
+ * language, rather than reading the line in the wrong one. */
+function speakWithVoice(text: string, language: UILanguage, rate: number): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+  const tag = LANG_TAG[language];
+  const voice = voiceFor(tag);
+  if (voice || language === 'en') {
+    // English falls through with no voice: the browser default is already
+    // an English one, and a line should never wait when it need not.
+    utter(text, voice, rate);
+    return;
+  }
+
+  // Chrome and most Android browsers fill `getVoices()` asynchronously, so
+  // the first call on a fresh page sees an empty list. Treating that as "no
+  // voice installed" silenced every non-English line until something else
+  // happened to trigger a second call — read on the device as the app simply
+  // not speaking Hindi or Assamese at all. Wait for the list once, briefly,
+  // and speak when it lands.
+  const synth = window.speechSynthesis;
+  // Older engines (and test doubles) expose only the `onvoiceschanged`
+  // property, or neither; with no way to be told, staying silent is the same
+  // honest "no voice installed" behaviour as before.
+  if (typeof synth.addEventListener !== 'function') return;
+
+  resetVoiceWait();
+  let settled = false;
+  const finish = (speakNow: boolean) => {
+    if (settled) return;
+    settled = true;
+    synth.removeEventListener('voiceschanged', onVoices);
+    clearTimeout(timer);
+    pendingVoiceWait = null;
+    if (speakNow) {
+      const found = voiceFor(tag);
+      if (found) utter(text, found, rate);
+    }
+  };
+  function onVoices() {
+    finish(true);
+  }
+  const timer = setTimeout(() => finish(false), VOICE_WAIT_MS);
+  pendingVoiceWait = () => finish(false);
+  synth.addEventListener('voiceschanged', onVoices);
 }

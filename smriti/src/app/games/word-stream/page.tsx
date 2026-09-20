@@ -7,7 +7,7 @@ import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
 import { OBJECTS, pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { penalizedAccuracy, scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
 import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
@@ -63,11 +63,7 @@ function WordStreamPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.word_stream ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('word_stream');
   const level = difficulty.currentLevel;
 
   const [phase, setPhase] = useState<Phase>('show');
@@ -158,11 +154,8 @@ function WordStreamPageInner() {
 
     const total = itemsToRecall.length || score.hits + score.misses || 1;
     const accuracy = penalizedAccuracy(score.hits, score.falseAlarms, total) * 100;
-    const next = adjustDifficulty(difficulty, 'word_stream', accuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
+    void applySession(accuracy);
     if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'word_stream', next.currentLevel);
 
       await logEvent({
         sessionId: activeSession?.id ?? '',

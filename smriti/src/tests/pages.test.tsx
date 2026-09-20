@@ -72,7 +72,17 @@ vi.mock('@/lib/supabase/client', () => ({
 const { syncAllPatients } = vi.hoisted(() => ({
   syncAllPatients: vi.fn(() => Promise.resolve({ success: true })),
 }));
-vi.mock('@/lib/db/sync', () => ({ syncAllPatients }));
+vi.mock('@/lib/db/sync', () => ({
+  syncAllPatients,
+  // useSync reads the persisted outcome on mount (lib/db/sync.ts).
+  getSyncState: vi.fn(async () => ({
+    lastSyncedAt: null,
+    consecutiveFailures: 0,
+    lastError: null,
+    failedCategories: [],
+    lastAttemptAt: null,
+  })),
+}));
 
 /** null by default — most tests never touch the device-trust token. */
 let deviceTrustToken: unknown = null;
@@ -416,169 +426,73 @@ describe('Caregiver login page', () => {
   it('renders an email input and a submit button', () => {
     render(<CaregiverLoginPage />);
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /send login code/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send login link/i })).toBeInTheDocument();
   });
 
-  it('shows a code input after sending, no redirect involved at all', async () => {
+  it('sends a login link pointing at the callback page, which is where a login completes', async () => {
     signInWithOtp.mockResolvedValue({ error: null });
     render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    expect(await screen.findByLabelText(/6-digit code/i)).toBeInTheDocument();
-    expect(signInWithOtp).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'asha@example.com' }),
-    );
-    // No redirectTo/emailRedirectTo at all — a code has nothing to redirect to.
-    expect(signInWithOtp.mock.calls[0][0]).not.toHaveProperty('options');
+    await waitFor(() => expect(signInWithOtp).toHaveBeenCalled());
+    const args = signInWithOtp.mock.calls[0][0];
+    expect(args.email).toBe('asha@example.com');
+    expect(args.options.emailRedirectTo).toContain('/caregiver/login/callback');
+    expect(args.options.emailRedirectTo).toContain('next=%2Fcaregiver%2Fdashboard');
   });
 
-  it('verifies the typed code in-app and redirects to the dashboard — no callback page, no cookie hop', async () => {
-    // A PIN already on this device means this is a returning caregiver, not
-    // a first-ever login — goes straight to `next`, skipping the one-time
-    // "set up quick access" PIN step covered separately below.
-    useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
+  it('carries ?next and ?resetPin through to the link, so the callback lands in the right place', async () => {
+    searchParams = new URLSearchParams('next=/app&resetPin=1');
     signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
-    fromResult = {
-      data: {
-        id: 'c1',
-        auth_id: 'test-user',
-        display_name: 'ASHA Worker',
-        role: 'family',
-        created_at: new Date().toISOString(),
-      },
-      error: null,
-    };
     render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/dashboard'));
-    expect(verifyOtp).toHaveBeenCalledWith({
-      email: 'asha@example.com',
-      token: '123456',
-      type: 'email',
-    });
+    await waitFor(() => expect(signInWithOtp).toHaveBeenCalled());
+    const redirect = signInWithOtp.mock.calls[0][0].options.emailRedirectTo as string;
+    expect(redirect).toContain('next=%2Fapp');
+    expect(redirect).toContain('resetPin=1');
   });
 
-  it('with ?next=/app, verifying the code pulls the profile and returns to the patient screen, not the caregiver dashboard', async () => {
-    searchParams = new URLSearchParams('next=/app');
-    useSettingsStore.setState({ caregiverPinHash: 'existing-hash' });
+  it('confirms where the link went, and lets the caregiver correct a mistyped address', async () => {
     signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
-    fromResult = {
-      data: {
-        id: 'c1',
-        auth_id: 'test-user',
-        display_name: 'ASHA Worker',
-        role: 'family',
-        created_at: new Date().toISOString(),
-      },
-      error: null,
-    };
     render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/app'));
-    expect(await db.caregivers.get('c1')).toMatchObject({ displayName: 'ASHA Worker' });
+    expect(await screen.findByText(/asha@example.com/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /use a different email/i }));
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
   });
 
-  it('with ?next=/app but no account found yet, still goes to onboarding — there is nothing to show on /app', async () => {
-    searchParams = new URLSearchParams('next=/app');
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'brand-new-user' } } }, error: null });
+  it('shows the error and stays on the form when the link could not be sent', async () => {
+    signInWithOtp.mockResolvedValue({ error: { message: 'Email rate limit exceeded' } });
     render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'new@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/onboarding'));
-  });
-
-  it('offers a quick-access PIN setup when a found account has no local PIN yet, then continues to `next`', async () => {
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ data: { session: { user: { id: 'test-user' } } }, error: null });
-    fromResult = {
-      data: {
-        id: 'c1',
-        auth_id: 'test-user',
-        display_name: 'ASHA Worker',
-        role: 'family',
-        created_at: new Date().toISOString(),
-      },
-      error: null,
-    };
-    render(<CaregiverLoginPage />);
-
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
-
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '123456' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-
-    expect(await screen.findByText(/set up quick access/i)).toBeInTheDocument();
+    expect(await screen.findByText(/email rate limit exceeded/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /send login link/i })).toBeInTheDocument();
     expect(replace).not.toHaveBeenCalled();
-
-    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
-    for (const digit of ['1', '2', '3', '4']) fireEvent.click(screen.getByRole('button', { name: digit }));
-
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('/caregiver/dashboard'));
-    expect(useSettingsStore.getState().caregiverPinHash).not.toBeNull();
   });
 
-  it('shows the error and lets the caregiver retry when the code is wrong', async () => {
-    signInWithOtp.mockResolvedValue({ error: null });
-    verifyOtp.mockResolvedValue({ error: { message: 'Token has expired or is invalid' } });
+  it('says so plainly, without a network call, when sync is not set up on this device', async () => {
+    isSupabaseConfigured.mockReturnValueOnce(false);
     render(<CaregiverLoginPage />);
 
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: 'asha@example.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /send login code/i }));
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'asha@example.com' } });
+    fireEvent.click(screen.getByRole('button', { name: /send login link/i }));
 
-    fireEvent.change(await screen.findByLabelText(/6-digit code/i), {
-      target: { value: '000000' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /verify code/i }));
-
-    expect(await screen.findByText(/token has expired or is invalid/i)).toBeInTheDocument();
-    expect(replace).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(/6-digit code/i)).toBeInTheDocument();
+    expect(await screen.findByText(/sync is not set up on this device/i)).toBeInTheDocument();
+    expect(signInWithOtp).not.toHaveBeenCalled();
   });
 
-  it('offers Google sign-in alongside the code, as a full navigation to the server route', () => {
+  it('offers Google sign-in alongside the link, as a full navigation to the server route', () => {
     // Not a client-side signInWithOAuth call — see api/auth/google/route.ts's
     // own comment: doing it client-side let the redirect to Google race the
     // PKCE verifier cookie write. The server route starts the OAuth flow.

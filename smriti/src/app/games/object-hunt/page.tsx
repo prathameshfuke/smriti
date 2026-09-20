@@ -8,7 +8,7 @@ import PatientNav from '@/components/layout/PatientNav';
 import ObjectGrid from '@/components/games/ObjectGrid';
 import SessionComplete from '@/components/games/SessionComplete';
 import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
@@ -100,11 +100,7 @@ function ObjectHuntPageInner() {
   const activeSession = useGameStore((s) => s.activeSession);
 
   const [phase, setPhase] = useState<Phase>('instruction');
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.object_hunt ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('object_hunt');
   const [round, setRound] = useState(1);
   const [tiles, setTiles] = useState<(SmritiObject | null)[]>([]);
   const [revealedIndex, setRevealedIndex] = useState(-1);
@@ -269,19 +265,13 @@ function ObjectHuntPageInner() {
   const encouragement = useMemo(() => pickEncouragement(stars), [round, stars]);
 
   const keepGoing = () => {
-    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-    if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
+    void applySession(accuracy);
     setRound((r) => r + 1);
     setPhase('reveal');
   };
 
   const finishSession = () => {
-    const next = adjustDifficulty(difficulty, 'object_hunt', accuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-    if (currentPatient) void usePatientStore.getState().updateDifficulty(currentPatient.id, 'object_hunt', next.currentLevel);
+    void applySession(accuracy);
     setPhase('session_complete');
   };
 

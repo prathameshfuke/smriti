@@ -52,13 +52,17 @@ export const usePatientStore = create<PatientState>()((set, get) => ({
     const updated: LocalPatient = {
       ...patient,
       currentDifficulty: { ...patient.currentDifficulty, [gameType]: level },
-      updatedAt: new Date().toISOString(),
+      // `updatedAt` deliberately left alone, and nothing queued for sync.
+      // The server `patients` table has no difficulty column (see
+      // docs/03_DATABASE.md, and `toLocalPatient` in lib/db/sync.ts) — this
+      // progression is local by design. Queuing it anyway sent a profile
+      // update after every single session whose only real effect was a
+      // newer `updated_at`, which is what last-write-wins compares: a
+      // caregiver's edit on their own phone could be thrown away by a
+      // patient simply finishing a game.
     };
 
-    await db.transaction('rw', db.patients, db.syncQueue, async () => {
-      await db.patients.put(updated);
-      await db.syncQueue.put(buildQueueItem('patients', updated.id, 'update', { ...updated }));
-    });
+    await db.patients.put(updated);
 
     if (get().currentPatient?.id === patientId) {
       set({ currentPatient: updated });

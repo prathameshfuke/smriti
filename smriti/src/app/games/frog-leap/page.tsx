@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { NextIntlClientProvider } from 'next-intl';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import PatientNav from '@/components/layout/PatientNav';
 import GameComponent from '@/components/games/frog-leap/GameComponent';
 import { FROG_LEAP_MESSAGES } from '@/components/games/frog-leap/messages';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { useTranslation } from '@/lib/i18n/provider';
 import { usePatientStore } from '@/stores/patientStore';
@@ -29,11 +29,7 @@ function FrogLeapPageInner() {
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
 
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.frog_leap ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('frog_leap');
 
   useEffect(() => {
     if (currentPatient) startSession(currentPatient.id);
@@ -63,12 +59,7 @@ function FrogLeapPageInner() {
         metadata: { score, levelReached },
       });
     }
-    const next = adjustDifficulty(difficulty, 'frog_leap', normalizedAccuracy, useGameStore.getState().sessionEvents);
-    setDifficulty(next);
-    if (currentPatient) {
-      // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-      void usePatientStore.getState().updateDifficulty(currentPatient.id, 'frog_leap', next.currentLevel);
-    }
+    void applySession(normalizedAccuracy);
   };
 
   const goHome = async () => {

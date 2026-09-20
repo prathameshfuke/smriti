@@ -184,6 +184,22 @@ export function adjustDifficulty(
 }
 ```
 
+**As shipped**, this streak counter is the innermost of three layers, and no
+game page calls it directly any more:
+
+1. `src/lib/engine/difficulty.ts` — the streak counter above, with the
+   bootstrapped classifier in `src/lib/games/difficulty-ml.ts` in front of it.
+2. `src/lib/engine/adaptive.ts` — `decideNextLevel`, which steers towards a
+   70–85% accuracy band, caps any change at one level per session, applies the
+   education bonus, and holds a patient back from a step up while their 14-day
+   score band reads "needs support" or "needs close support". A step *down* is
+   never blocked. Every decision carries a plain-language `reason`.
+3. `src/hooks/useDifficulty.ts` — what game pages use. It loads the level and
+   the patient's recent standing, and saves the new level.
+
+The level is local to the device: the server `patients` table has no column for
+it, so a change is written to Dexie only and is never queued for sync.
+
 ### 3.2 Phase 2: Per-Domain Elo Rating
 
 ```typescript

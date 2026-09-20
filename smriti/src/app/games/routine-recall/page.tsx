@@ -7,7 +7,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import PatientNav from '@/components/layout/PatientNav';
 import RoutineRecall from '@/components/games/RoutineRecall';
 import SessionComplete from '@/components/games/SessionComplete';
-import { adjustDifficulty, type DifficultyState } from '@/lib/engine/difficulty';
+import { useDifficulty } from '@/hooks/useDifficulty';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { ROUTINE_RECALL_LEVELS } from '@/lib/games/routine-recall';
@@ -33,11 +33,7 @@ function RoutineRecallPageInner() {
   const activeSession = useGameStore((s) => s.activeSession);
 
   const [phase, setPhase] = useState<Phase>('playing');
-  const [difficulty, setDifficulty] = useState<DifficultyState>(() => ({
-    currentLevel: currentPatient?.currentDifficulty.routine_recall ?? 1,
-    consecutiveHighScores: 0,
-    consecutiveLowScores: 0,
-  }));
+  const { state: difficulty, applySession } = useDifficulty('routine_recall');
   const [wasCorrect, setWasCorrect] = useState(false);
 
   const sequenceLength = (ROUTINE_RECALL_LEVELS[difficulty.currentLevel] ?? ROUTINE_RECALL_LEVELS[1])
@@ -72,15 +68,10 @@ function RoutineRecallPageInner() {
       }
 
       setWasCorrect(correct);
-      const next = adjustDifficulty(difficulty, 'routine_recall', correct ? 100 : 0, useGameStore.getState().sessionEvents);
-      setDifficulty(next);
-      if (currentPatient) {
-        // SAFE-FIRE-AND-FORGET: only read by a future session's mount (real navigation time apart), not within this session — lower severity than the logEvent bug class this mirrors the shape of, not urgently fixed but made visible
-        void usePatientStore.getState().updateDifficulty(currentPatient.id, 'routine_recall', next.currentLevel);
-      }
+      void applySession(correct ? 100 : 0);
       setPhase('session_complete');
     },
-    [currentPatient, activeSession, difficulty, sequenceLength],
+    [currentPatient, activeSession, difficulty, sequenceLength, applySession],
   );
 
   const stars = starsFromRate(wasCorrect ? 1 : 0);
