@@ -10,6 +10,7 @@ import Panel, { buttonClass } from '@/components/ui/Panel';
 import Notice from '@/components/ui/Notice';
 import CognitiveTrendChart from '@/components/caregiver/CognitiveTrendChart';
 import GameBreakdownChart from '@/components/caregiver/GameBreakdownChart';
+import ActivityLevelPanel from '@/components/caregiver/ActivityLevelPanel';
 import SessionCalendar from '@/components/caregiver/SessionCalendar';
 import { authedFetch } from '@/lib/api/client';
 import { useCognitiveTrend, type TrendRange } from '@/hooks/useCognitiveTrend';
@@ -261,6 +262,8 @@ export default function CognitiveTab({ patientId, alerts, onResolveAlert, resolv
           <GameBreakdownChart points={trend.points} isLoading={trend.isLoading} height={240} />
         </Panel>
       </div>
+
+      <ActivityLevelPanel points={scoreTrend.points} today={today} isLoading={scoreTrend.isLoading} />
 
       <SessionCalendar year={year} month={month} points={trend.points} />
     </div>
