@@ -965,8 +965,11 @@ describe('Caregiver onboarding wizard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     fireEvent.change(screen.getByPlaceholderText('Patient name'), { target: { value: 'Aai' } });
+    // Pasted with a Unicode line separator, as a copy from a contacts app can
+    // be. A single-line input strips CR/LF itself but not U+2028, and Ask
+    // Smriti lays facts out one per line, so this must not survive as a break.
     fireEvent.change(screen.getByPlaceholderText('House, street, town'), {
-      target: { value: '12 MG Road, Guwahati' },
+      target: { value: '12 MG Road,\u2028Guwahati' },
     });
     fireEvent.change(screen.getByPlaceholderText('Age'), { target: { value: '72' } });
     fireEvent.click(screen.getByRole('button', { name: 'Female' }));

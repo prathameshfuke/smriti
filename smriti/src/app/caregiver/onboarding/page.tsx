@@ -60,6 +60,14 @@ interface WizardData {
   consent: ConsentChoices;
 }
 
+/** Collapses control characters, Unicode line separators and runs of
+ * whitespace to single spaces. Ask Smriti lays facts out as numbered
+ * lines ("F1. Home: \u2026"), so a line break pasted in with an address would
+ * look to the model like the start of another fact. */
+function flattenToOneLine(value: string): string {
+  return value.replace(/[\p{Cc}\p{Cf}\u2028\u2029]/gu, ' ').replace(/\s+/gu, ' ').trim();
+}
+
 const initialData: WizardData = {
   caregiverName: '',
   role: null,
@@ -190,7 +198,7 @@ export default function CaregiverOnboardingPage() {
 
     // Written through the same store the Memory Bank screen uses, so it
     // syncs and encrypts exactly like a caregiver-entered fact.
-    const homeAddress = data.homeAddress.trim();
+    const homeAddress = flattenToOneLine(data.homeAddress);
     if (homeAddress) {
       await useMemoryBankStore.getState().addEntry({
         id: uuid(),
