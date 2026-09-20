@@ -471,6 +471,7 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `NEXT_PUBLIC_SUPABASE_URL` | Sync, caregiver dashboard | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Sync, caregiver dashboard | Supabase anon/public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-side kiosk/device-trust routes | **Never expose to the browser or commit it** |
+| `DEVICE_TRUST_SECRET` | Patient-device voice: `/api/ai/speak`, `/api/ai/transcribe`, `/api/ai/converse` | Long random string (`openssl rand -hex 32`), server-only. **Without it every kiosk voice request is rejected and Hindi/Assamese narration silently drops to the browser voice**; the server logs `[device-trust] DEVICE_TRUST_SECRET is not set` |
 | `GROQ_API_KEY` | AI companion (primary) | Free at [console.groq.com/keys](https://console.groq.com/keys) |
 | `OPENROUTER_API_KEY` | AI companion (fallback) | Used if Groq is rate-limited/unavailable — free at [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `BHASHINI_USER_ID` / `BHASHINI_ULCA_API_KEY` | Assamese/Hindi speech-to-text and Assamese/Hindi/English text-to-speech (primary path) | ULCA credential pair from [Bhashini](https://bhashini.gov.in) — used for the config call in `src/lib/ai/bhashini-auth.ts`, which resolves the real service and mints the dynamic key the compute call sends |

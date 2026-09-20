@@ -78,3 +78,26 @@ describe('transcribeAudio', () => {
     await expect(transcribeAudio(new Blob(['x']))).rejects.toThrow();
   });
 });
+
+describe('transcribeAudio language hint', () => {
+  async function sentLanguage(lang?: 'hi' | 'as' | 'en' | 'brx' | 'mni') {
+    const fetchMock = mockFetchSequence([{ ok: true, body: { text: 'x' } }]);
+    vi.stubGlobal('fetch', fetchMock);
+    const { transcribeAudio } = await import('@/lib/ai/transcribe-client');
+    await transcribeAudio(new Blob(['a'], { type: 'audio/webm' }), lang);
+    const body = (fetchMock.mock.calls[0][1] as RequestInit).body as FormData;
+    return body.get('language');
+  }
+
+  it('pins Hindi and Assamese so Whisper cannot auto-detect Assamese as Bengali', async () => {
+    expect(await sentLanguage('hi')).toBe('hi');
+    expect(await sentLanguage('as')).toBe('as');
+  });
+
+  it('sends no hint for languages Whisper has no code for, or when none is given', async () => {
+    expect(await sentLanguage('brx')).toBeNull();
+    expect(await sentLanguage('mni')).toBeNull();
+    expect(await sentLanguage()).toBeNull();
+  });
+});
+

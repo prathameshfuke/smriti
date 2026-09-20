@@ -46,9 +46,17 @@ const STOPWORDS = new Set([
   'মোৰ', 'আমাৰ', 'কি', 'কোন', 'কেতিয়া', 'ক’ত', 'আমার', 'কী', 'কখন', 'কোথায়', 'আছে', 'হয়',
 ]);
 
+/** Devanagari (०-९) and Bengali-Assamese (০-৯) digits to ASCII, so a spoken "७२" matches a stored "72". */
+export function foldNativeDigits(text: string): string {
+  return text.replace(/[०-९০-৯]/g, (c) => {
+    const code = c.charCodeAt(0);
+    return String(code >= 0x09e6 ? code - 0x09e6 : code - 0x0966);
+  });
+}
+
 /** Lowercased significant words in any script. Latin words need 3+ letters; other scripts carry more per letter. */
 export function significantWords(text: string): string[] {
-  return text
+  return foldNativeDigits(text)
     .toLowerCase()
     .normalize('NFC')
     .split(/[^\p{L}\p{M}\p{N}]+/u)
