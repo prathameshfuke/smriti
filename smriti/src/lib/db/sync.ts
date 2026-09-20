@@ -422,6 +422,14 @@ async function applySyncResponse(
   );
   // Outside the transaction: cached answers built from entries that just changed.
   for (const patientId of memoryBankChanged) await clearCachedAnswers(patientId);
+  if (memoryBankChanged.size) {
+    // The caregiver's Memory Bank list is held in memory, so an entry edited
+    // on another phone only appeared there after a reload. Imported lazily:
+    // the store pulls in React, which server-side callers of this file don't need.
+    const { useMemoryBankStore } = await import('@/stores/memoryBankStore');
+    const shown = useMemoryBankStore.getState().entries[0]?.patientId;
+    if (shown && memoryBankChanged.has(shown)) await useMemoryBankStore.getState().loadEntries(shown);
+  }
 }
 
 async function postSync(payloads: PatientSyncPayload[], accessToken: string, retried = false): Promise<SyncResult> {
