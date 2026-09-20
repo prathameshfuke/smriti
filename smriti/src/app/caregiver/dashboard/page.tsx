@@ -92,7 +92,7 @@ function CaregiverDashboardPageInner() {
   const [patients, setPatients] = useState<DashboardPatient[] | null>(null);
   const [error, setError] = useState(false);
   const [today] = useState(() => new Date().toISOString().slice(0, 10));
-  const localRows = useLocalScoreRows(today);
+  const { rows: localRows, isLoading: localRowsLoading } = useLocalScoreRows(today);
 
   const load = () => {
     setError(false);
@@ -126,7 +126,7 @@ function CaregiverDashboardPageInner() {
         <SummaryStrip redCount={redCount} attentionCount={attentionCount} total={patients.length} />
       ) : null}
 
-      {patients === null && !error ? (
+      {!error && (patients === null || (patients.length > 0 && localRowsLoading)) ? (
         <div className="flex flex-col gap-3" aria-busy="true">
           <Skeleton height={88} />
           <Skeleton height={220} />
@@ -154,7 +154,7 @@ function CaregiverDashboardPageInner() {
         </section>
       ) : null}
 
-      {patients && patients.length > 0 ? (
+      {patients && patients.length > 0 && !localRowsLoading ? (
         <section aria-labelledby="patient-list-heading" className="mt-10">
           <h2 id="patient-list-heading" className="mb-3 font-serif-display text-[1.375rem] font-medium text-ink">
             {plural(patients.length, 'patient', 'patients')}

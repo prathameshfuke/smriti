@@ -45,7 +45,7 @@ class ErrorBoundaryClass extends Component<ErrorBoundaryClassProps, ErrorBoundar
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="mx-auto flex min-h-dvh max-w-patient flex-col items-center justify-center gap-5 bg-surface px-4 py-16 text-center">
+      <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col items-center justify-center gap-5 bg-surface px-4 py-16 text-center">
         <span className="text-6xl" aria-hidden="true">
           😔
         </span>

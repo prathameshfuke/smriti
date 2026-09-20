@@ -284,7 +284,7 @@ function ObjectHuntPageInner() {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-patient flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col">
       <PatientNav
         title={t('game.objectHunt.name')}
         onBack={() => {

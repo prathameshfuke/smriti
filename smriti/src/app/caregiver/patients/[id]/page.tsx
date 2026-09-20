@@ -54,6 +54,13 @@ const PATIENT_STATUS: Record<TriageStatus, { tone: StatusTone; label: string }> 
 export default function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [patientId, setPatientId] = useState<string | null>(null);
   const [patient, setPatient] = useState<DetailPatient | null>(null);
+  // Whether the /api/patients fetch has SETTLED, which `patient === null`
+  // cannot express: null is both "still in flight" and "not one of ours".
+  const [patientSettled, setPatientSettled] = useState(false);
+  // Specifically the /api/patients failure. `error` is the shared banner
+  // flag, which the alerts and digest fetches also raise — those say nothing
+  // about whether the score's server rows arrived.
+  const [patientFetchFailed, setPatientFetchFailed] = useState(false);
   const [tab, setTab] = useState<Tab>('cognitive');
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [error, setError] = useState(false);
@@ -72,8 +79,16 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
     totalRounds: p.totalRounds,
     maxDifficultyReached: p.maxDifficultyReached,
   }));
+  // Both inputs load asynchronously and independently (Dexie via
+  // useCognitiveTrend, the server rows via /api/patients). The score is one
+  // number over the union of the two, so computing it while either is still
+  // in flight paints a number that is simply wrong and then changes under
+  // the caregiver a second later. Nothing numeric is shown until both have
+  // settled; a failed fetch counts as settled (the banner below explains it)
+  // rather than leaving a skeleton up forever.
+  const scoreLoading = scoreTrend.isLoading || !patientSettled;
   const scoreRows = mergeScoreRows(patient?.scoreRows ?? [], localRows);
-  const cognitiveScore = computeCognitiveScore(scoreRows, today);
+  const cognitiveScore = scoreLoading ? null : computeCognitiveScore(scoreRows, today);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,8 +103,15 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     if (!patientId) return;
     authedFetch<{ patients: DetailPatient[] }>('/api/patients')
-      .then((body) => setPatient(body.patients.find((p) => p.id === patientId) ?? null))
-      .catch(() => setError(true));
+      .then((body) => {
+        setPatient(body.patients.find((p) => p.id === patientId) ?? null);
+        setPatientFetchFailed(false);
+      })
+      .catch(() => {
+        setError(true);
+        setPatientFetchFailed(true);
+      })
+      .finally(() => setPatientSettled(true));
   }, [patientId, reloadToken]);
 
   useEffect(() => {
@@ -145,7 +167,13 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
       <header className="mt-2 flex items-center gap-4">
         <ScoreRing
           value={cognitiveScore ? cognitiveScore.score : null}
-          label={cognitiveScore ? `Cognitive score ${cognitiveScore.score} out of 100` : 'No cognitive score yet'}
+          label={
+            scoreLoading
+              ? 'Cognitive score loading'
+              : cognitiveScore
+                ? `Cognitive score ${cognitiveScore.score} out of 100`
+                : 'No cognitive score yet'
+          }
         />
         <div className="min-w-0 flex-1">
           <h1 className="break-words font-serif-display text-[1.875rem] font-medium leading-[1.1] text-ink md:text-[2.5rem]">
@@ -172,6 +200,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             type="button"
             onClick={() => {
               setError(false);
+              setPatientSettled(false);
+              setPatientFetchFailed(false);
               setReloadToken((n) => n + 1);
             }}
             className={`${buttonClass.secondary} shrink-0`}
@@ -209,6 +239,8 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             resolveFailed={resolveFailed}
             onError={() => setError(true)}
             serverScoreRows={patient?.scoreRows}
+            serverRowsLoading={!patientSettled}
+            serverRowsFailed={patientFetchFailed}
           />
         ) : null}
         {patientId && tab === 'reminders' ? <RemindersTab patientId={patientId} /> : null}

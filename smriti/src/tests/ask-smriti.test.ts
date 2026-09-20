@@ -182,9 +182,48 @@ describe('answerOffline', () => {
     });
   });
 
+  it('answers "who am I" offline, where no word matches the name fact', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(await answerOffline('p1', 'who am I', 'Ramesh Das')).toEqual({
+      kind: 'memoryBook',
+      text: 'Their own name: Ramesh Das',
+    });
+  });
+
+  it('answers the Hindi name question offline', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(
+      await answerOffline('p1', 'मेरा नाम क्या है', 'Ramesh Das'),
+    ).toEqual({ kind: 'memoryBook', text: 'Their own name: Ramesh Das' });
+  });
+
+  it('answers the Assamese name question offline', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(await answerOffline('p1', 'মোৰ নাম কি', 'Ramesh Das')).toEqual({
+      kind: 'memoryBook',
+      text: 'Their own name: Ramesh Das',
+    });
+  });
+
   it('still says nothing when the phone has no name for the patient', async () => {
     const { answerOffline } = await import('@/lib/ai/companion-offline');
     expect(await answerOffline('p1', 'what is my name')).toEqual({ kind: 'none' });
+  });
+
+  it('does not answer someone else’s name with the patient’s own, in any language', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    // No entry names a daughter, so there is nothing to read back — and the
+    // patient's own name must not stand in for hers.
+    expect(await answerOffline('p1', 'what is my daughter’s name', 'Ramesh Das')).toEqual({ kind: 'none' });
+    expect(
+      await answerOffline('p1', 'मेरी बेटी का नाम क्या है', 'Ramesh Das'),
+    ).toEqual({ kind: 'none' });
+  });
+
+  it('still says nothing for an identity question when the phone has no name, in any language', async () => {
+    const { answerOffline } = await import('@/lib/ai/companion-offline');
+    expect(await answerOffline('p1', 'মোৰ নাম কি')).toEqual({ kind: 'none' });
+    expect(await answerOffline('p1', 'who am I')).toEqual({ kind: 'none' });
   });
 
   it('says nothing rather than guess when no entry clearly matches', async () => {

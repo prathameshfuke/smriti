@@ -406,12 +406,21 @@ export default function GameComponent({ onComplete, initialLevel }: GameComponen
     const frogStars = starsFromRate(Math.min(100, level * 12) / 100);
 
     return (
-        <div className="w-full h-full min-h-[460px] flex flex-col border border-line200 bg-surface-card rounded-card overflow-hidden">
+        // No overflow-hidden on the card: it would make the card its own
+        // containing block and the sticky HUD below would scroll away with it.
+        // The play area clips its own sprites.
+        // The min-heights below are lifted on short screens (a 320x480 Android,
+        // or any phone in landscape), where the stacked floors pushed Start
+        // below the fold and the patient had to scroll to begin the game.
+        <div className="w-full flex-1 min-h-[460px] [@media(max-height:560px)]:min-h-0 flex flex-col border border-line200 bg-surface-card rounded-card">
 
             {/* Top HUD — fixed min-height (64px settings button + py padding) so
                 this row is the same height idle vs playing; PatientNav above
-                already carries the game title, so idle no longer repeats it here. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 min-h-[80px] md:min-h-[88px] bg-transparent shrink-0 z-20">
+                already carries the game title, so idle no longer repeats it here.
+                Sticky under the 64px nav: the root layout appends the disclaimer
+                after the game, so the page outgrows the screen and a small scroll
+                used to hide the level and the instruction under the nav. */}
+            <div className="sticky top-16 flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 md:px-6 md:py-3 min-h-[80px] md:min-h-[88px] [@media(max-height:560px)]:min-h-[60px] [@media(max-height:560px)]:py-1 bg-surface-card shrink-0 z-20">
                 {phase !== 'idle' && (
                     <span className="text-patient-sm font-bold px-2 py-0.5 md:px-2.5 md:py-1 rounded-full bg-primary-light/40 text-primary-dark shrink-0">
                         {t('level', { level: level.toString() })}
@@ -448,7 +457,7 @@ export default function GameComponent({ onComplete, initialLevel }: GameComponen
             {/* Play Area */}
             <div
                 ref={containerRef}
-                className="relative flex-1 w-full min-h-[360px] overflow-hidden bg-[#219EBC]/10"
+                className="relative flex-1 w-full min-h-[280px] [@media(max-height:560px)]:min-h-[150px] overflow-hidden bg-[#219EBC]/10"
                 style={{
                     backgroundImage: "url('/games/assets/frog/bg_pond.png')",
                     backgroundSize: 'cover',

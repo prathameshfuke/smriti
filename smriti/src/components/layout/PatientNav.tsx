@@ -29,7 +29,7 @@ export default function PatientNav({ title, onBack }: PatientNavProps) {
   return (
     <header
       style={{ minHeight: NAV_BAR_PX }}
-      className="sticky top-0 z-40 flex w-full items-center gap-1 border-b border-line200 bg-surface px-2"
+      className="sticky top-0 z-40 flex w-full items-center gap-3 border-b border-line200 bg-surface px-2"
     >
       <div className="flex flex-1 basis-0 justify-start">
         {onBack ? (

@@ -55,8 +55,12 @@ describe('WeekActivity', () => {
 
   it('summarises played days and average accuracy for screen readers', () => {
     render(<WeekActivity days={days} />);
-    // (60+72+81+55+68+52)/6 = 64.67 -> rounds to 65
-    expect(screen.getByRole('img', { name: /played on 6 of the last 7 days, average accuracy 65%/i })).toBeInTheDocument();
+    // (60+72+81+55+68+52)/6 = 64.67 -> rounds to 65. The wording names the
+    // aggregation (a mean of the daily figures) so it cannot be read as the
+    // cognitive score's rounds-weighted 14-day accuracy.
+    expect(
+      screen.getByRole('img', { name: /played on 6 of the last 7 days, 65% average of those days' accuracy/i }),
+    ).toBeInTheDocument();
   });
 
   it('says plainly when nothing was played', () => {
