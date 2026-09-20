@@ -1,4 +1,841 @@
 {
  "version": 1,
- "languages": {}
+ "languages": {
+  "as": {
+   "game.correct": {
+    "h": "0dae5fa8a69b0a",
+    "ext": "m4a"
+   },
+   "game.countingboxes.observing": {
+    "h": "018d68055a1b07",
+    "ext": "m4a"
+   },
+   "game.doubledecision.intro": {
+    "h": "074887f8020b45",
+    "ext": "m4a"
+   },
+   "game.fishtrace.start": {
+    "h": "1b17bf80719875",
+    "ext": "m4a"
+   },
+   "game.memoryblocks.watch": {
+    "h": "0b0b8385a34968",
+    "ext": "m4a"
+   },
+   "game.memorymatch.goodmatch": {
+    "h": "1692ddb7f2b27a",
+    "ext": "m4a"
+   },
+   "game.memorymatch.instruction": {
+    "h": "13fb1610500c1c",
+    "ext": "m4a"
+   },
+   "game.memorymatch.tryanotherone": {
+    "h": "0124d69cb4b6bc",
+    "ext": "m4a"
+   },
+   "game.memoryspan.intro": {
+    "h": "00a0c08ce80056",
+    "ext": "m4a"
+   },
+   "game.objecthunt.instruction": {
+    "h": "0f8b7907fcc7f7",
+    "ext": "m4a"
+   },
+   "game.pathmatch.good": {
+    "h": "0b5b022f376014",
+    "ext": "m4a"
+   },
+   "game.pathmatch.instruction": {
+    "h": "117e757aa77bec",
+    "ext": "m4a"
+   },
+   "game.quicktap.instruction": {
+    "h": "05d2930e384332",
+    "ext": "m4a"
+   },
+   "game.reminiscencequiz.correct": {
+    "h": "0dae5fa8a69b0a",
+    "ext": "m4a"
+   },
+   "game.reminiscencequiz.trytogether": {
+    "h": "10b928c53c7d1e",
+    "ext": "m4a"
+   },
+   "game.sessionend.star1": {
+    "h": "02ade4b928bd34",
+    "ext": "m4a"
+   },
+   "game.sessionend.star2": {
+    "h": "0a44857632297d",
+    "ext": "m4a"
+   },
+   "game.sessionend.star3": {
+    "h": "0220830c8a576a",
+    "ext": "m4a"
+   },
+   "game.sessionend.star4": {
+    "h": "17c4828365507d",
+    "ext": "m4a"
+   },
+   "game.sessionend.star5": {
+    "h": "14fadac8fadada",
+    "ext": "m4a"
+   },
+   "game.tryagain": {
+    "h": "0f6e732aff855c",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step1": {
+    "h": "0c06aac2a864f9",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step2": {
+    "h": "1bc5f1d273b724",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step3": {
+    "h": "0344e476f1f541",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step1": {
+    "h": "14818f3a31554a",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step2": {
+    "h": "1f97bb24c67702",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step3": {
+    "h": "0adf33b8b31a7a",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step4": {
+    "h": "154ff8f0036955",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step1": {
+    "h": "0eaa76faa9d5cb",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step2": {
+    "h": "1825ef4631d5d8",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step3": {
+    "h": "0ca00c655339de",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step4": {
+    "h": "13d4a94e461535",
+    "ext": "m4a"
+   },
+   "game.wordstream.rememberlater": {
+    "h": "192e2511d6f50b",
+    "ext": "m4a"
+   },
+   "game.wordstream.whichitems": {
+    "h": "0c3fbcb6f132a3",
+    "ext": "m4a"
+   },
+   "object.bamboo-basket": {
+    "h": "05549514d45a6f",
+    "ext": "m4a"
+   },
+   "object.bamboo-shoot": {
+    "h": "1902c753e63822",
+    "ext": "m4a"
+   },
+   "object.banana": {
+    "h": "1334f5ba8bd58e",
+    "ext": "m4a"
+   },
+   "object.bell": {
+    "h": "0d2c0a22fd3ee7",
+    "ext": "m4a"
+   },
+   "object.bell-metal-plate": {
+    "h": "01a28af80ae721",
+    "ext": "m4a"
+   },
+   "object.betel-leaf": {
+    "h": "0bf7a39e527af7",
+    "ext": "m4a"
+   },
+   "object.bicycle": {
+    "h": "0ac5f221fbbc6b",
+    "ext": "m4a"
+   },
+   "object.bihu-bonfire": {
+    "h": "09c590da8b37c4",
+    "ext": "m4a"
+   },
+   "object.bihu-dance": {
+    "h": "06e381afea0230",
+    "ext": "m4a"
+   },
+   "object.boat": {
+    "h": "14fefbc2eb51b8",
+    "ext": "m4a"
+   },
+   "object.book": {
+    "h": "0b386a86bca08e",
+    "ext": "m4a"
+   },
+   "object.clay-pot": {
+    "h": "0f8a27d74cc7be",
+    "ext": "m4a"
+   },
+   "object.cow": {
+    "h": "1ab676e24b76ce",
+    "ext": "m4a"
+   },
+   "object.curd": {
+    "h": "11735624ac5c60",
+    "ext": "m4a"
+   },
+   "object.dhol": {
+    "h": "15fcbf8ac8af1a",
+    "ext": "m4a"
+   },
+   "object.duck": {
+    "h": "1110735e262fc1",
+    "ext": "m4a"
+   },
+   "object.duck-egg": {
+    "h": "097f6153f69e5e",
+    "ext": "m4a"
+   },
+   "object.earthen-stove": {
+    "h": "042c2068f781dd",
+    "ext": "m4a"
+   },
+   "object.elephant": {
+    "h": "18f52ada912335",
+    "ext": "m4a"
+   },
+   "object.eri-silk": {
+    "h": "0a3faf27e1d3da",
+    "ext": "m4a"
+   },
+   "object.fish": {
+    "h": "01ecee7516ef81",
+    "ext": "m4a"
+   },
+   "object.fish-curry": {
+    "h": "0f95cd0ce1fb02",
+    "ext": "m4a"
+   },
+   "object.fishing-net": {
+    "h": "003d0d9b6fe5d6",
+    "ext": "m4a"
+   },
+   "object.flower": {
+    "h": "1556bb1f80d735",
+    "ext": "m4a"
+   },
+   "object.gamosa": {
+    "h": "0d99552c06fccf",
+    "ext": "m4a"
+   },
+   "object.ginger": {
+    "h": "0973032bae66e8",
+    "ext": "m4a"
+   },
+   "object.gogona": {
+    "h": "05e44ddf4f7930",
+    "ext": "m4a"
+   },
+   "object.golden-langur": {
+    "h": "0238e7528f12fa",
+    "ext": "m4a"
+   },
+   "object.hand-fan": {
+    "h": "06360399d41ab7",
+    "ext": "m4a"
+   },
+   "object.handloom": {
+    "h": "179e499fb8fcd3",
+    "ext": "m4a"
+   },
+   "object.hoolock-gibbon": {
+    "h": "0f1fb9cd5e87ad",
+    "ext": "m4a"
+   },
+   "object.hornbill": {
+    "h": "04a40f4c01fe7f",
+    "ext": "m4a"
+   },
+   "object.jaapi": {
+    "h": "0c120a75e77567",
+    "ext": "m4a"
+   },
+   "object.jackfruit": {
+    "h": "13f9fcdd4e1699",
+    "ext": "m4a"
+   },
+   "object.kaji-nemu": {
+    "h": "1b224b331e6648",
+    "ext": "m4a"
+   },
+   "object.key": {
+    "h": "1a07c8dd48fb11",
+    "ext": "m4a"
+   },
+   "object.khar": {
+    "h": "12aab9c29273e3",
+    "ext": "m4a"
+   },
+   "object.king-chili": {
+    "h": "1433023917f79d",
+    "ext": "m4a"
+   },
+   "object.lamp": {
+    "h": "0e704da4b660d4",
+    "ext": "m4a"
+   },
+   "object.mango": {
+    "h": "00f161890e3b21",
+    "ext": "m4a"
+   },
+   "object.mekhela": {
+    "h": "11a1d4b95050d7",
+    "ext": "m4a"
+   },
+   "object.moon": {
+    "h": "10aadc97559ee7",
+    "ext": "m4a"
+   },
+   "object.mortar-pestle": {
+    "h": "154356b8133d00",
+    "ext": "m4a"
+   },
+   "object.muga-silk": {
+    "h": "121227be9e6045",
+    "ext": "m4a"
+   },
+   "object.orange": {
+    "h": "1c2f878b62daba",
+    "ext": "m4a"
+   },
+   "object.paddy-field": {
+    "h": "09438c8cbac9b9",
+    "ext": "m4a"
+   },
+   "object.peacock": {
+    "h": "1ea340a999bcd4",
+    "ext": "m4a"
+   },
+   "object.pepa": {
+    "h": "1567ccc5dd6891",
+    "ext": "m4a"
+   },
+   "object.pineapple": {
+    "h": "06896f8c1f3fda",
+    "ext": "m4a"
+   },
+   "object.pitha": {
+    "h": "17b73ec7e7360f",
+    "ext": "m4a"
+   },
+   "object.rhino": {
+    "h": "1658bf83877561",
+    "ext": "m4a"
+   },
+   "object.rice": {
+    "h": "0a1850fe56278f",
+    "ext": "m4a"
+   },
+   "object.river": {
+    "h": "07cebba480dfbc",
+    "ext": "m4a"
+   },
+   "object.sador": {
+    "h": "1e895e9924ef2b",
+    "ext": "m4a"
+   },
+   "object.sticky-rice": {
+    "h": "0e91c15e1d9151",
+    "ext": "m4a"
+   },
+   "object.sun": {
+    "h": "0ddba98f27e384",
+    "ext": "m4a"
+   },
+   "object.taal": {
+    "h": "00b8d9e58e3a62",
+    "ext": "m4a"
+   },
+   "object.tamul": {
+    "h": "1d94113499a326",
+    "ext": "m4a"
+   },
+   "object.tea-leaf": {
+    "h": "1cbdbafe4457e8",
+    "ext": "m4a"
+   },
+   "object.tiger": {
+    "h": "1a956596cd5a9e",
+    "ext": "m4a"
+   },
+   "object.tokou": {
+    "h": "1815249f44953b",
+    "ext": "m4a"
+   },
+   "object.tree": {
+    "h": "0d8bc569e4920d",
+    "ext": "m4a"
+   },
+   "object.umbrella": {
+    "h": "0a29754d2e6041",
+    "ext": "m4a"
+   },
+   "object.water-buffalo": {
+    "h": "012f5a1ea7a199",
+    "ext": "m4a"
+   },
+   "object.water-lily": {
+    "h": "1ab042d019c106",
+    "ext": "m4a"
+   },
+   "object.xorai": {
+    "h": "10c0f98250582c",
+    "ext": "m4a"
+   },
+   "reminder.activity": {
+    "h": "1d2c410884c404",
+    "ext": "m4a"
+   },
+   "reminder.appointment": {
+    "h": "032739efab5366",
+    "ext": "m4a"
+   },
+   "reminder.hydration": {
+    "h": "0256921eb7743a",
+    "ext": "m4a"
+   },
+   "reminder.medication": {
+    "h": "019730696a81fd",
+    "ext": "m4a"
+   }
+  },
+  "hi": {
+   "game.correct": {
+    "h": "0f96a995696d28",
+    "ext": "m4a"
+   },
+   "game.countingboxes.observing": {
+    "h": "148476d7fc0c7c",
+    "ext": "m4a"
+   },
+   "game.doubledecision.intro": {
+    "h": "19532343001cab",
+    "ext": "m4a"
+   },
+   "game.fishtrace.start": {
+    "h": "10b39990dea6e7",
+    "ext": "m4a"
+   },
+   "game.memoryblocks.watch": {
+    "h": "11ccd70576102d",
+    "ext": "m4a"
+   },
+   "game.memorymatch.goodmatch": {
+    "h": "1820fd9ac8d7bf",
+    "ext": "m4a"
+   },
+   "game.memorymatch.instruction": {
+    "h": "1161ad8fe30a10",
+    "ext": "m4a"
+   },
+   "game.memorymatch.tryanotherone": {
+    "h": "080d0a02a140a2",
+    "ext": "m4a"
+   },
+   "game.memoryspan.intro": {
+    "h": "05dba30068534f",
+    "ext": "m4a"
+   },
+   "game.objecthunt.instruction": {
+    "h": "0d11fd9753c73b",
+    "ext": "m4a"
+   },
+   "game.pathmatch.good": {
+    "h": "1db828c3f6715e",
+    "ext": "m4a"
+   },
+   "game.pathmatch.instruction": {
+    "h": "08d07f84c827f2",
+    "ext": "m4a"
+   },
+   "game.quicktap.instruction": {
+    "h": "1c071c35fd973f",
+    "ext": "m4a"
+   },
+   "game.reminiscencequiz.correct": {
+    "h": "0f96a995696d28",
+    "ext": "m4a"
+   },
+   "game.reminiscencequiz.trytogether": {
+    "h": "066d5736e474c8",
+    "ext": "m4a"
+   },
+   "game.sessionend.star1": {
+    "h": "198f4bf4a4d674",
+    "ext": "m4a"
+   },
+   "game.sessionend.star2": {
+    "h": "108ff0e44d5e5c",
+    "ext": "m4a"
+   },
+   "game.sessionend.star3": {
+    "h": "176608decb7979",
+    "ext": "m4a"
+   },
+   "game.sessionend.star4": {
+    "h": "10a36591161783",
+    "ext": "m4a"
+   },
+   "game.sessionend.star5": {
+    "h": "12716531ba2138",
+    "ext": "m4a"
+   },
+   "game.tryagain": {
+    "h": "1bcebd8b2b1df4",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step1": {
+    "h": "148bd552518244",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step2": {
+    "h": "093f90cfd84117",
+    "ext": "m4a"
+   },
+   "game.tutorial.countingboxes.step3": {
+    "h": "056181e099b837",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step1": {
+    "h": "03bfca1c9437e9",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step2": {
+    "h": "1e1e21a7355cec",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step3": {
+    "h": "193b79ef8e49a7",
+    "ext": "m4a"
+   },
+   "game.tutorial.pathmatch.step4": {
+    "h": "1c7cbb80e65c0a",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step1": {
+    "h": "1b3f15fa307a70",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step2": {
+    "h": "01cfa4b743c9ed",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step3": {
+    "h": "1b1e1cda2b06a4",
+    "ext": "m4a"
+   },
+   "game.tutorial.quicktap.step4": {
+    "h": "04acbdbb92d3aa",
+    "ext": "m4a"
+   },
+   "game.wordstream.rememberlater": {
+    "h": "1eefda999b48e5",
+    "ext": "m4a"
+   },
+   "game.wordstream.whichitems": {
+    "h": "0431885e4b4045",
+    "ext": "m4a"
+   },
+   "object.bamboo-basket": {
+    "h": "08adb1106bc80c",
+    "ext": "m4a"
+   },
+   "object.bamboo-shoot": {
+    "h": "0de4ed2e29e10e",
+    "ext": "m4a"
+   },
+   "object.banana": {
+    "h": "07338fa0b55298",
+    "ext": "m4a"
+   },
+   "object.bell": {
+    "h": "07c53d290a2db1",
+    "ext": "m4a"
+   },
+   "object.bell-metal-plate": {
+    "h": "0478b5a0d314b6",
+    "ext": "m4a"
+   },
+   "object.betel-leaf": {
+    "h": "08072343d9315c",
+    "ext": "m4a"
+   },
+   "object.bicycle": {
+    "h": "08223f312a1326",
+    "ext": "m4a"
+   },
+   "object.bihu-bonfire": {
+    "h": "1df088aa24e7f4",
+    "ext": "m4a"
+   },
+   "object.bihu-dance": {
+    "h": "1cb424d0926cbc",
+    "ext": "m4a"
+   },
+   "object.boat": {
+    "h": "11c199d65378ef",
+    "ext": "m4a"
+   },
+   "object.book": {
+    "h": "1ff317641ef5ce",
+    "ext": "m4a"
+   },
+   "object.clay-pot": {
+    "h": "18002776638286",
+    "ext": "m4a"
+   },
+   "object.cow": {
+    "h": "13881cb766057d",
+    "ext": "m4a"
+   },
+   "object.curd": {
+    "h": "144e45362bcdc0",
+    "ext": "m4a"
+   },
+   "object.dhol": {
+    "h": "1050e6aae036c6",
+    "ext": "m4a"
+   },
+   "object.duck": {
+    "h": "0e23e3e25809d2",
+    "ext": "m4a"
+   },
+   "object.duck-egg": {
+    "h": "10bc1a4d1a71fb",
+    "ext": "m4a"
+   },
+   "object.earthen-stove": {
+    "h": "0f914ae879f218",
+    "ext": "m4a"
+   },
+   "object.elephant": {
+    "h": "0312ea9107e799",
+    "ext": "m4a"
+   },
+   "object.eri-silk": {
+    "h": "13b12f39e295d3",
+    "ext": "m4a"
+   },
+   "object.fish": {
+    "h": "1400da9193272b",
+    "ext": "m4a"
+   },
+   "object.fish-curry": {
+    "h": "1d18c1191a3348",
+    "ext": "m4a"
+   },
+   "object.fishing-net": {
+    "h": "0a7afc37bd3557",
+    "ext": "m4a"
+   },
+   "object.flower": {
+    "h": "1dfe90ab825bc3",
+    "ext": "m4a"
+   },
+   "object.gamosa": {
+    "h": "0fa6484caf7123",
+    "ext": "m4a"
+   },
+   "object.ginger": {
+    "h": "0dbff2cf600c63",
+    "ext": "m4a"
+   },
+   "object.gogona": {
+    "h": "1ee21f2f5fd3ec",
+    "ext": "m4a"
+   },
+   "object.golden-langur": {
+    "h": "19770ea46769c6",
+    "ext": "m4a"
+   },
+   "object.hand-fan": {
+    "h": "140173e39f811d",
+    "ext": "m4a"
+   },
+   "object.handloom": {
+    "h": "12961b23874e02",
+    "ext": "m4a"
+   },
+   "object.hoolock-gibbon": {
+    "h": "05a8bacf16a4fe",
+    "ext": "m4a"
+   },
+   "object.hornbill": {
+    "h": "15928e69824aa3",
+    "ext": "m4a"
+   },
+   "object.jaapi": {
+    "h": "03ee7f714f477a",
+    "ext": "m4a"
+   },
+   "object.jackfruit": {
+    "h": "11bb23bd728d89",
+    "ext": "m4a"
+   },
+   "object.kaji-nemu": {
+    "h": "0edd2fe13983f5",
+    "ext": "m4a"
+   },
+   "object.key": {
+    "h": "0169a0d24326df",
+    "ext": "m4a"
+   },
+   "object.khar": {
+    "h": "12aa31a6ee5738",
+    "ext": "m4a"
+   },
+   "object.king-chili": {
+    "h": "03cd4ed80f4eaa",
+    "ext": "m4a"
+   },
+   "object.lamp": {
+    "h": "08986b7db5d3d1",
+    "ext": "m4a"
+   },
+   "object.mango": {
+    "h": "0ade3799dab08e",
+    "ext": "m4a"
+   },
+   "object.mekhela": {
+    "h": "1824b2a2e4fe0e",
+    "ext": "m4a"
+   },
+   "object.moon": {
+    "h": "199ee54df33e9e",
+    "ext": "m4a"
+   },
+   "object.mortar-pestle": {
+    "h": "00a788a34d3f54",
+    "ext": "m4a"
+   },
+   "object.muga-silk": {
+    "h": "0c392b2a19690a",
+    "ext": "m4a"
+   },
+   "object.orange": {
+    "h": "123984a91d4ffd",
+    "ext": "m4a"
+   },
+   "object.paddy-field": {
+    "h": "1fe00009848d64",
+    "ext": "m4a"
+   },
+   "object.peacock": {
+    "h": "1aac0abc1ff255",
+    "ext": "m4a"
+   },
+   "object.pepa": {
+    "h": "10e2a2e132dcf9",
+    "ext": "m4a"
+   },
+   "object.pineapple": {
+    "h": "048a2dff4327d4",
+    "ext": "m4a"
+   },
+   "object.pitha": {
+    "h": "07f1540f7ed96c",
+    "ext": "m4a"
+   },
+   "object.rhino": {
+    "h": "06be4e726b0c30",
+    "ext": "m4a"
+   },
+   "object.rice": {
+    "h": "153d9062f2a459",
+    "ext": "m4a"
+   },
+   "object.river": {
+    "h": "1e6d03000a1232",
+    "ext": "m4a"
+   },
+   "object.sador": {
+    "h": "02daf91106fe14",
+    "ext": "m4a"
+   },
+   "object.sticky-rice": {
+    "h": "1376a6abe87497",
+    "ext": "m4a"
+   },
+   "object.sun": {
+    "h": "17339486139ffd",
+    "ext": "m4a"
+   },
+   "object.taal": {
+    "h": "080c42ab1232a0",
+    "ext": "m4a"
+   },
+   "object.tamul": {
+    "h": "0f31ee13822b28",
+    "ext": "m4a"
+   },
+   "object.tea-leaf": {
+    "h": "0118eff0bff442",
+    "ext": "m4a"
+   },
+   "object.tiger": {
+    "h": "1505a0da12b073",
+    "ext": "m4a"
+   },
+   "object.tokou": {
+    "h": "15840e566171f8",
+    "ext": "m4a"
+   },
+   "object.tree": {
+    "h": "1af0de75c425e4",
+    "ext": "m4a"
+   },
+   "object.umbrella": {
+    "h": "147eeac73e6a42",
+    "ext": "m4a"
+   },
+   "object.water-buffalo": {
+    "h": "00cb0b0f14e758",
+    "ext": "m4a"
+   },
+   "object.water-lily": {
+    "h": "0b039b9cf3b534",
+    "ext": "m4a"
+   },
+   "object.xorai": {
+    "h": "1ab793c8ebaefb",
+    "ext": "m4a"
+   },
+   "reminder.activity": {
+    "h": "0536e1fa52be24",
+    "ext": "m4a"
+   },
+   "reminder.appointment": {
+    "h": "002e8ffcebd414",
+    "ext": "m4a"
+   },
+   "reminder.hydration": {
+    "h": "1852a73aab0dc4",
+    "ext": "m4a"
+   },
+   "reminder.medication": {
+    "h": "0fe4e881130bf6",
+    "ext": "m4a"
+   }
+  }
+ }
 }

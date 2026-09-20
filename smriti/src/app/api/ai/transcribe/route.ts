@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await transcribeAudio(audio);
+    const result = await transcribeAudio(audio, language);
     return Response.json({ text: result.text });
   } catch {
     return Response.json({ error: 'transcription_failed' }, { status: 502 });

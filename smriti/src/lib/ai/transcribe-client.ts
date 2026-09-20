@@ -8,6 +8,8 @@
  * a Client Component.
  */
 
+import type { UILanguage } from '@/lib/i18n/languages';
+
 const GROQ_TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const GROQ_MODEL = 'whisper-large-v3-turbo';
 
@@ -27,6 +29,17 @@ function audioExtension(mimeType: string | undefined): string {
   return 'webm';
 }
 
+/** Whisper language hints (ISO 639-1). Without one Whisper auto-detects and
+ * routinely labels Assamese as Bengali or Hindi. Bodo/Manipuri have no
+ * Whisper code, so they stay on auto-detect rather than borrowing another. */
+const WHISPER_LANGUAGE: Partial<Record<UILanguage, string>> = {
+  en: 'en',
+  hi: 'hi',
+  as: 'as',
+  bn: 'bn',
+  ne: 'ne',
+};
+
 export interface TranscribeResult {
   text: string;
   model: string;
@@ -39,7 +52,7 @@ export interface TranscribeResult {
  * decides what happens next (the client falls back to browser
  * `SpeechRecognition`).
  */
-export async function transcribeAudio(audio: Blob): Promise<TranscribeResult> {
+export async function transcribeAudio(audio: Blob, language?: UILanguage): Promise<TranscribeResult> {
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new Error('GROQ_API_KEY is not configured');
@@ -50,6 +63,8 @@ export async function transcribeAudio(audio: Blob): Promise<TranscribeResult> {
   // named .webm was rejected outright.
   formData.append('file', audio, `clip.${audioExtension(audio.type)}`);
   formData.append('model', GROQ_MODEL);
+  const hint = language ? WHISPER_LANGUAGE[language] : undefined;
+  if (hint) formData.append('language', hint);
 
   const response = await fetch(GROQ_TRANSCRIBE_URL, {
     method: 'POST',
