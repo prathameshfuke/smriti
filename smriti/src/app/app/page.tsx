@@ -504,7 +504,17 @@ export default function HomePage() {
       )}
 
       <div className="mt-8 flex flex-col gap-touch-gap">
-        <BigButton label={t('home.askSmriti')} variant="primary" onClick={() => router.push('/companion')} />
+        <BigButton
+          label={t('home.askSmriti')}
+          variant="primary"
+          icon={
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-card">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/ask-smriti.png" alt="" className="h-8 w-8" />
+            </span>
+          }
+          onClick={() => router.push('/companion')}
+        />
         <BigButton label={t('home.reminders')} variant="secondary" onClick={() => router.push('/reminders')} />
       </div>
 
