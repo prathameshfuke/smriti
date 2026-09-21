@@ -508,7 +508,7 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `GROQ_API_KEY` | AI companion (primary) | Free at [console.groq.com/keys](https://console.groq.com/keys) |
 | `OPENROUTER_API_KEY` | AI companion (fallback) | Used if Groq is rate-limited/unavailable — free at [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `BHASHINI_USER_ID` / `BHASHINI_ULCA_API_KEY` | Assamese/Hindi speech-to-text and Assamese/Hindi/English text-to-speech (primary path) | ULCA credential pair from [Bhashini](https://bhashini.gov.in) — used for the config call in `src/lib/ai/bhashini-auth.ts`, which resolves the real service and mints the dynamic key the compute call sends |
-| `BHASHINI_INFERENCE_API_KEY` | Legacy fallback for the case above | Kept alongside the pair above: `bhashini-asr-client.ts` and `bhashini-client.ts` fall back to it when live service discovery cannot resolve a service for a language |
+| `BHASHINI_INFERENCE_API_KEY` | Legacy fallback for the case above | Kept alongside the pair above: `bhashini-asr-client.ts` and `bhashini-client.ts` fall back to it when live service discovery/authentication or primary inference fails; ASR also falls back when the primary response has no valid non-empty transcript |
 | Google OAuth credentials | Caregiver "Sign in with Google" | See `src/app/api/auth/google/route.ts` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push | Public VAPID key from `npx web-push generate-vapid-keys`; read at **build** time, so redeploy after setting |
 | `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web Push | Private key (server only) and a contact such as `mailto:you@example.com`. Push is a silent no-op if unset |
