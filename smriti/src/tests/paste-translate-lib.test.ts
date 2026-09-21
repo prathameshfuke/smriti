@@ -78,14 +78,15 @@ describe('round trip', () => {
 describe('review sheet', () => {
   it('shows every row, flags drift, and escapes pipes', () => {
     const sheet = buildSheet('Khasi', 'kha', [
-      { key: 'a', english: 'A | B', draft: 'x | y', verdict: 'ok', similarity: 0.9 },
+      { key: 'a', english: 'A | B', draft: 'x | y', verdict: 'ok', similarity: 0.9, back: 'A and B' },
       { key: 'b', english: 'Choose', draft: 'Jied', verdict: 'ok', similarity: 0.1 },
       { key: 'c', english: 'Correct!', draft: 'Correct!', verdict: 'unchanged', similarity: null },
     ], ['reminder.medication']);
     expect(sheet).toContain('No native speaker has checked any line');
     expect(sheet).toContain('A \\| B');
     expect(sheet).toContain('ok (drifted)');
-    expect(sheet).toContain('| `c` | Correct! | Correct! | unchanged |');
+    expect(sheet).toContain('| `a` | A \\| B | x \\| y | A and B | ok |');
+    expect(sheet).toContain('| `c` | Correct! | Correct! |  | unchanged |');
     expect(sheet).toContain('meaning may have drifted on 1');
   });
 });

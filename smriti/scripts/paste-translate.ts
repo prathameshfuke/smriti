@@ -94,6 +94,7 @@ if (command === 'export') {
     draft: texts[key],
     verdict: check(en[key], texts[key]),
     similarity: back.texts[key] === undefined ? null : roundTripSimilarity(en[key], back.texts[key]),
+    back: back.texts[key] ?? null,
   }));
   mkdirSync('docs', { recursive: true });
   writeFileSync(sheetPath, buildSheet(name, code, rows, allKeys.filter((k) => !keys.includes(k))));
@@ -127,9 +128,9 @@ if (command === 'export') {
   // Parsed from the sheet the reviewer edited: `approve` keeps the draft, other text replaces it, blank drops the line.
   const approved: Flat = {};
   for (const line of sheet.split('\n')) {
-    const m = line.match(/^\| `([^`]+)` \| (.*) \| (.*) \| ([a-z-]+)(?: \(drifted\))? \| ([0-9.]*) \| (.*) \|$/);
+    const m = line.match(/^\| `([^`]+)` \| (.*) \| (.*) \| (.*) \| ([a-z-]+)(?: \(drifted\))? \| ([0-9.]*) \| (.*) \|$/);
     if (!m) continue;
-    const [, key, , draft, , , reviewer] = m;
+    const [, key, , draft, , , , reviewer] = m;
     const decision = reviewer.trim();
     if (!decision || !(key in en)) continue;
     const text = normalizeLine((decision.toLowerCase() === 'approve' ? draft : decision).replace(/\\\|/g, '|'));

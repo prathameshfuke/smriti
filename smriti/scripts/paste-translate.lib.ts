@@ -142,6 +142,8 @@ export interface SheetRow {
   verdict: Verdict;
   /** Round-trip similarity when a back-translation was supplied, else null. */
   similarity: number | null;
+  /** The English the draft translated back to, when supplied. */
+  back?: string | null;
 }
 
 const cell = (s: string) => s.replace(/\|/g, '\\|');
@@ -157,13 +159,13 @@ export function buildSheet(name: string, code: string, rows: SheetRow[], left: s
     `Drafted ${rows.length}, passed the mechanical checks ${kept.length}, flagged ${rows.length - kept.length}` +
       (kept.some((r) => r.similarity !== null) ? `, meaning may have drifted on ${drifted.length} (round trip below ${DRIFT_THRESHOLD}).` : '.'),
     '',
-    'Reviewer: for each row, write `approve`, or replace the draft with the right text, in the last column. Rows marked drifted or flagged need the most care.',
+    'Reviewer: for each row, write `approve`, or replace the draft with the right text, in the last column. "Back to English" is what Google Translate says the draft means: read it against the English column. The round-trip score is a rough word-overlap screen and misses meaning errors, so read every row, not only the marked ones.',
     '',
-    '| Key | English | Draft | Check | Round trip | Reviewer |',
-    '|---|---|---|---|---|---|',
+    '| Key | English | Draft | Back to English | Check | Round trip | Reviewer |',
+    '|---|---|---|---|---|---|---|',
     ...rows.map(
       (r) =>
-        `| \`${r.key}\` | ${cell(r.english)} | ${cell(r.draft)} | ${r.verdict}${
+        `| \`${r.key}\` | ${cell(r.english)} | ${cell(r.draft)} | ${cell(r.back ?? '')} | ${r.verdict}${
           r.verdict === 'ok' && r.similarity !== null && r.similarity < DRIFT_THRESHOLD ? ' (drifted)' : ''
         } | ${r.similarity === null ? '' : r.similarity.toFixed(2)} |  |`,
     ),
