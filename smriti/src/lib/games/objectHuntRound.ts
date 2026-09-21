@@ -117,6 +117,11 @@ export function buildRound(level: LevelParams, exclude: readonly string[] = [], 
     if (recallOrder.some((p, i) => p.object.id !== revealOrder[i].object.id)) break;
     recallOrder = shuffled(placed, rng);
   }
+  // Redraws can all land on the same order (1 in 64 for two objects). Rotating
+  // by one always breaks a tie, so the promise above holds every time.
+  if (placed.length > 1 && recallOrder.every((p, i) => p.object.id === revealOrder[i].object.id)) {
+    recallOrder = [...recallOrder.slice(1), recallOrder[0]];
+  }
   return { tiles, revealOrder, recallOrder };
 }
 

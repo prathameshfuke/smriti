@@ -1,0 +1,139 @@
+Who is playing?
+Tap on your name.
+Bad {name}?
+Select who is using this phone
+The therapist needs to select the person, or persons, who will play on this phone call.
+Caregiver
+Hello
+Start playing
+My reminders
+My progress
+sun
+Play today to start the game
+Ask for the Smriti
+Select a game
+A message for you .
+Hello!
+You don't have to set up this phone
+The caregiver needs to sign in to set up this phone.
+Today
+Looking for things
+Remember where each picture is hidden. Tap the tile to view.
+Where is the
+Remember this picture
+Marketplace
+Remember these things. We'll ask you later.
+Remember these for later.
+OK, I remember!
+What tools did we show you?
+I'm done!
+-
+Tap on the picture as soon as you see it.
+Tap this image:
+The number {n} of {total}
+You have counted the number of photos in the correct order
+Roadmap
+Add the numbers in order, from 1 upwards.
+Good!
+Number {n} of {total}
+{count} from {total} connected
+Memory Matching
+Tap two cards. If they match, they stay open.
+Good relationship
+Let’s try something else .
+{count} of {total} pairs found
+All {total} pairs found!
+Memory Doors
+The Rise of the Monkey
+Counting boxes
+N-Back
+The higher number
+Memory
+Following the fish
+Second Decision
+Family & Lifestyle Questionnaire
+The quiz requires at least 3 people or memories in the Memory Book. Ask your healthcare provider to fill them out.
+Who is this?
+Who is your relationship?
+Who or what is this about? "{detail}"
+Consistent!
+Try again
+Well done! He finished the meeting today.
+Stars earned
+Perfect! Wonderful job today!
+Excellent! You're doing great!
+Great job today! Keep it up!
+Good effort! Every session helps.
+Well done for the effort! Every day it gets better.
+Going back home
+Begin!
+Play again
+Continued
+Done for now
+{count} from {total}
+{count} to 5 stars
+A reminder of the method
+Preparing for today’s procedure…
+Not enough reminders made today
+Come back after a few more recalls today.
+Tap them the way you did today .
+{count} of {total} specified
+Wonderful! That’s exactly what it is today.
+Let us remember together.
+You're knowledgeable! Keep trying.
+That’s great, let’s try again.
+Keep going, you can do it.
+Good effort! You got there.
+It's almost a holiday!
+You’re improving!
+Good job!
+Well done!
+You're doing great!
+Great job!
+Excellent job!
+Wonderful effort!
+Wonderful! He remembered everything!
+A perfect memory!
+Amazing! Every one is right!
+{count} extra taps in other images
+Hello! You did it!
+Wonderful! The event is over!
+Good performance! It’s great to see you today!
+How to play
+How to play
+Step {n} of {total}
+Next
+Back
+Got it, let's play!
+First we see a picture. Remember it — this is an image to capture.
+The images then appear one by one in the middle of the screen.
+When you see your photo, tap the screen quickly.
+For any image, do not tap. Tapping other pictures takes points.
+Numbered circles are scattered across the screen.
+Tap circle 1, then circle 2. The line connects them.
+Keep going in the order — 3, 4, 5 — until each circle is connected.
+At higher levels there is time. Take your time; accuracy is of utmost importance.
+The stack of boxes appears for a few seconds.
+Count each box, including those stacked behind or on top.
+When the boxes are gone, add how many you counted.
+I'm ready!
+-
+Card {n}
+Path Connecting Question
+Linked
+Lineless Light
+Regard
+Waiting to connect
+Could not sync yet
+· last {date}
+Back
+Go Back
+Cancel
+Introduction
+Close
+Something went wrong. Let's go back home.
+Go home
+Select Language
+News from the family
+Object {name}
+Seen

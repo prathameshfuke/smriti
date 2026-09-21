@@ -82,6 +82,17 @@ describe('buildRound', () => {
     }
   });
 
+  it('still asks in a different order when every random draw would repeat the reveal order', () => {
+    // A constant generator makes every shuffle identical, so only the tie-break can differ.
+    for (const level of [LEVELS[1], LEVELS[5], LEVELS[10]]) {
+      const round = buildRound(level, [], () => 0.5);
+      const shown = round.revealOrder.map((p) => p.object.id).join();
+      const asked = round.recallOrder.map((p) => p.object.id).join();
+      expect(asked).not.toBe(shown);
+      expect([...round.recallOrder.map((p) => p.object.id)].sort()).toEqual([...round.revealOrder.map((p) => p.object.id)].sort());
+    }
+  });
+
   it('does not always reveal in tile (reading) order', () => {
     let readingOrder = 0;
     for (let seed = 1; seed <= 100; seed += 1) {
