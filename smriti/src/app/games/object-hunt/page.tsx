@@ -7,7 +7,7 @@ import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import ObjectGrid from '@/components/games/ObjectGrid';
 import SessionComplete from '@/components/games/SessionComplete';
-import { pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
+import { objectName, type SmritiObject } from '@/lib/engine/objects';
 import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
@@ -16,33 +16,12 @@ import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
 import { usePatientStore } from '@/stores/patientStore';
 import { useGameStore } from '@/stores/gameStore';
+import { LEVELS, RECENT_ROUNDS, buildRound, loadRecentObjectIds, saveRecentObjectIds } from '@/lib/games/objectHuntRound';
+import { TUTORIAL_AUTO_SHOW_LIMIT, claimAutoTutorial, tutorialShownCount } from '@/lib/games/tutorialExposure';
 import { slower } from '@/lib/games/pacing';
 
 type Phase = 'instruction' | 'reveal' | 'recall' | 'round_complete' | 'session_complete';
 
-interface LevelParams {
-  rows: number;
-  cols: number;
-  objectCount: number;
-  revealSeconds: number;
-}
-
-/** Grid size, object count and per-tile reveal time for each of the 10 levels.
- * Reveal time slowed 20% (pacing.SLOWDOWN) per clinical feedback. */
-const LEVELS: Record<number, LevelParams> = {
-  1: { rows: 2, cols: 2, objectCount: 2, revealSeconds: slower(3) },
-  2: { rows: 2, cols: 2, objectCount: 3, revealSeconds: slower(3) },
-  3: { rows: 2, cols: 2, objectCount: 4, revealSeconds: slower(2.5) },
-  4: { rows: 2, cols: 3, objectCount: 3, revealSeconds: slower(2.5) },
-  5: { rows: 2, cols: 3, objectCount: 4, revealSeconds: slower(2) },
-  6: { rows: 2, cols: 3, objectCount: 6, revealSeconds: slower(2) },
-  7: { rows: 3, cols: 3, objectCount: 4, revealSeconds: slower(2) },
-  8: { rows: 3, cols: 3, objectCount: 6, revealSeconds: slower(1.5) },
-  9: { rows: 3, cols: 4, objectCount: 6, revealSeconds: slower(1.5) },
-  10: { rows: 3, cols: 4, objectCount: 8, revealSeconds: slower(1) },
-};
-
-const INSTRUCTION_SECONDS = 5;
 /**
  * How long the picture being asked about is shown on its own, before the
  * grid comes back without it. Issue #4: the picture stayed on screen above
@@ -68,20 +47,6 @@ function pickEncouragement(stars: number): string {
   return `game.encourage.${tier}.${Math.floor(Math.random() * ENCOURAGEMENT_VARIANTS)}`;
 }
 
-/** Places `objectCount` distinct objects across random tiles in the grid. */
-function layoutTiles(objects: SmritiObject[], totalTiles: number): (SmritiObject | null)[] {
-  const positions = Array.from({ length: totalTiles }, (_, i) => i);
-  for (let i = positions.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [positions[i], positions[j]] = [positions[j], positions[i]];
-  }
-  const tiles: (SmritiObject | null)[] = Array(totalTiles).fill(null);
-  objects.forEach((obj, i) => {
-    tiles[positions[i]] = obj;
-  });
-  return tiles;
-}
-
 export default function ObjectHuntPage() {
   return (
     <ErrorBoundary>
@@ -99,11 +64,23 @@ function ObjectHuntPageInner() {
   const endSession = useGameStore((s) => s.endSession);
   const activeSession = useGameStore((s) => s.activeSession);
 
-  const [phase, setPhase] = useState<Phase>('instruction');
+  const patientId = currentPatient?.id;
+  // The how-to-play screen is for a patient's first few visits only (see
+  // tutorialExposure.ts). After that the game goes straight to the pictures
+  // instead of holding every visit behind it. With no patient loaded it is
+  // always shown, as before.
+  const [phase, setPhase] = useState<Phase>(() =>
+    patientId && tutorialShownCount(patientId, 'object_hunt') >= TUTORIAL_AUTO_SHOW_LIMIT ? 'reveal' : 'instruction',
+  );
+  const instructionClaimedRef = useRef(false);
   const { state: difficulty, applySession } = useDifficulty('object_hunt');
   const [round, setRound] = useState(1);
   const [tiles, setTiles] = useState<(SmritiObject | null)[]>([]);
   const [revealedIndex, setRevealedIndex] = useState(-1);
+  /** Which picture of the round is being shown (0-based), for the "Picture 2 of 4" line. */
+  const [revealPos, setRevealPos] = useState(0);
+  /** Object ids of the last rounds, newest last; null until first read from storage. */
+  const recentRef = useRef<string[][] | null>(null);
   const [targetOrder, setTargetOrder] = useState<{ index: number; object: SmritiObject }[]>([]);
   const [targetPos, setTargetPos] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -126,20 +103,30 @@ function ObjectHuntPageInner() {
 
   useEffect(() => {
     if (phase !== 'instruction') return;
+    // One visit counts once, however often this effect re-runs.
+    if (!instructionClaimedRef.current) {
+      instructionClaimedRef.current = true;
+      claimAutoTutorial(patientId, 'object_hunt');
+    }
     void narrate(t('game.objectHunt.instruction'), language, isOnline, GAME_SPEECH_RATE);
-    const timer = setTimeout(() => setPhase('reveal'), INSTRUCTION_SECONDS * 1000);
-    return () => clearTimeout(timer);
+    // Patient-paced, like every other game's start screen: no timer runs out
+    // under someone still reading, and the wait is never mistaken for a hang.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase]);
 
   useEffect(() => {
     if (phase !== 'reveal') return;
 
-    const objects = pickObjects(level.objectCount);
-    const placed = layoutTiles(objects, totalTiles);
-    const order = placed
-      .map((obj, index) => (obj ? { index, object: obj } : null))
-      .filter((v): v is { index: number; object: SmritiObject } => v !== null);
+    // Pictures from the last couple of rounds (this visit and earlier ones)
+    // are kept out, and the reveal and the questions each get their own
+    // random order — see objectHuntRound.ts.
+    const recent = recentRef.current ?? loadRecentObjectIds(patientId);
+    const round = buildRound(level, recent.flat());
+    recentRef.current = [...recent, round.revealOrder.map((p) => p.object.id)].slice(-RECENT_ROUNDS);
+    saveRecentObjectIds(patientId, recentRef.current);
+    const placed = round.tiles;
+    const order = round.revealOrder;
+    const asked = round.recallOrder;
 
     let i = 0;
     let interval: ReturnType<typeof setInterval> | undefined;
@@ -156,7 +143,8 @@ function ObjectHuntPageInner() {
     queueMicrotask(() => {
       if (cancelled) return;
       setTiles(placed);
-      setTargetOrder(order);
+      setTargetOrder(asked);
+      setRevealPos(0);
       setTargetPos(0);
       setCorrectCount(0);
       setRevealedIndex(order[0]?.index ?? -1);
@@ -172,6 +160,7 @@ function ObjectHuntPageInner() {
           }, 500);
           return;
         }
+        setRevealPos(i);
         setRevealedIndex(order[i].index);
         speak(objectName(order[i].object, language), language, GAME_SPEECH_RATE);
       }, level.revealSeconds * 1000);
@@ -295,9 +284,9 @@ function ObjectHuntPageInner() {
 
       <main className="flex flex-1 flex-col items-center gap-6 px-4 py-6">
         {phase === 'instruction' ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
+          <div className="flex flex-1 flex-col items-center justify-center gap-6 text-center">
             <p className="text-patient-body text-ink">{t('game.objectHunt.instruction')}</p>
-            <div className="h-16 w-16 animate-pulse rounded-card bg-primary/30 motion-reduce:animate-none" />
+            <BigButton label={t('game.start')} variant="primary" onClick={() => setPhase('reveal')} />
           </div>
         ) : null}
 
@@ -316,6 +305,12 @@ function ObjectHuntPageInner() {
               {objectName(currentTarget.object, language)}
             </p>
           </div>
+        ) : null}
+
+        {phase === 'reveal' && targetOrder.length > 0 ? (
+          <p data-testid="object-hunt-progress" className="text-patient-body text-ink-muted">
+            {t('game.quickTap.itemOf', { n: revealPos + 1, total: targetOrder.length })}
+          </p>
         ) : null}
 
         {(phase === 'reveal' || (phase === 'recall' && !prompting)) && currentTarget ? (
