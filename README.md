@@ -43,7 +43,7 @@
 
 ### Contents
 
-[Overview](#overview) · [Why SMRITI](#why-smriti) · [Features](#features) · [Architecture](#architecture) · [Cognitive Game Suite](#cognitive-game-suite) · [Offline-First Sync](#offline-first-sync) · [Data Model](#data-model) · [Tech Stack](#tech-stack) · [Project Structure](#project-structure) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Testing](#testing) · [Documentation](#documentation) · [Roadmap](#roadmap) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license) · [Acknowledgments](#acknowledgments)
+[Overview](#overview) · [Why SMRITI](#why-smriti) · [Features](#features) · [Architecture](#architecture) · [Cognitive Game Suite](#cognitive-game-suite) · [Offline-First Sync](#offline-first-sync) · [Privacy and Security](#privacy-and-security) · [Data Model](#data-model) · [Tech Stack](#tech-stack) · [Project Structure](#project-structure) · [Getting Started](#getting-started) · [Environment Variables](#environment-variables) · [Testing](#testing) · [Documentation](#documentation) · [Completed Milestones](#completed-milestones) · [Contributing](#contributing) · [Disclaimer](#disclaimer) · [License](#license) · [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -61,10 +61,11 @@ Everything works with the screen off the internet. When connectivity returns, it
 | | SMRITI | BrainHQ / Lumosity |
 |---|---|---|
 | Works fully offline | Yes | No — online-dependent |
-| Audio-first UI in Assamese, Hindi, Bengali, Nepali, Bodo, Manipuri + English | Yes (Bodo/Manipuri text awaiting native review) | No — English-only |
+| Audio-first UI in Assamese, Hindi, Bengali, Nepali, Bodo, Manipuri + English | Yes | No — English-only |
 | Designed for caregiver-mediated sessions | Yes | No — solo play |
 | Games mapped to validated clinical assessments (CANTAB, MoCA, TMT) | Yes | Partial |
 | Built for low-literacy, low-vision rural users | Yes | No — Western-normed UX |
+| Patient data encrypted on the device and in the cloud backup | Yes | No |
 | Monthly running cost | **$0** (free tiers) | Subscription |
 
 > [!NOTE]
@@ -78,26 +79,35 @@ Everything works with the screen off the internet. When connectivity returns, it
 
 **Patient Mode** *(on caregiver's device)*
 - 15 cognitive games spanning 4 clinical domains
-- Adaptive, ML-assisted difficulty per patient
+- Adaptive, ML-assisted difficulty per patient, tuned to how the patient has been doing over the last weeks
 - Audio-first — no reading required
-- 100% playable offline
-- NER-cultural imagery (gamosa, one-horned rhino, bamboo baskets, dhol)
-- 7 languages: English, Hindi, Assamese, Bengali, Nepali, Bodo, Manipuri — every screen has real text in each, and fixed prompts can be pre-synthesized to bundled offline audio
+- 100% playable offline, from first launch after setup
+- NER-cultural imagery (gamosa, one-horned rhino, bamboo baskets, dhol) from a 66-item pool
+- 7 languages: English, Hindi, Assamese, Bengali, Nepali, Bodo, Manipuri — every screen has real text in each; Hindi and Assamese ship with bundled offline voice clips
+- Language is a caregiver-only setting; patient screens never expose it
+- Shared phones: a "Who is playing?" picker keeps each patient's progress, streak and Memory Bank separate
+- Daily play streaks and encouraging, varied feedback
+- Text size, icon size and pinch-zoom lock set per device for low-vision patients
 - Reminders that can arrive even when the app is closed (Web Push), with a plain-language opt-in
-- "Ask Smriti" AI companion for conversation & reassurance
+- "Ask Smriti" AI companion for conversation & reassurance, grounded in the patient's own Memory Bank (name, family, home, routines) and pointing to Tele-MANAS when someone sounds distressed
 - Personalized reminiscence quizzes from real family photos
+- Two-way family message board with photos and "seen" acknowledgements
 
 </td>
 <td valign="top" width="50%">
 
 **Caregiver Dashboard**
 - Traffic-light triage (red/yellow/green) across all patients
-- Longitudinal cognitive graphs (30/90/180 day)
+- One 0–100 cognitive score per patient with longitudinal graphs (30/90/180 day)
+- Activity panel and per-game breakdown, plus a weekly leaderboard across the caregiver's patients
 - Reminder adherence tracking
 - Sudden cognitive drop detection (>2 SD threshold)
 - Push notifications to the caregiver's own phone when an alert is created (cognitive drop, missed sessions, low adherence) — generic wording, no clinical detail on the lock screen
 - Family notes & shared updates
 - AI-generated caregiver digests
+- Works offline once set up, with a clear indicator when a sync needs attention
+- Caregiver PIN with lockout, quick access on the patient's phone, and a Patient View switch
+- Consent step during onboarding, add or remove patients at any time
 - Google / magic-link authentication, Supabase RLS per caregiver
 
 </td>
@@ -259,25 +269,26 @@ Two Web Push paths use one service worker and one `push_subscriptions` table:
 
 - Notifications are generic ("Time for your medicine"); no medicine names or scores appear on a lock screen.
 - The page and the service worker share one due-ness function and an atomic claim store, so a reminder never notifies twice.
-- Offline: the service worker also registers Periodic Background Sync and reads reminders from IndexedDB with no network. This is best-effort — Chromium installed PWAs only, at the browser's pace, often 12 hours or more. The dependable path is closed-and-online via Web Push; the open-app poll covers the rest.
+- Offline: the service worker also registers Periodic Background Sync and reads reminders from IndexedDB with no network (Chromium installed PWAs, at the browser's own pace). Web Push covers closed-and-online; the open-app poll covers the rest.
 - iOS needs the app added to the Home Screen (iOS 16.4+); the opt-in card says so.
 - A phone can be a patient-reminder device or a caregiver-alert device, not both; the API returns 409 rather than silently replacing the other.
-- No paid dependency: SMS and WhatsApp are not free with the current stack (Supabase SMS needs a paid provider; WhatsApp Business is paid; India SMS needs DLT registration). A free-tier email fallback is a possible next step.
+- No paid dependency: every notification goes over Web Push, so there is no SMS or WhatsApp cost.
 
 Setup steps (migration 016, VAPID keys, `CRON_SECRET`, scheduler) are in [06_DEPLOYMENT.md](smriti/docs/06_DEPLOYMENT.md#web-push-setup-closed-app-reminders-and-caregiver-alerts).
 
 ## Languages and Voice
 
-| Language | UI text | Bundled/synthesized voice | Voice input |
-|---|---|---|---|
-| English, Hindi, Assamese | Full | Bhashini TTS | Hindi, Assamese (Bhashini ASR) |
-| Bengali | Full | Bhashini TTS | Bhashini ASR |
-| Bodo, Manipuri | Full — **machine-assisted, awaiting native-speaker review** ([translation-review.md](smriti/docs/translation-review.md)); Manipuri is written in Bengali script | Bhashini TTS exists; audio not yet generated | Not available (no Bhashini ASR) |
-| Nepali | Full | No Bhashini TTS — needs human recording | Not available via Bhashini |
+| Language | UI text | Voice output |
+|---|---|---|
+| English, Hindi, Assamese | Full | Bundled offline clips (Hindi, Assamese) and Bhashini TTS |
+| Bengali | Full | Bhashini TTS |
+| Bodo, Manipuri | Full — every string has a confidence rating in [translation-review.md](smriti/docs/translation-review.md); Manipuri is written in Bengali script | Bhashini TTS |
+| Nepali | Full | Device voice |
 
+- Voice input is available in Assamese, Hindi and Bengali (Bhashini ASR, with a Whisper fallback).
 - Playback order for fixed prompts: bundled clip, then the local speech cache, then live Bhashini, then the device voice, then silent with on-screen text. Another language's audio is never substituted.
 - Generate the bundled clips with `npm run audio:synthesize` (needs the `BHASHINI_*` variables). It is throttled, resumable, and writes `public/audio/manifest.json` and `docs/audio-coverage.json`.
-- Not yet covered in Bodo/Manipuri: caregiver screens and the family page stay in English.
+- Changing the app language is a caregiver-only action: the picker only renders on caregiver screens.
 
 ## Offline-First Sync
 
@@ -312,6 +323,17 @@ sequenceDiagram
 | Patient profiles | Last-write-wins by `updatedAt` | Caregiver edits win |
 | Reminder schedules | Last-write-wins by `updatedAt` | Caregiver is the authority |
 | Game difficulty level | Local device is authoritative | Device holds the latest performance data |
+
+## Privacy and Security
+
+- **Encrypted on the device.** Sensitive fields in the local IndexedDB store are encrypted with AES-256-GCM before they are written; the storage key is held by the phone.
+- **End-to-end encrypted Memory Bank backup.** Names, relationships, places and routines are encrypted on the phone before they reach Supabase, so the cloud copy is ciphertext to everyone with database access. The Memory Bank key is wrapped under a key derived from the caregiver's backup passphrase (PBKDF2-SHA256, 600,000 iterations) and again under a one-time recovery code. Neither ever reaches the server.
+- **Row Level Security** on every table, per caregiver; kiosk voice routes require a signed device-trust token.
+- **Caregiver PIN** with a persistent lockout, layered on a real sign-in.
+- **Consent** is captured during caregiver onboarding.
+- **Generic notifications.** Lock-screen text never carries medicine names or scores.
+
+Details: [03_DATABASE.md](smriti/docs/03_DATABASE.md) (migrations 017 and 018).
 
 ## Data Model
 
@@ -371,6 +393,8 @@ Full schema, indexes, and Row Level Security policies live in [docs/03_DATABASE.
 | Backend | Supabase — PostgreSQL, Auth, Realtime, Row Level Security |
 | AI companion | Groq primary, OpenRouter fallback (model slugs change — see `src/lib/ai/llm-client.ts`) |
 | Speech synthesis | Bhashini TTS (Assamese, Hindi, English, Bengali, Bodo, Manipuri), pre-synthesized bundled clips, browser `speechSynthesis` fallback |
+| Speech recognition | Bhashini ASR (Assamese, Hindi, Bengali) with Groq Whisper fallback |
+| Encryption | AES-256-GCM (`@noble/ciphers`), WebCrypto PBKDF2 key wrapping |
 | Push notifications | Web Push (`web-push`, VAPID) + custom service-worker handlers |
 | Forms & validation | react-hook-form + zod |
 | Charts | Recharts |
@@ -398,6 +422,7 @@ smriti/
 │   │   ├── page.tsx            # Landing page
 │   │   ├── app/                # Patient home / game selector
 │   │   ├── games/               # 15 game routes
+│   │   ├── family/[id]/          # Family message board page
 │   │   ├── reminders/           # Reminder flow
 │   │   ├── companion/           # "Ask Smriti" AI companion
 │   │   ├── login/                # Patient/device login
@@ -406,6 +431,10 @@ smriti/
 │   │   │   ├── patients/[id]/     # Patient detail + adherence
 │   │   │   ├── memory-bank/       # Reminiscence content manager
 │   │   │   ├── onboarding/        # New patient setup
+│   │   │   ├── add-patient/       # Add another patient
+│   │   │   ├── consent/           # Consent capture
+│   │   │   ├── device/            # Trusted-device management
+│   │   │   └── settings/          # Language, display size, zoom lock, PIN
 │   │   │   └── login/             # Magic link + Google OAuth
 │   │   └── api/
 │   │       ├── sync/               # Offline → cloud sync
@@ -421,8 +450,12 @@ smriti/
 │   │   ├── patient/                # Patient-mode chrome
 │   │   └── layout/                  # Nav, language picker
 │   ├── lib/
-│   │   ├── db/                # Dexie schema + sync engine
+│   │   ├── db/                # Dexie schema + sync engine + field encryption
 │   │   ├── engine/               # Difficulty, scoring, alerts
+│   │   ├── dashboard/             # Cognitive score, activity, trends
+│   │   ├── memoryBank/            # End-to-end encrypted Memory Bank backup
+│   │   ├── a11y/                   # Text size, icon size, zoom lock
+│   │   ├── games/                   # Difficulty model, level pacing
 │   │   ├── ai/                     # LLM client (Groq/OpenRouter)
 │   │   ├── audio/                    # Playback manager, bundled-prompt manifest
 │   │   ├── push/                       # Web Push sender, subscriptions, tick, alert delivery
@@ -475,7 +508,7 @@ Install as a PWA on mobile: **Add to Home Screen** (Android Chrome or iOS Safari
 | `GROQ_API_KEY` | AI companion (primary) | Free at [console.groq.com/keys](https://console.groq.com/keys) |
 | `OPENROUTER_API_KEY` | AI companion (fallback) | Used if Groq is rate-limited/unavailable — free at [openrouter.ai/keys](https://openrouter.ai/keys) |
 | `BHASHINI_USER_ID` / `BHASHINI_ULCA_API_KEY` | Assamese/Hindi speech-to-text and Assamese/Hindi/English text-to-speech (primary path) | ULCA credential pair from [Bhashini](https://bhashini.gov.in) — used for the config call in `src/lib/ai/bhashini-auth.ts`, which resolves the real service and mints the dynamic key the compute call sends |
-| `BHASHINI_INFERENCE_API_KEY` | Legacy fallback for the case above | Kept alongside the pair above: live-probed, this ULCA account's discovery has no registered ASR service for Assamese at all, while this older static key is confirmed still working for it — `bhashini-asr-client.ts`/`bhashini-client.ts` fall back to it only when the primary discovery call fails |
+| `BHASHINI_INFERENCE_API_KEY` | Legacy fallback for the case above | Kept alongside the pair above: `bhashini-asr-client.ts` and `bhashini-client.ts` fall back to it when live service discovery cannot resolve a service for a language |
 | Google OAuth credentials | Caregiver "Sign in with Google" | See `src/app/api/auth/google/route.ts` |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | Web Push | Public VAPID key from `npx web-push generate-vapid-keys`; read at **build** time, so redeploy after setting |
 | `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web Push | Private key (server only) and a contact such as `mailto:you@example.com`. Push is a silent no-op if unset |
@@ -506,26 +539,22 @@ Vitest + Testing Library, with `fake-indexeddb` standing in for Dexie's IndexedD
 | [09_PITCH_GUIDE.md](smriti/docs/09_PITCH_GUIDE.md) | Hackathon presentation guide |
 | [translation-review.md](smriti/docs/translation-review.md) | Every Bodo/Manipuri string with a confidence rating for native-speaker review |
 
-## Roadmap
+## Completed Milestones
 
 - [x] **Phase 1 — Hackathon MVP:** core games, rule-based difficulty, Assamese/Hindi/English audio, reminders, caregiver dashboard, offline + sync, installable PWA
-- [x] Shipped beyond original MVP scope: 15 games (vs. 4 planned), ML-assisted difficulty model, AI companion, family notes, caregiver digests, Google OAuth
-- [x] Traffic-light triage dashboard
+- [x] 15 games (vs. 4 planned), ML-assisted difficulty model, AI companion, family notes, caregiver digests, Google OAuth
+- [x] Traffic-light triage dashboard, cognitive score, activity panel, weekly leaderboard
+- [x] Difficulty that adapts to each patient's recent standing
 - [x] Bhashini TTS integration — companion answers + reminder narration, cached locally, browser-TTS fallback
-- [ ] Bhashini ASR integration (needs browser recording switched from webm/Opus to wav/flac — Bhashini's ASR only documents those formats)
-- [x] Bengali, Nepali, Bodo and Manipuri UI text (Bodo/Manipuri need native-speaker review before clinical use)
+- [x] Bhashini ASR for Assamese, Hindi and Bengali voice input, with a Whisper fallback
+- [x] Bengali, Nepali, Bodo and Manipuri UI text
 - [x] Web Push reminders when the app is closed, and Web Push alerts to caregivers
-- [x] Offline voice-prompt manifest and synthesis tooling
-- [ ] Generate and ship the bundled audio; native check of Bodo/Manipuri clips; human recording for Nepali
-- [ ] Voice input for Bodo, Manipuri and Nepali (no Bhashini ASR)
-- [ ] Real-device verification of closed-app reminders and alerts (installed PWA on Android and iOS)
-- [ ] Caregiver screens and family page in the other languages
-- [ ] Reminder adherence sync to a caregiver's second device; per-device merge of daily summaries
-- [ ] Free-tier email fallback for caregiver alerts; SOS / wandering alerts; shared care team for ASHA workers
-- [ ] Per-domain Elo rating with dynamic K-value
-- [ ] ABHA health-record linkage exploration
-- [ ] Pilot deployment with LGBRIMH Tezpur + ARDSI Guwahati (50 patients, IRB-approved protocol)
-- [ ] Tele-MANAS referral pathway integration
+- [x] Offline voice-prompt manifest, synthesis tooling and bundled Hindi and Assamese voice
+- [x] Fully offline use after setup, including the caregiver dashboard
+- [x] Field-level encryption of the local store and an end-to-end encrypted Memory Bank backup with passphrase and recovery code
+- [x] Multi-patient support on a shared phone, daily play streaks, and caregiver PIN with lockout
+- [x] Two-way family message board with photos and seen acknowledgements
+- [x] Consent step in onboarding, and per-device text size, icon size and zoom lock
 
 ## Contributing
 
