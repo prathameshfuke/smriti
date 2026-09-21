@@ -78,23 +78,82 @@ describe('SessionComplete celebration', () => {
 describe('GameTutorial', () => {
   beforeEach(() => window.localStorage.clear());
 
-  it('opens by itself on the first visit only', async () => {
-    const first = render(
-      <I18nProvider>
-        <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
-      </I18nProvider>,
-    );
-    await act(async () => {});
-    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
-    first.unmount();
+  it('opens by itself on a patient\'s first 7 visits only', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-tutorial' } as never });
+    const opened: boolean[] = [];
+    for (let visit = 0; visit < 9; visit += 1) {
+      const view = render(
+        <I18nProvider>
+          <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+        </I18nProvider>,
+      );
+      await act(async () => {});
+      opened.push(screen.queryByTestId('tutorial-step') !== null);
+      view.unmount();
+    }
+    expect(opened).toEqual([true, true, true, true, true, true, true, false, false]);
+  });
 
-    render(
+  it('starts a different patient\'s count from zero, and the button still works after 7', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-a' } as never });
+    for (let visit = 0; visit < 7; visit += 1) {
+      const v = render(
+        <I18nProvider>
+          <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+        </I18nProvider>,
+      );
+      await act(async () => {});
+      v.unmount();
+    }
+    const spent = render(
       <I18nProvider>
         <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
       </I18nProvider>,
     );
     await act(async () => {});
     expect(screen.queryByTestId('tutorial-step')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('how-to-play'));
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+    spent.unmount();
+
+    usePatientStore.setState({ currentPatient: { id: 'p-b' } as never });
+    render(
+      <I18nProvider>
+        <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+      </I18nProvider>,
+    );
+    await act(async () => {});
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+  });
+
+  it('counts a different patient as their own visit when the patient changes while the game stays open', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-first' } as never });
+    render(
+      <I18nProvider>
+        <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+      </I18nProvider>,
+    );
+    await act(async () => {});
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-first.quick_tap')).toBe('1');
+
+    // The second patient has already used up their 7 visits: no walk-through, and the first patient's stays uncounted twice.
+    window.localStorage.setItem('smriti.tutorialShown.p-second.quick_tap', '7');
+    await act(async () => {
+      usePatientStore.setState({ currentPatient: { id: 'p-second' } as never });
+    });
+    await act(async () => {});
+    expect(screen.queryByTestId('tutorial-step')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-first.quick_tap')).toBe('1');
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-second.quick_tap')).toBe('7');
+
+    // A third, new patient gets their first visit counted and the walk-through opens.
+    await act(async () => {
+      usePatientStore.setState({ currentPatient: { id: 'p-third' } as never });
+    });
+    await act(async () => {});
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-third.quick_tap')).toBe('1');
   });
 
   it('steps through to the end and closes, and reopens from How to play', async () => {
@@ -145,9 +204,15 @@ describe('Object Hunt recall taps (issue #4)', () => {
       </I18nProvider>,
     );
 
-    // Instruction (5s) + level 1 reveal: 2 objects × 3s slowed 20%
-    // (pacing.SLOWDOWN, src/lib/games/pacing.ts) to 4s, + 500ms, then recall.
-    for (const ms of [5001, 10, 4000, 4000, 510, 10]) {
+    // The start screen waits for the patient (no timer), then level 1
+    // reveals 2 objects × 3s slowed 20% (pacing.SLOWDOWN,
+    // src/lib/games/pacing.ts) to 4s, + 500ms, then recall.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(6000);
+    });
+    expect(screen.getByRole('button', { name: 'Start!' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start!' }));
+    for (const ms of [10, 4000, 4000, 510, 10]) {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(ms);
       });
@@ -170,5 +235,37 @@ describe('Object Hunt recall taps (issue #4)', () => {
     });
     const flashed = document.querySelectorAll('.ring-success, .ring-warning');
     expect(flashed).toHaveLength(1);
+  });
+
+  it('skips the start screen once this patient has seen it 7 times', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-oh', currentDifficulty: {} } as never });
+    window.localStorage.setItem('smriti.tutorialShown.p-oh.object_hunt', '7');
+    const { default: ObjectHuntPage } = await import('@/app/games/object-hunt/page');
+    render(
+      <I18nProvider>
+        <ObjectHuntPage />
+      </I18nProvider>,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(screen.queryByRole('button', { name: 'Start!' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('object-hunt-progress')).toBeInTheDocument();
+  });
+
+  it('shows the start screen on a new patient\'s visit and counts it', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-new', currentDifficulty: {} } as never });
+    window.localStorage.clear();
+    const { default: ObjectHuntPage } = await import('@/app/games/object-hunt/page');
+    render(
+      <I18nProvider>
+        <ObjectHuntPage />
+      </I18nProvider>,
+    );
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10);
+    });
+    expect(screen.getByRole('button', { name: 'Start!' })).toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-new.object_hunt')).toBe('1');
   });
 });

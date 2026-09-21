@@ -23,6 +23,8 @@ import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { isUILanguage } from "@/lib/i18n/languages";
 import { penalizedAccuracy, starsFromRate } from "@/lib/engine/scoring";
 import { TOUCH_TARGET_MIN_PX } from "@/components/ui/touchTarget";
+import { usePatientStore } from "@/stores/patientStore";
+import { claimAutoTutorial } from "@/lib/games/tutorialExposure";
 import {
     getProgressInsights,
     ProgressCardData,
@@ -38,7 +40,6 @@ import {
 // 游戏状态：空闲、进行中、已完成
 type GameState = "idle" | "playing" | "complete";
 
-const TUTORIAL_SEEN_KEY = "smriti.tutorialSeen.n_back";
 // 试验刺激类型：位置和字母
 type TrialStimuli = { position: number; letter: string };
 // 用户响应类型：位置匹配和音频匹配
@@ -457,6 +458,18 @@ export default function GameComponent({ t: propT, onComplete, initialLevel }: Ga
         return () => window.removeEventListener("keydown", handleKeyPress);
     }, [gameState, handleResponse]);
 
+    // The first few visits by this patient: open the walk-through
+    // automatically (see tutorialExposure.ts). The "How to play" button
+    // still opens it any time. Counted once per patient, so a different
+    // patient appearing while the game stays open is their own visit.
+    const tutorialPatientId = usePatientStore((s) => s.currentPatient?.id);
+    const tutorialClaimedForRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!tutorialPatientId || tutorialClaimedForRef.current === tutorialPatientId) return;
+        tutorialClaimedForRef.current = tutorialPatientId;
+        queueMicrotask(() => setShowTutorial(claimAutoTutorial(tutorialPatientId, "n_back")));
+    }, [tutorialPatientId]);
+
     // 监听外部教程按钮点击
     useEffect(() => {
         const handleTutorialClick = () => {
@@ -464,17 +477,6 @@ export default function GameComponent({ t: propT, onComplete, initialLevel }: Ga
         };
 
         const tutorialButton = document.getElementById('tutorial-trigger-howtoplay');
-        // First visit on this device: open the walk-through automatically.
-        // Nothing on the page rendered that trigger id, so the tutorial was
-        // unreachable before (issue #4 asked for one).
-        try {
-            if (!window.localStorage.getItem(TUTORIAL_SEEN_KEY)) {
-                window.localStorage.setItem(TUTORIAL_SEEN_KEY, "1");
-                queueMicrotask(() => setShowTutorial(true));
-            }
-        } catch {
-            // Storage blocked: the "How to play" button still opens it.
-        }
         if (tutorialButton) {
             tutorialButton.addEventListener('click', handleTutorialClick);
         }

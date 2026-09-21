@@ -1,0 +1,139 @@
+Who is playing?
+Tap your name.
+Not {name}?
+Choose who uses this phone
+A caregiver needs to pick the person, or people, who will play on this phone.
+Caregiver
+Hello
+Start Playing
+My Reminders
+My progress
+day streak
+Play today to start a streak
+Ask Smriti
+Choose a game
+A message for you
+Thank you!
+Nobody is set up on this phone
+A caregiver needs to sign in to set up this phone.
+Today
+Object Hunt
+Remember where each picture is hidden. Tap a tile to look.
+Where was the
+Remember this picture
+Market List
+Remember these things. We will ask you later.
+Remember these for later.
+OK, I remember!
+Which items did we show you?
+I am done!
+Quick Tap
+Tap the picture as soon as you see it.
+Tap this picture:
+Picture {n} of {total}
+You tapped {count} pictures correctly
+Path Match
+Join the numbers in order, from 1 onwards.
+Good!
+Number {n} of {total}
+{count} out of {total} joined
+Memory Match
+Tap two cards. If they match, they stay open.
+Good match
+Let's try another one
+{count} of {total} pairs found
+All {total} pairs found!
+Memory Blocks
+Frog Leap
+Counting Boxes
+N-Back
+Larger Number
+Memory Span
+Fish Trace
+Double Decision
+Family & Life Quiz
+The quiz needs at least 3 people or memories in the Memory Book. Ask your caregiver to add them.
+Who is this?
+Who is your {relationship}?
+Who or what is this about? “{detail}”
+Correct!
+Try again
+Well done! You finished today's session.
+Stars earned
+Perfect! Wonderful work today!
+Excellent! You are doing great!
+Great job today! Keep it up!
+Good effort! Every session helps.
+Well done for trying! Each day gets better.
+Back to home
+Start!
+Play again
+Keep going
+Finish for now
+{count} out of {total} correct
+{count} of 5 stars
+Routine Recall
+Getting today's routine ready…
+Not enough reminders done yet today
+Come back after a few more reminders are done today.
+Tap them in the order you did them today
+{count} of {total} placed
+Wonderful! That is exactly how today went.
+Let's remember together.
+You're learning! Keep trying.
+That's alright, let's try again.
+Keep going, you can do it.
+Good try! You're getting there.
+Almost there!
+You're improving!
+Nice work!
+Well done!
+You're doing great!
+Great job!
+Excellent work!
+Fantastic effort!
+Wonderful! You remembered everything!
+Perfect memory!
+Amazing! Every one correct!
+{count} extra taps on other pictures
+Hooray! You did it!
+Wonderful! Session complete!
+Well played! Great to see you today!
+How to play
+How to play
+Step {n} of {total}
+Next
+Back
+Got it, let's play!
+First you see one picture. Remember it — this is the picture to catch.
+Then pictures appear one at a time in the middle of the screen.
+When you see your picture, tap the screen quickly.
+For any other picture, don't tap. Tapping other pictures takes points away.
+Numbered circles are spread across the screen.
+Tap circle 1, then circle 2. A line joins them.
+Keep going in order — 3, 4, 5 — until every circle is joined.
+In higher levels there is a timer. Take your time; accuracy matters most.
+A stack of boxes appears for a few seconds.
+Count every box, including the ones stacked behind or on top.
+When the boxes disappear, enter how many you counted.
+I'm ready!
+Tile {n}
+Card {n}
+Path connecting puzzle
+Synced
+Offline
+Syncing
+Waiting to sync
+Not synced yet
+· last {date}
+Back
+Go back
+Cancel
+Loading
+Close
+Something went wrong. Let us go back home.
+Go home
+Choose language
+Messages from family
+From {name}
+Seen

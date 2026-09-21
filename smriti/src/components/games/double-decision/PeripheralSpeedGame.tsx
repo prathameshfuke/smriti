@@ -28,6 +28,8 @@ import { cn } from '@/lib/utils'
 import { submitScoreToLeaderboard } from '@/lib/leaderboard'
 import { starsFromRate } from '@/lib/engine/scoring'
 import { narrate } from '@/lib/audio/narrate';
+import { usePatientStore } from '@/stores/patientStore';
+import { claimAutoTutorial } from '@/lib/games/tutorialExposure';
 import { GAME_SPEECH_RATE } from '@/lib/audio/speech'
 import { useOfflineStatus } from '@/hooks/useOfflineStatus'
 import { useTapSelect } from '@/hooks/useTapSelect'
@@ -470,6 +472,17 @@ export function PeripheralSpeedGame({ onComplete, initialLevel }: PeripheralSpee
   const tapSelect = useTapSelect()
   const [phase, setPhase] = useState<Phase>('intro')
   const [isPracticeRun, setIsPracticeRun] = useState(false)
+  // The practice trial is this game's tutorial: offered on a patient's first
+  // few visits only (tutorialExposure.ts), then the intro goes straight to
+  // the real round. With no patient loaded it stays on, as it always was.
+  const patientId = usePatientStore((s) => s.currentPatient?.id)
+  const [offerPractice, setOfferPractice] = useState(true)
+  const practiceClaimedForRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!patientId || practiceClaimedForRef.current === patientId) return
+    practiceClaimedForRef.current = patientId
+    queueMicrotask(() => setOfferPractice(claimAutoTutorial(patientId, 'double_decision')))
+  }, [patientId])
   const [trialIndex, setTrialIndex] = useState(0)
   const [trial, setTrial] = useState<Trial>(() => createTrial(1))
   const [displayMs, setDisplayMs] = useState(INITIAL_DISPLAY_MS)
@@ -772,10 +785,10 @@ export function PeripheralSpeedGame({ onComplete, initialLevel }: PeripheralSpee
           </p>
           <Button
             className="group mt-8 h-11 rounded-full px-7 transition-transform active:scale-95"
-            onClick={startPractice}
+            onClick={offerPractice ? startPractice : startGame}
           >
             <Play className="mr-2 h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none" />
-            {t('startPractice')}
+            {offerPractice ? t('startPractice') : t('startReal')}
           </Button>
           {(bestRating !== null || bestAccuracy !== null) && (
             <div className="mt-4 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-patient-sm text-ink-muted">

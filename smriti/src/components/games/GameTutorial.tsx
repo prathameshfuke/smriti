@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import BigButton from '@/components/ui/BigButton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { narrate } from '@/lib/audio/narrate';
@@ -8,6 +8,8 @@ import { GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { stopAllAudio } from '@/lib/audio/channel';
 import { useTranslation } from '@/lib/i18n/provider';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
+import { usePatientStore } from '@/stores/patientStore';
+import { claimAutoTutorial } from '@/lib/games/tutorialExposure';
 
 export interface TutorialStep {
   /** A large emoji "picture" illustrating the step. */
@@ -33,24 +35,10 @@ export interface GameTutorialProps {
  * enough that the walkthrough keeps moving on its own. */
 const AUTO_ADVANCE_MS = 5500;
 
-const seenKey = (gameId: string) => `smriti.tutorialSeen.${gameId}`;
-
-/** True the first time this game is opened on this device. */
-function isFirstVisit(gameId: string): boolean {
-  try {
-    if (window.localStorage.getItem(seenKey(gameId))) return false;
-    window.localStorage.setItem(seenKey(gameId), '1');
-    return true;
-  } catch {
-    // Storage blocked: never auto-open, the button still works.
-    return false;
-  }
-}
-
 /**
  * Step-by-step "How to play" walk-through for the harder games (issue #4).
- * Opens by itself on a patient's first visit on this device, and any time
- * from the "How to play" button. Each step is one picture and one short
+ * Opens by itself on a patient's first few visits to a game (see
+ * tutorialExposure.ts), and any time from the "How to play" button. Each step is one picture and one short
  * sentence, read aloud, so it works for patients who struggle to read.
  */
 export default function GameTutorial({ gameId, steps, onReady }: GameTutorialProps) {
@@ -58,13 +46,22 @@ export default function GameTutorial({ gameId, steps, onReady }: GameTutorialPro
   const { isOnline } = useOfflineStatus();
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
+  const patientId = usePatientStore((s) => s.currentPatient?.id);
+  // The patient this visit was counted for. A ref survives the dev-mode
+  // effect re-run, so one visit is never counted twice, and holding the id
+  // (not a flag) means a different patient appearing while the game stays
+  // open is counted as their own visit.
+  const claimedForRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!patientId || claimedForRef.current === patientId) return;
+    claimedForRef.current = patientId;
     // Deferred one microtask per this codebase's effect-derived state convention.
     queueMicrotask(() => {
-      if (isFirstVisit(gameId)) setOpen(true);
+      setStep(0);
+      setOpen(claimAutoTutorial(patientId, gameId));
     });
-  }, [gameId]);
+  }, [gameId, patientId]);
 
   const current = steps[step];
 

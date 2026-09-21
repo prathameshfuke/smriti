@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import { restoreLocalSession } from '@/lib/auth/localSession';
 import { usePatientStore } from '@/stores/patientStore';
+import { useTranslation } from '@/lib/i18n/provider';
+
+/** A restore that finishes inside this is invisible; a slower one says so. */
+const SHOW_LOADING_AFTER_MS = 400;
 
 /**
  * Restores the device's patient from local storage before a patient screen
@@ -19,6 +23,16 @@ import { usePatientStore } from '@/stores/patientStore';
 export default function PatientSessionGate({ children }: { children: React.ReactNode }) {
   const hasPatient = usePatientStore((s) => s.currentPatient !== null);
   const [ready, setReady] = useState(hasPatient);
+  const [slow, setSlow] = useState(false);
+  const { t } = useTranslation();
+
+  // A blank screen reads as a frozen app to an older patient. Only when the
+  // wait is noticeable, say plainly that something is happening.
+  useEffect(() => {
+    if (ready) return;
+    const id = setTimeout(() => setSlow(true), SHOW_LOADING_AFTER_MS);
+    return () => clearTimeout(id);
+  }, [ready]);
 
   useEffect(() => {
     if (ready) return;
@@ -33,6 +47,16 @@ export default function PatientSessionGate({ children }: { children: React.React
     };
   }, [ready]);
 
-  if (!ready) return <div className="min-h-dvh bg-surface" aria-busy="true" />;
+  if (!ready) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center bg-surface px-6 text-center" aria-busy="true">
+        {slow ? (
+          <p role="status" className="text-patient-body text-ink-muted">
+            {t('common.loading')}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
   return <>{children}</>;
 }
