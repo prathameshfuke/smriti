@@ -20,6 +20,9 @@ const DIGITS: Record<UILanguage, readonly string[] | null> = {
   hi: DEVANAGARI_DIGITS,
   ne: DEVANAGARI_DIGITS,
   brx: DEVANAGARI_DIGITS,
+  // Khasi and Mizo are written in Latin script with Latin digits.
+  kha: null,
+  lus: null,
 };
 
 /** Rewrites every ASCII digit in `value` into `language`'s own digits. */

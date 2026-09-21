@@ -669,3 +669,7 @@ Names of the 66 pictures in Object Hunt / Market List / Quick Tap / Memory Match
 ## Push and alert opt-in strings (26 keys each)
 
 `push.*`, `alertPush.*` and `alertOptIn.*` (closed-app reminders and caregiver alerts) were translated into Bodo and Manipuri by the assistant, not by a native speaker. **All 26 keys per language are LOW confidence** and need native review, starting with `alertPush.*` and `push.body`. Loanwords (notification, reminder, home screen) are used where no known native term exists. Manipuri is in Bengali script per `languages.ts`.
+
+## Khasi (kha) and Mizo (lus)
+
+Text-only. Their catalogs (`src/lib/i18n/locales/kha.json`, `lus.json`) are empty until someone runs `node --env-file=.env.local scripts/translate-locale.mjs kha lus`, which fills them from Bhashini's own translation service and writes a review sheet to `docs/translation-review-kha-lus.md`. Until then the caregiver picker does not offer either language. Medicine, appointment, PIN, distress and sign-in wording is never machine-translated: it stays English until a native speaker supplies it. Per-game catalogs and the 66 object names also stay English for these two. Not written or checked by a native speaker.

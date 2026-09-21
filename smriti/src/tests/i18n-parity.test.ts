@@ -6,6 +6,8 @@ import bn from '@/lib/i18n/locales/bn.json';
 import ne from '@/lib/i18n/locales/ne.json';
 import brx from '@/lib/i18n/locales/brx.json';
 import mni from '@/lib/i18n/locales/mni.json';
+import kha from '@/lib/i18n/locales/kha.json';
+import lus from '@/lib/i18n/locales/lus.json';
 import { OBJECTS } from '@/lib/engine/objects';
 import { LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
 import { N_BACK_MESSAGES } from '@/components/games/n-back/messages';
@@ -42,7 +44,9 @@ const placeholders = (s: string) => (s.match(/\{\w+\}/g) ?? []).sort().join(',')
 /** A value with no real English word in it ('%', '{seconds}s', '#') may legitimately match English. */
 const hasEnglishWord = (s: string) => /[A-Za-z]{3,}/.test(s.replace(/\{\w+\}/g, ''));
 
-const LOCALES: Record<Exclude<UILanguage, 'en'>, Tree> = { as, hi, bn, ne, brx, mni };
+/** Khasi and Mizo: machine-translated drafts, checked separately below (they may cover only part of the catalog). */
+const DRAFT_LOCALES = { kha, lus } as const;
+const LOCALES: Record<Exclude<UILanguage, 'en' | keyof typeof DRAFT_LOCALES>, Tree> = { as, hi, bn, ne, brx, mni };
 const TARGETS = Object.keys(LOCALES) as (keyof typeof LOCALES)[];
 
 /** Language names are written in their own script by design, in every catalog. */
@@ -115,6 +119,36 @@ describe.each(['brx', 'mni'] as const)('%s script and provenance', (code) => {
   });
 });
 
+describe.each(Object.keys(DRAFT_LOCALES) as (keyof typeof DRAFT_LOCALES)[])('draft locale %s vs en.json', (code) => {
+  const enFlat = flatten(en);
+  const flat = flatten(DRAFT_LOCALES[code]);
+
+  it('has no stray keys (partial coverage is allowed; missing keys fall back to English)', () => {
+    expect(Object.keys(flat).filter((k) => !(k in enFlat))).toEqual([]);
+  });
+
+  it('keeps the same {placeholders} as English', () => {
+    expect(Object.keys(flat).filter((k) => placeholders(flat[k]) !== placeholders(enFlat[k]))).toEqual([]);
+  });
+
+  it('has no empty values', () => {
+    expect(Object.keys(flat).filter((k) => flat[k].trim() === '')).toEqual([]);
+  });
+
+  it('is written in Latin script, not Bengali or Devanagari', () => {
+    expect(Object.keys(flat).filter((k) => BENGALI.test(flat[k]) || DEVANAGARI.test(flat[k]))).toEqual([]);
+  });
+
+  it('is not a copy of another Northeast language\'s text', () => {
+    const copies: string[] = [];
+    for (const other of ['as', 'hi', 'bn', 'ne', 'brx', 'mni'] as const) {
+      const o = flatten(LOCALES[other]);
+      for (const k of Object.keys(flat)) if (o[k] === flat[k] && !SHARED_LOANWORDS.has(k) && !isLanguageName(k)) copies.push(`${k} == ${other}`);
+    }
+    expect(copies).toEqual([]);
+  });
+});
+
 /** Per-game catalogs (next-intl). Each game ships its own; all must cover the same languages. */
 const GAME_CATALOGS: Record<string, Record<string, Tree>> = {
   'n-back': N_BACK_MESSAGES,
@@ -143,7 +177,8 @@ describe.each(Object.entries(GAME_CATALOGS))('game catalog %s', (_name, catalog)
 });
 
 describe('object names', () => {
-  it.each(LANGUAGES)('every object has a %s name', (code) => {
+  // Khasi and Mizo object names fall back to English until a reviewer supplies them.
+  it.each(LANGUAGES.filter((code) => !(code in DRAFT_LOCALES)))('every object has a %s name', (code) => {
     expect(OBJECTS.filter((o) => !o.name[code]).map((o) => o.id)).toEqual([]);
   });
   it.each(['brx', 'mni', 'bn', 'ne'] as const)('%s object names are in the right script and not English', (code) => {

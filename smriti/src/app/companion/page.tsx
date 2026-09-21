@@ -68,6 +68,10 @@ const RECOGNITION_LANG: Record<UILanguage, string> = {
   ne: 'ne-NP',
   brx: 'hi-IN',
   mni: 'bn-IN',
+  // No dictation model for Khasi or Mizo: listen for Indian English, which
+  // speakers of both commonly use, rather than the wrong local language.
+  kha: 'en-IN',
+  lus: 'en-IN',
 };
 
 interface SpeechRecognitionLike {

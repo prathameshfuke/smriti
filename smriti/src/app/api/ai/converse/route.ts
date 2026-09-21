@@ -25,7 +25,7 @@ import {
   type ModelReply,
 } from '@/lib/ai/companion-conversation';
 import { hasServerConsent } from '@/lib/consent/consentServer';
-import { isUILanguage, type UILanguage } from '@/lib/i18n/languages';
+import { DRAFT_TRANSLATION_LANGUAGES, isUILanguage, type UILanguage } from '@/lib/i18n/languages';
 
 /**
  * One turn of an Ask Smriti conversation.
@@ -203,7 +203,11 @@ export async function POST(request: Request) {
   const message = typeof body?.message === 'string' ? body.message.trim() : '';
   if (!message) return Response.json({ error: 'missing_message' }, { status: 400 });
   if (message.length > MAX_MESSAGE_LENGTH) return Response.json({ error: 'message_too_long' }, { status: 400 });
-  const language: UILanguage = isUILanguage(body.language) ? body.language : 'en';
+  const requestedLanguage: UILanguage = isUILanguage(body.language) ? body.language : 'en';
+  // Khasi and Mizo have no speech service and nothing here has verified the
+  // model's Khasi or Mizo. A wrong word in an answer about someone's day is
+  // worse than an English one, so the companion answers in English for now.
+  const language: UILanguage = DRAFT_TRANSLATION_LANGUAGES.includes(requestedLanguage) ? 'en' : requestedLanguage;
   const history = sanitizeHistory(body.history);
   const sessionId = typeof body.sessionId === 'string' && UUID_RE.test(body.sessionId) ? body.sessionId : null;
 

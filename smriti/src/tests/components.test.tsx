@@ -274,9 +274,9 @@ describe('Skeleton', () => {
 });
 
 describe('LanguagePicker', () => {
-  it('renders one button per supported language', () => {
+  it('renders one button per language that has real text (Khasi and Mizo wait for their translation pass)', () => {
     render(<LanguagePicker />);
-    expect(screen.getAllByRole('button')).toHaveLength(LANGUAGES.length);
+    expect(screen.getAllByRole('button')).toHaveLength(LANGUAGES.length - 2);
   });
 
   it('updates settingsStore when a language is chosen', () => {

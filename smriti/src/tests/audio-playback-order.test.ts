@@ -169,6 +169,24 @@ describe('no cross-language substitution', () => {
   });
 });
 
+describe('Khasi and Mizo are text-only', () => {
+  it.each(['kha', 'lus'] as const)('%s online: no request to the speech service, silent with only an English voice installed', async (code) => {
+    const { narrate } = await setup({});
+    await expect(narrate('Ka jingpyrshang', code, true)).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(synth.speak).not.toHaveBeenCalled();
+    expect(FakeAudio.instances).toHaveLength(0);
+  });
+
+  it.each(['kha', 'lus'] as const)('%s uses a device voice only when one for exactly that language is installed', async (code) => {
+    synth.getVoices.mockReturnValue([{ lang: 'en-IN' }, { lang: 'hi-IN' }, { lang: `${code}-IN` }]);
+    const { narrate } = await setup({});
+    await narrate('Hello', code, true);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(synth.speak).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe('speak() (game feedback lines) also prefers bundled clips', () => {
   it('plays the bundled clip when the line is bundled', async () => {
     const { speak } = await setup({ as: { 'game.correct': 'শুদ্ধ!' } });

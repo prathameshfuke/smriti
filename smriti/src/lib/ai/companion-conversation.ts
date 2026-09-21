@@ -68,6 +68,8 @@ const SCRIPT: Record<UILanguage, RegExp> = {
   bn: /[ঀ-৿]/,
   // The app shows Manipuri in Bengali script (no Meitei Mayek font is loaded).
   mni: /[ঀ-৿]/,
+  kha: /[A-Za-z]/,
+  lus: /[A-Za-z]/,
 };
 
 const SCRIPT_NAME: Record<UILanguage, string> = {
@@ -78,6 +80,8 @@ const SCRIPT_NAME: Record<UILanguage, string> = {
   as: 'Assamese (Bengali-Assamese)',
   bn: 'Bengali',
   mni: 'Bengali',
+  kha: 'Latin',
+  lus: 'Latin',
 };
 
 /** True when most letters in the reply are in the language's script. Names and numbers in other scripts are tolerated. */

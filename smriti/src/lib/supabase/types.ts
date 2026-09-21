@@ -16,8 +16,8 @@
 // 'bn'/'ne' to match — pushCaregiverProfile already swallows a DB write
 // failure and keeps the local Dexie record as source of truth, so this is
 // safe to ship ahead of that migration, not silently broken.
-export type Language = 'as' | 'hi' | 'en' | 'mni' | 'brx' | 'bn' | 'ne';
-export type PatientLanguage = Language | 'kha' | 'lus';
+export type Language = 'as' | 'hi' | 'en' | 'mni' | 'brx' | 'bn' | 'ne' | 'kha' | 'lus';
+export type PatientLanguage = Language;
 export type CaregiverRole = 'family' | 'asha_worker' | 'nurse' | 'clinician';
 export type Gender = 'male' | 'female' | 'other';
 export type GameType =

@@ -10,6 +10,8 @@ import brx from './locales/brx.json';
 import mni from './locales/mni.json';
 import bn from './locales/bn.json';
 import ne from './locales/ne.json';
+import kha from './locales/kha.json';
+import lus from './locales/lus.json';
 
 export { LANGUAGES, DEFAULT_LANGUAGE, isUILanguage, type UILanguage } from './languages';
 
@@ -19,7 +21,29 @@ type Messages = Record<string, unknown>;
  * .claude/plans/multilingual-expansion.plan.md. bn/ne are real, confident
  * translations. `t()`'s own English fallback below means an actually-wrong
  * entry here degrades to English, never to broken/garbled text. */
-const CATALOGS: Record<UILanguage, Messages> = { as, hi, en, brx, mni, bn, ne };
+const CATALOGS: Record<UILanguage, Messages> = { as, hi, en, brx, mni, bn, ne, kha, lus };
+
+/** Leaf strings in a catalog, counted so a language is only offered once it has real content. */
+function countStrings(node: unknown): number {
+  if (typeof node === 'string') return 1;
+  if (node !== null && typeof node === 'object') {
+    return Object.values(node as Messages).reduce<number>((sum, v) => sum + countStrings(v), 0);
+  }
+  return 0;
+}
+
+const ENGLISH_STRING_COUNT = countStrings(en);
+
+/**
+ * A language is offered in the caregiver picker only once at least half of
+ * the English strings have a translation. Khasi and Mizo ship as empty
+ * catalogs until their Bhashini machine-translation pass has been run and
+ * saved (scripts/translate-locale.mjs); offering them earlier would show a
+ * patient the same English screen under a Khasi or Mizo label.
+ */
+export function isLanguageOffered(language: UILanguage): boolean {
+  return language === 'en' || countStrings(CATALOGS[language]) >= ENGLISH_STRING_COUNT / 2;
+}
 
 /** Resolves a dot-path such as `home.greeting` against a catalog. */
 function lookup(catalog: Messages, key: string): string | undefined {

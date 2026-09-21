@@ -16,6 +16,8 @@ const RECOGNITION_TAG: Record<UILanguage, string> = {
   mni: 'bn-IN',
   bn: 'bn-IN',
   ne: 'ne-NP',
+  kha: 'en-IN',
+  lus: 'en-IN',
 };
 
 interface RecognitionResultList {
