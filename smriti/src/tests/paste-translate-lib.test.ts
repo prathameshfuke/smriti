@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import en from '@/lib/i18n/locales/en.json';
 import {
-  DRIFT_THRESHOLD, MAX_CHUNK_CHARS, buildSheet, check, chunkKeys, flatten, normalizeLine, roundTripSimilarity,
+  BLOCKED_WORDS, DRIFT_THRESHOLD, MAX_CHUNK_CHARS, buildSheet, check, chunkKeys, flatten, normalizeLine, roundTripSimilarity,
   repairPlaceholders, selectKeys, splitOutput, toPasteLine, unflatten,
 } from '../../scripts/paste-translate.lib';
 
@@ -64,6 +64,15 @@ describe('mechanical checks', () => {
     expect(check('Choose a game', 'Game অমা thlang la')).toBe('wrong-script');
     expect(check(src, 'fakin fakin fakin fakin fakin fakin fakin fakin')).toBe('repeats');
     expect(check('Good morning, your medicine is due today', 'Good morning, your medicine is due')).toBe('mostly-english');
+  });
+});
+
+describe('blocked words', () => {
+  it('rejects Mizo "tap" (it means "to cry") until a reviewer replaces it', () => {
+    expect(check('Tap your name.', 'I hming kha tap rawh.', BLOCKED_WORDS.lus)).toBe('blocked-word');
+    expect(check('Tap your name.', 'I hming kha tap rawh.')).toBe('ok');
+    expect(check('Tap your name.', 'I hming kha hmet rawh.', BLOCKED_WORDS.lus)).toBe('ok');
+    expect(check('Tap this picture:', 'Thlalak Tap rawh:', BLOCKED_WORDS.lus)).toBe('blocked-word');
   });
 });
 

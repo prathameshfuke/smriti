@@ -113,16 +113,30 @@ export function roundTripSimilarity(original: string, back: string): number {
 
 export const DRIFT_THRESHOLD = 0.25;
 
-export type Verdict = 'ok' | 'empty' | 'unchanged' | 'placeholders' | 'wrong-script' | 'mostly-english' | 'repeats';
+export type Verdict =
+  | 'ok' | 'empty' | 'unchanged' | 'placeholders' | 'wrong-script' | 'mostly-english' | 'repeats' | 'blocked-word';
+
+/**
+ * Words that look like a harmless English loanword but mean something else in
+ * the target language. Found from a round trip, never guessed.
+ *  - Mizo `tap` means "to cry": Google leaves the English verb "tap" in the
+ *    Mizo text, and it came back as "Cry as soon as you see the picture" and
+ *    "Don't cry for any other picture". A reviewer must replace it with the
+ *    Mizo verb for touching the screen.
+ */
+export const BLOCKED_WORDS: Record<string, RegExp[]> = {
+  lus: [/\btap\b/i, /\btaps\b/i],
+};
 
 const NON_LATIN = /[ऀ-ॿঀ-৿ༀ-࿿]/;
 
 /** Mechanical checks only. `ok` means "not visibly broken", never "correct". */
-export function check(source: string, output: string): Verdict {
+export function check(source: string, output: string, blocked: RegExp[] = []): Verdict {
   const text = output.trim();
   if (!text) return 'empty';
   if (text === source) return 'unchanged';
   if (placeholders(text) !== placeholders(source)) return 'placeholders';
+  if (blocked.some((re) => re.test(text))) return 'blocked-word';
   if (NON_LATIN.test(text)) return 'wrong-script';
   const tokens = words(text);
   if (tokens.length >= 6 && new Set(tokens).size / tokens.length < 0.4) return 'repeats';

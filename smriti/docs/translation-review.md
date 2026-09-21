@@ -672,4 +672,10 @@ Names of the 66 pictures in Object Hunt / Market List / Quick Tap / Memory Match
 
 ## Khasi (kha) and Mizo (lus)
 
-Wired in as text-only but not offered: their catalogs (`src/lib/i18n/locales/kha.json`, `lus.json`) are empty. Bhashini's machine translation was tried and rejected after review (see `docs/translation-review-kha-lus.md`). They appear in the caregiver picker once a native speaker supplies text covering at least half of `en.json`. Medicine, appointment, PIN, distress and sign-in wording needs a native speaker in any case.
+Wired in as text-only but not offered: their catalogs (`src/lib/i18n/locales/kha.json`, `lus.json`) are empty. Three attempts, none good enough to ship:
+
+1. Bhashini machine translation: rejected (looped text, wrong-script characters, meaning errors). See `docs/translation-review-kha-lus.md`.
+2. Khasi drafted with Google Translate and round-tripped (`docs/translation-review-kha.md`): about a third of the lines changed meaning ("Nobody is set up on this phone" came back as "You don't have to set up this phone", "Syncing" as "Regard", "From {name}" as "Object {name}").
+3. Mizo drafted the same way (`docs/translation-review-lus.md`): mostly right, but Google leaves the English verb "tap" in the text and in Mizo *tap* means "to cry". Every tap instruction round-trips as "Cry ...", including "Don't cry for any other picture". A reviewer must supply the Mizo verb for touching the screen. `scripts/paste-translate.lib.ts` now blocks that word. Other lines also drift (Start!, Finish for now, Go back, Loading, tile/card labels).
+
+Either language appears in the caregiver picker once a native speaker approves text covering at least half of `en.json` (`scripts/paste-translate.ts apply <code> --reviewed-by "Name"`). Medicine, appointment, PIN, distress and sign-in wording needs a native speaker in any case.

@@ -25,7 +25,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
-  buildSheet, check, chunkKeys, flatten, normalizeLine, repairPlaceholders, roundTripSimilarity, selectKeys, splitOutput,
+  BLOCKED_WORDS, buildSheet, check, chunkKeys, flatten, normalizeLine, repairPlaceholders, roundTripSimilarity, selectKeys, splitOutput,
   toPasteLine, unflatten, type Flat, type SheetRow,
 } from './paste-translate.lib';
 
@@ -94,7 +94,7 @@ if (command === 'export') {
     key,
     english: en[key],
     draft: texts[key],
-    verdict: check(en[key], texts[key]),
+    verdict: check(en[key], texts[key], BLOCKED_WORDS[code]),
     similarity: back.texts[key] === undefined ? null : roundTripSimilarity(en[key], back.texts[key]),
     back: back.texts[key] ?? null,
   }));
@@ -136,7 +136,7 @@ if (command === 'export') {
     const decision = reviewer.trim();
     if (!decision || !(key in en)) continue;
     const text = normalizeLine((decision.toLowerCase() === 'approve' ? draft : decision).replace(/\\\|/g, '|'));
-    if (check(en[key], text) !== 'ok') {
+    if (check(en[key], text, BLOCKED_WORDS[code]) !== 'ok') {
       console.warn(`skipped ${key}: fails the mechanical checks`);
       continue;
     }
