@@ -434,7 +434,7 @@ smriti/
 │   │   │   ├── add-patient/       # Add another patient
 │   │   │   ├── consent/           # Consent capture
 │   │   │   ├── device/            # Trusted-device management
-│   │   │   └── settings/          # Language, display size, zoom lock, PIN
+│   │   │   ├── settings/          # Language, display size, zoom lock, PIN
 │   │   │   └── login/             # Magic link + Google OAuth
 │   │   └── api/
 │   │       ├── sync/               # Offline → cloud sync
