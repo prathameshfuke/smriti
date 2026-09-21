@@ -38,6 +38,8 @@ const PLACEHOLDER_ALIASES: Record<string, Record<string, string>> = {
     kyrteng: 'name', baroh: 'total', khein: 'count', jingkhein: 'count', jingiadei: 'relationship',
     'kaba peit bniah': 'detail', tarik: 'date',
   },
+  // Seen in a Mizo paste.
+  lus: { hming: 'name', chipchiar: 'detail', inzawmna: 'relationship' },
 };
 
 const [command, code, ...rest] = process.argv.slice(2);
