@@ -24,6 +24,7 @@ import { useCaregiverStore } from '@/stores/caregiverStore';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useTranslation } from '@/lib/i18n/provider';
+import CardColumns from '@/components/ui/CardColumns';
 
 const SETTINGS_FAQ = [
   {
@@ -317,7 +318,7 @@ export default function CaregiverSettingsPage() {
     <main className="mx-auto w-full max-w-dashboard px-5 py-8 md:px-10 md:py-12">
       <PageHeader title="Settings" description="Language, text size, PIN and data for this device." />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+      <CardColumns>
         <Panel
           title={currentPatient ? `Language for ${currentPatient.displayName}` : 'Patient language'}
           description="What they see and hear in SMRITI."
@@ -376,7 +377,7 @@ export default function CaregiverSettingsPage() {
           </Panel>
         ) : null}
 
-        <div className="lg:col-span-2">
+        <div className="lg:[column-span:all]">
           <FaqTabsCard title="Help & FAQ" items={SETTINGS_FAQ} />
         </div>
 
@@ -403,7 +404,7 @@ export default function CaregiverSettingsPage() {
 
         <section
           aria-labelledby="delete-data-heading"
-          className="rounded-card border-2 border-danger/40 bg-surface-card p-5 lg:col-span-2"
+          className="rounded-card border-2 border-danger/40 bg-surface-card p-5 lg:[column-span:all]"
         >
           <h2 id="delete-data-heading" className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink">
             Delete all data on this device
@@ -462,7 +463,7 @@ export default function CaregiverSettingsPage() {
             </div>
           ) : null}
         </section>
-      </div>
+      </CardColumns>
     </main>
   );
 }

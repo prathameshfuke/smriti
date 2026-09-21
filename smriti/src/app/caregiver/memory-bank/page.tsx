@@ -5,6 +5,7 @@ import { v4 as uuid } from 'uuid';
 import BigButton from '@/components/ui/BigButton';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import PageHeader from '@/components/ui/PageHeader';
+import CardColumns from '@/components/ui/CardColumns';
 import MemoryBankBackup from '@/components/caregiver/MemoryBankBackup';
 import { buttonClass, fieldClass, labelClass, textActionClass } from '@/components/ui/Panel';
 import { authedFetch } from '@/lib/api/client';
@@ -369,7 +370,7 @@ export default function MemoryBankPage() {
           </div>
         </section>
       ) : (
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+        <CardColumns>
           {SECTIONS.map((category) => {
             const meta = CATEGORY_META[category];
             const sectionEntries = entries.filter((e) => e.category === category);
@@ -437,7 +438,7 @@ export default function MemoryBankPage() {
               </section>
             );
           })}
-        </div>
+        </CardColumns>
       )}
 
       {form ? (

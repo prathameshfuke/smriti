@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Users, Settings, Images, Home } from 'lucide-react';
 import Icon from '@/components/Icon';
+import { usePatientViewConfirm } from '@/components/layout/PatientViewConfirm';
 
 /**
  * Fixed bottom tab bar for the caregiver side. Caregivers use SMRITI
@@ -28,42 +29,56 @@ const ITEMS = [
   { href: '/caregiver/dashboard', label: 'Overview', Icon: LayoutDashboard },
   { href: '/caregiver/patients', label: 'Patients', Icon: Users },
   { href: '/caregiver/memory-bank', label: 'Memory Bank', Icon: Images },
+  { href: '/app', label: 'Patient View', Icon: Home, confirm: true },
   { href: '/caregiver/settings', label: 'Settings', Icon: Settings },
-  { href: '/app', label: 'Patient View', Icon: Home },
 ] as const;
 
 export default function CaregiverNav() {
   const pathname = usePathname();
+  const patientView = usePatientViewConfirm();
 
   return (
-    <nav
-      aria-label="Caregiver"
-      data-caregiver-nav
-      className="fixed inset-x-0 bottom-0 z-40 flex h-(--caregiver-nav-h) pb-(--caregiver-nav-pad) bg-surface-card border-t border-line200 md:hidden"
-    >
-      {ITEMS.map(({ href, label, Icon: ItemIcon }) => {
-        const active = pathname === href || pathname?.startsWith(`${href}/`);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-current={active ? 'page' : undefined}
-            className={
-              'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 border-t-[3px] pt-[3px] ' +
-              'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-dark ' +
-              (active ? 'border-primary text-primary-dark' : 'border-transparent text-ink-muted')
-            }
-          >
-            <Icon icon={ItemIcon} size={20} className="shrink-0" />
-            {/* Clamped to two lines, which --caregiver-nav-h is sized for. At Large
-                text on a 320px phone a single long word may break mid-word
-                (overflow-wrap: anywhere) rather than spill into the next tab. */}
-            <span className="line-clamp-2 min-w-0 max-w-full px-1 text-center text-xs leading-[1.1] [overflow-wrap:anywhere]">
-              {label}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
+    <>
+      <nav
+        aria-label="Caregiver"
+        data-caregiver-nav
+        className="fixed inset-x-0 bottom-0 z-40 flex h-(--caregiver-nav-h) pb-(--caregiver-nav-pad) bg-surface-card border-t border-line200 md:hidden"
+      >
+        {ITEMS.map((item) => {
+          const { href, label, Icon: ItemIcon } = item;
+          const active = pathname === href || pathname?.startsWith(`${href}/`);
+          const className =
+            'flex flex-1 basis-0 min-w-0 flex-col items-center justify-start gap-0.5 border-t-[3px] pt-[3px] ' +
+            'focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary-dark ' +
+            (active ? 'border-primary text-primary-dark' : 'border-transparent text-ink-muted');
+          const content = (
+            <>
+              <Icon icon={ItemIcon} size={20} className="shrink-0" />
+              {/* Clamped to two lines, which --caregiver-nav-h is sized for. At Large
+                  text on a 320px phone a single long word may break mid-word
+                  (overflow-wrap: anywhere) rather than spill into the next tab. */}
+              <span className="line-clamp-2 min-w-0 max-w-full px-1 text-center text-xs leading-[1.1] [overflow-wrap:anywhere]">
+                {label}
+              </span>
+            </>
+          );
+          // Patient View leaves the caregiver area, so it asks first (see
+          // PatientViewConfirm) instead of navigating on a single tap.
+          if ('confirm' in item) {
+            return (
+              <button key={href} type="button" onClick={patientView.ask} className={className}>
+                {content}
+              </button>
+            );
+          }
+          return (
+            <Link key={href} href={href} aria-current={active ? 'page' : undefined} className={className}>
+              {content}
+            </Link>
+          );
+        })}
+      </nav>
+      {patientView.dialog}
+    </>
   );
 }

@@ -5,11 +5,10 @@ import { useSettingsStore } from '@/stores/settingsStore';
 
 /**
  * Double-tap-to-zoom is already blocked app-wide, unconditionally, in
- * globals.css — it's never intentional. Pinch-zoom stays available by
- * default so a low-vision patient can still magnify the screen. This switch
- * is the opt-in for a patient who never needs pinch-zoom and instead keeps
- * mis-triggering it while dragging or tapping quickly; turning it on drops
- * pinch-zoom on this phone too (lib/a11y/zoomLock.ts).
+ * globals.css — it's never intentional. Pinch-zoom is blocked by default too,
+ * because a patient who mis-triggers it while dragging or tapping quickly
+ * cannot get back out. This switch is how a caregiver turns it back on for a
+ * low-vision patient who needs to magnify the screen (lib/a11y/zoomLock.ts).
  */
 export default function ZoomLockSettings() {
   const zoomLocked = useSettingsStore((s) => s.zoomLocked);
@@ -21,8 +20,8 @@ export default function ZoomLockSettings() {
         <p className="text-caregiver-body font-bold text-ink">Zoom lock</p>
         <p className="mt-1 text-caregiver-body text-ink-muted">
           {zoomLocked
-            ? 'Pinch-to-zoom is off on this phone. Accidental double-tap zoom is always blocked.'
-            : 'Pinch-to-zoom stays available for low vision. Turn on if it keeps triggering by accident while playing or scrolling.'}
+            ? 'Pinch-to-zoom is off on this phone. Turn this off if the patient needs to magnify the screen. Accidental double-tap zoom is always blocked.'
+            : 'Pinch-to-zoom is available on this phone for low vision. Turn on if it keeps triggering by accident while playing or scrolling.'}
         </p>
       </div>
       <AnimatedSwitch checked={zoomLocked} onChange={setZoomLocked} label="Zoom lock" />

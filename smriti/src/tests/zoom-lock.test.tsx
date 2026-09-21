@@ -16,15 +16,18 @@ beforeEach(() => {
 });
 
 describe('zoom lock helpers', () => {
-  it('writes true only for an actual true value, false for anything else', () => {
+  it('honours a real boolean and falls back to locked for anything else', () => {
     applyZoomLock(root, true);
     expect(root.getAttribute('data-zoom-locked')).toBe('true');
 
-    applyZoomLock(root, 'true');
+    applyZoomLock(root, false);
     expect(root.getAttribute('data-zoom-locked')).toBe('false');
 
+    applyZoomLock(root, 'false');
+    expect(root.getAttribute('data-zoom-locked')).toBe('true');
+
     applyZoomLock(root, undefined);
-    expect(root.getAttribute('data-zoom-locked')).toBe('false');
+    expect(root.getAttribute('data-zoom-locked')).toBe('true');
   });
 
   it('globals.css blocks double-tap zoom unconditionally and pinch only when locked', () => {
@@ -41,19 +44,28 @@ describe('zoom lock helpers', () => {
     localStorage.setItem('smriti.settings', '{not json');
     expect(() => new Function(ZOOM_LOCK_BOOT_SCRIPT)()).not.toThrow();
   });
+
+  it('boot script locks a device with no saved choice but keeps an explicit unlock', () => {
+    new Function(ZOOM_LOCK_BOOT_SCRIPT)();
+    expect(root.getAttribute('data-zoom-locked')).toBe('true');
+
+    localStorage.setItem('smriti.settings', JSON.stringify({ state: { zoomLocked: false } }));
+    new Function(ZOOM_LOCK_BOOT_SCRIPT)();
+    expect(root.getAttribute('data-zoom-locked')).toBe('false');
+  });
 });
 
 describe('settingsStore zoom lock', () => {
-  it('defaults to off so pinch-zoom stays available (WCAG 1.4.4)', () => {
-    expect(useSettingsStore.getState().zoomLocked).toBe(false);
+  it('defaults to on so an accidental pinch cannot trap the patient in a zoomed screen', () => {
+    expect(useSettingsStore.getState().zoomLocked).toBe(true);
   });
 
   it('persists the preference', () => {
     act(() => {
-      useSettingsStore.getState().setZoomLocked(true);
+      useSettingsStore.getState().setZoomLocked(false);
     });
     const saved = JSON.parse(localStorage.getItem('smriti.settings') ?? '{}');
-    expect(saved.state.zoomLocked).toBe(true);
+    expect(saved.state.zoomLocked).toBe(false);
   });
 });
 
@@ -66,12 +78,13 @@ describe('ZoomLockSettings', () => {
       </>,
     );
     const toggle = screen.getByRole('switch', { name: 'Zoom lock' });
-    expect(root.getAttribute('data-zoom-locked')).toBe('false');
-
-    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
     expect(root.getAttribute('data-zoom-locked')).toBe('true');
 
     fireEvent.click(toggle);
     expect(root.getAttribute('data-zoom-locked')).toBe('false');
+
+    fireEvent.click(toggle);
+    expect(root.getAttribute('data-zoom-locked')).toBe('true');
   });
 });

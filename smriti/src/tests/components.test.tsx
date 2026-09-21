@@ -327,15 +327,16 @@ describe('PatientNav', () => {
 describe('CaregiverNav', () => {
   it('renders the caregiver destinations', () => {
     render(<CaregiverNav />);
-    const names = screen.getAllByRole('link').map((link) => link.textContent);
+    const nav = screen.getByRole('navigation', { name: 'Caregiver' });
+    const names = Array.from(nav.querySelectorAll('a, button')).map((el) => el.textContent);
     // Full labels, matching CaregiverRail's desktop wording — no shortened
     // "Memory", no "Dashboard" (the page itself is titled "Overview").
-    expect(names).toEqual(['Overview', 'Patients', 'Memory Bank', 'Settings', 'Patient View']);
+    expect(names).toEqual(['Overview', 'Patients', 'Memory Bank', 'Patient View', 'Settings']);
   });
 
   it('never clips a label: labels wrap between words instead of truncating', () => {
     render(<CaregiverNav />);
-    for (const link of screen.getAllByRole('link')) {
+    for (const link of screen.getByRole('navigation', { name: 'Caregiver' }).querySelectorAll('a, button')) {
       const label = link.querySelector('span');
       expect(label?.className).not.toMatch(/\b(truncate|whitespace-nowrap|overflow-hidden)\b/);
     }
@@ -345,7 +346,7 @@ describe('CaregiverNav', () => {
     render(<CaregiverNav />);
     const nav = screen.getByRole('navigation', { name: 'Caregiver' });
     expect(nav.className).not.toMatch(/(^|\s)(gap|px)-/);
-    for (const link of screen.getAllByRole('link')) {
+    for (const link of nav.querySelectorAll('a, button')) {
       expect(link.className).toMatch(/\bflex-1\b/);
       expect(link.className).toMatch(/\bbasis-0\b/);
     }

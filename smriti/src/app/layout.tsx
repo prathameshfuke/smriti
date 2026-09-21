@@ -12,7 +12,7 @@ import AudioRouteReset from "@/components/layout/AudioRouteReset";
 import DisplaySizeSync from "@/components/layout/DisplaySizeSync";
 import ServiceWorkerRegister from "@/components/layout/ServiceWorkerRegister";
 import { DEFAULT_DISPLAY_SIZE, DISPLAY_SIZE_BOOT_SCRIPT } from "@/lib/a11y/sizing";
-import { ZOOM_LOCK_BOOT_SCRIPT } from "@/lib/a11y/zoomLock";
+import { DEFAULT_ZOOM_LOCKED, ZOOM_LOCK_BOOT_SCRIPT } from "@/lib/a11y/zoomLock";
 import "./globals.css";
 
 /**
@@ -76,8 +76,8 @@ export const viewport: Viewport = {
   // device. Accidental zoom (double-tap from a shaky tap, mis-read pinch
   // while dragging) is instead handled in globals.css via `touch-action`:
   // double-tap-zoom is blocked unconditionally, and pinch-zoom is blocked
-  // only on devices a caregiver opts into "Zoom lock" in Settings (see
-  // lib/a11y/zoomLock.ts) — a per-device choice, not a global restriction.
+  // while "Zoom lock" is on — the default, which a caregiver can turn off in
+  // Settings for a patient who needs to magnify (see lib/a11y/zoomLock.ts).
   viewportFit: "cover",
 };
 
@@ -88,7 +88,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${atkinsonHyperlegible.variable} ${notoSansBengali.variable} ${notoSansDevanagari.variable} ${fraunces.variable} h-full antialiased`}
       data-text-size={DEFAULT_DISPLAY_SIZE}
       data-icon-size={DEFAULT_DISPLAY_SIZE}
-      data-zoom-locked="false"
+      data-zoom-locked={DEFAULT_ZOOM_LOCKED ? "true" : "false"}
       // The boot scripts below rewrite these data attributes from saved
       // settings before first paint; the DOM value is the correct one.
       suppressHydrationWarning

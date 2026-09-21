@@ -192,7 +192,7 @@ export default function CognitiveTab({
         </section>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-stretch">
         <CognitiveScoreCard
           score={cognitiveScore}
           isLoading={scoreTrend.isLoading || serverRowsLoading}
@@ -224,6 +224,7 @@ export default function CognitiveTab({
           </section>
 
           <Panel
+            className="lg:flex-1"
             title="Last 7 days"
             description="Accuracy on each day they played. A shorter, day-by-day view than the 14-day cognitive score above."
           >
@@ -270,23 +271,21 @@ export default function CognitiveTab({
         ) : null}
       </Panel>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-        <div data-testid="score-graph" className="min-w-0 rounded-card border border-line200 bg-surface-card p-5">
-          <h2 className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink">Accuracy over time</h2>
-          <p className="mb-4 mt-1 text-patient-sm text-ink-muted">Average across all games played each day.</p>
-          <CognitiveTrendChart
-            points={trend.points}
-            sessionDays={trend.sessionDays}
-            range={range}
-            onRangeChange={setRange}
-            isLoading={trend.isLoading}
-          />
-        </div>
-
-        <Panel title="Per-Game Breakdown" description="Average accuracy for each game in this period." className="min-w-0">
-          <GameBreakdownChart points={trend.points} isLoading={trend.isLoading} height={240} />
-        </Panel>
+      <div data-testid="score-graph" className="min-w-0 rounded-card border border-line200 bg-surface-card p-5">
+        <h2 className="font-serif-display text-[1.375rem] font-medium leading-tight text-ink">Accuracy over time</h2>
+        <p className="mb-4 mt-1 text-patient-sm text-ink-muted">Average across all games played each day.</p>
+        <CognitiveTrendChart
+          points={trend.points}
+          sessionDays={trend.sessionDays}
+          range={range}
+          onRangeChange={setRange}
+          isLoading={trend.isLoading}
+        />
       </div>
+
+      <Panel title="Per-Game Breakdown" description="Average accuracy for each game in this period." className="min-w-0">
+        <GameBreakdownChart points={trend.points} isLoading={trend.isLoading} height={240} />
+      </Panel>
 
       <ActivityLevelPanel points={scoreTrend.points} today={today} isLoading={scoreTrend.isLoading} />
 
