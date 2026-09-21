@@ -9,11 +9,14 @@
  * have TTS + text translation but no speech recognition; Bengali has full
  * ASR/TTS/translation; Nepali has translation only, no audio at all.
  *
- * `kha`/`lus` (Khasi, Mizo) are text-only: Bhashini's model list (September
- * 2026) shows a translation service for both and no speech service, and no
- * macOS/iOS device voice exists for either. Their catalogs are machine
- * translations from that service (scripts/translate-locale.mjs), unreviewed,
- * and stay out of the caregiver picker until the catalog has content.
+ * `kha`/`lus` (Khasi, Mizo) are wired in as text-only but ship with empty
+ * catalogs, so the caregiver picker hides them. Bhashini's model list shows a
+ * translation service for both (reachable only by calling
+ * `bhashini/iiith/nmt-all` directly) and no speech service, and no
+ * macOS/iOS device voice exists for either. The machine translation from that
+ * service was run and read in September 2026 and rejected as unsafe — see
+ * docs/translation-review-kha-lus.md. They become available when a native
+ * speaker supplies or approves the text.
  *
  * Garo, Kokborok, Bhutia and Lepcha are deliberately not added: Bhashini
  * lists no service for any of them (Garo is still being built under the

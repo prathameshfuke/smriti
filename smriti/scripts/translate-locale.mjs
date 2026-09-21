@@ -11,7 +11,7 @@
  *    the file, so the app shows the English line until a native speaker
  *    supplies one.
  *  - Keep a translation whose {placeholders} did not survive, or that came
- *    back empty or unchanged. Those fall back to English too.
+ *    back empty, unchanged, or still mostly English words. Those fall back to English too.
  *
  * Also writes docs/translation-review-kha-lus.md: every English line beside
  * its machine translation, for a native reviewer. Nothing here is reviewed.
@@ -59,16 +59,20 @@ async function postJson(url, headers, body) {
   return json;
 }
 
+/** Bhashini's public list puts Khasi and Mizo under this service; the standard pipeline lookup does not return it for our account. */
+const SERVICE_ID = 'bhashini/iiith/nmt-all';
+
 async function translateAll(code, texts) {
   const language = { sourceLanguage: 'en', targetLanguage: code };
+  // The inference key comes from a pair the pipeline does resolve (en→hi).
   const config = await postJson(
     ULCA_CONFIG_URL,
     { userID: process.env.BHASHINI_USER_ID, ulcaApiKey: process.env.BHASHINI_ULCA_API_KEY },
-    { pipelineTasks: [{ taskType: 'translation', config: { language } }], pipelineRequestConfig: { pipelineId: PIPELINE_ID } },
+    { pipelineTasks: [{ taskType: 'translation', config: { language: { sourceLanguage: 'en', targetLanguage: 'hi' } } }], pipelineRequestConfig: { pipelineId: PIPELINE_ID } },
   );
-  const serviceId = config?.pipelineResponseConfig?.[0]?.config?.[0]?.serviceId;
   const key = config?.pipelineInferenceAPIEndPoint?.inferenceApiKey;
-  if (!serviceId || !key?.name) throw new Error(`Bhashini lists no en→${code} translation service`);
+  if (!key?.name) throw new Error('Bhashini returned no inference key');
+  const serviceId = SERVICE_ID;
   const results = [];
   for (let i = 0; i < texts.length; i += BATCH) {
     const chunk = texts.slice(i, i + BATCH);
@@ -84,6 +88,15 @@ async function translateAll(code, texts) {
   return { serviceId, results };
 }
 
+const words = (s) => (s.toLowerCase().match(/[a-zà-ÿ']+/g) ?? []).filter((w) => w.length > 1);
+/** True when most of the output's words are English words from the source: the service passed the text through. */
+function mostlyEnglish(mt, source) {
+  const out = words(mt.replace(/\{\w+\}/g, ''));
+  if (out.length === 0) return false;
+  const src = new Set(words(source));
+  return out.filter((w) => src.has(w)).length / out.length >= 0.4;
+}
+
 const flatEn = flatten(en);
 const keys = Object.keys(flatEn).filter((k) => !SAFETY_PREFIXES.some((p) => k.startsWith(p)));
 const review = ['# Khasi and Mizo machine-translated text: review sheet', '',
@@ -96,7 +109,7 @@ for (const code of codes) {
   const dropped = [];
   keys.forEach((k, i) => {
     const mt = results[i];
-    if (!mt || mt === flatEn[k] || placeholders(mt) !== placeholders(flatEn[k])) dropped.push(k);
+    if (!mt || mt === flatEn[k] || placeholders(mt) !== placeholders(flatEn[k]) || mostlyEnglish(mt, flatEn[k])) dropped.push(k);
     else kept[k] = mt;
   });
   writeFileSync(`src/lib/i18n/locales/${code}.json`, JSON.stringify(unflatten(kept), null, 2) + '\n');

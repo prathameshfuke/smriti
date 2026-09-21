@@ -672,4 +672,4 @@ Names of the 66 pictures in Object Hunt / Market List / Quick Tap / Memory Match
 
 ## Khasi (kha) and Mizo (lus)
 
-Text-only. Their catalogs (`src/lib/i18n/locales/kha.json`, `lus.json`) are empty until someone runs `node --env-file=.env.local scripts/translate-locale.mjs kha lus`, which fills them from Bhashini's own translation service and writes a review sheet to `docs/translation-review-kha-lus.md`. Until then the caregiver picker does not offer either language. Medicine, appointment, PIN, distress and sign-in wording is never machine-translated: it stays English until a native speaker supplies it. Per-game catalogs and the 66 object names also stay English for these two. Not written or checked by a native speaker.
+Wired in as text-only but not offered: their catalogs (`src/lib/i18n/locales/kha.json`, `lus.json`) are empty. Bhashini's machine translation was tried and rejected after review (see `docs/translation-review-kha-lus.md`). They appear in the caregiver picker once a native speaker supplies text covering at least half of `en.json`. Medicine, appointment, PIN, distress and sign-in wording needs a native speaker in any case.

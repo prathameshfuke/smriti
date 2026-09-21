@@ -75,3 +75,28 @@ for (const [code, name] of Object.entries(LANGUAGES)) {
   await check('asr ' + code, async () => ({ serviceId: (await service('asr', { sourceLanguage: code })).serviceId }));
   await check('tts ' + code, async () => ({ serviceId: (await service('tts', { sourceLanguage: code })).serviceId }));
 }
+
+// Bhashini's public model list shows Khasi and Mizo under the service
+// "bhashini/iiith/nmt-all", which the standard pipeline lookup above does not
+// return for this account. Borrow the inference key from a pair that does
+// resolve (en→hi) and call that service directly.
+console.log('\n== Direct call: bhashini/iiith/nmt-all');
+let borrowed;
+try {
+  borrowed = await service('translation', { sourceLanguage: 'en', targetLanguage: 'hi' });
+} catch (err) {
+  console.log(`NONE  could not obtain an inference key: ${String(err?.message ?? err).slice(0, 100)}`);
+}
+for (const serviceId of ['bhashini/iiith/nmt-all']) {
+  for (const code of ['kha', 'lus', 'grt']) {
+    if (!borrowed) break;
+    await check(`${serviceId} en→${code}`, async () => {
+      const out = await postJson(DHRUVA_URL, { [borrowed.key.name]: borrowed.key.value }, {
+        pipelineTasks: [{ taskType: 'translation', config: { language: { sourceLanguage: 'en', targetLanguage: code }, serviceId } }],
+        pipelineRequestConfig: { pipelineId: PIPELINE_ID },
+        inputData: { input: [{ source: SAMPLE }] },
+      });
+      return { sample: out?.pipelineResponse?.[0]?.output?.[0]?.target };
+    });
+  }
+}
