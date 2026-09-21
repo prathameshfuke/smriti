@@ -15,6 +15,9 @@ const LANG_TAG: Record<UILanguage, string> = {
   mni: 'mni',
   bn: 'bn',
   ne: 'ne',
+  // No device voice exists for either; a missing voice means silence, never another language.
+  kha: 'kha',
+  lus: 'lus',
 };
 
 /** Slowed 10% on clinical advice: normal-speed narration reads as too fast

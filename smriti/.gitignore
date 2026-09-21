@@ -50,3 +50,6 @@ public/workbox-*.js.map
 # next-pwa custom worker (src/sw)
 public/worker-*.js
 public/worker-*.js.map
+
+# pasted-in translation drafts (see scripts/paste-translate.ts)
+/translation-drafts/

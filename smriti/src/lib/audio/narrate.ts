@@ -4,7 +4,7 @@ import { claimChannel, isCurrent } from './channel';
 import { ensureBundledManifest, findBundledAudio, isBundledManifestLoaded, playBundled } from './bundled';
 import { findCachedSpeech, cacheSpeech } from '@/lib/ai/speech-cache';
 import { getDeviceTrustToken } from '@/lib/auth/deviceTrust';
-import type { UILanguage } from '@/lib/i18n/languages';
+import { NO_SPEECH_SERVICE_LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
 
 /** Bounds the whole /api/ai/speak round trip client-side, independent of the
  * server's own 20s Bhashini timeout — defense in depth against a hung
@@ -56,7 +56,8 @@ export async function narrate(text: string, language: UILanguage, isOnline: bool
   // Matches every other network path on this page (see handleTranscript /
   // acquireTranscript): never spend a request — or the rate-limited
   // Bhashini quota — on a call already known to fail.
-  if (!isOnline) {
+  // Same for a language with no Bhashini voice at all: the request could only fail.
+  if (!isOnline || NO_SPEECH_SERVICE_LANGUAGES.includes(language)) {
     if (isCurrent(token)) speak(text, language, rate);
     return;
   }

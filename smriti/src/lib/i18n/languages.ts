@@ -7,13 +7,36 @@
  * `brx`/`mni`/`bn`/`ne` added after a live Bhashini capability probe (see
  * .claude/plans/multilingual-expansion.plan.md Part 2) — Bodo and Manipuri
  * have TTS + text translation but no speech recognition; Bengali has full
- * ASR/TTS/translation; Nepali has translation only, no audio at all. Six
- * other candidate languages (Khasi, Garo, Mizo, Kokborok, Bhutia, Lepcha)
- * were live-verified to have zero working Bhashini tier and are
- * deliberately not added here — nothing in this app would work for them.
- */
-export const LANGUAGES = ['as', 'hi', 'en', 'brx', 'mni', 'bn', 'ne'] as const;
+ * ASR/TTS/translation; Nepali has translation only, no audio at all.
+ *
+ * `kha`/`lus` (Khasi, Mizo) are wired in as text-only but ship with empty
+ * catalogs, so the caregiver picker hides them. Bhashini's model list shows a
+ * translation service for both (reachable only by calling
+ * `bhashini/iiith/nmt-all` directly) and no speech service, and no
+ * macOS/iOS device voice exists for either. The machine translation from that
+ * service was run and read in September 2026 and rejected as unsafe — see
+ * docs/translation-review-kha-lus.md. They become available when a native
+ * speaker supplies or approves the text.
+ *
+ * Garo, Kokborok, Bhutia and Lepcha are deliberately not added: Bhashini
+ * lists no service for any of them (Garo is still being built under the
+ * April 2025 Meghalaya MoU), and nothing here can produce a trustworthy
+ * translation without one. Kokborok also needs a script decision (Latin or
+ * Bengali); Bhutia and Lepcha need fonts.
+  */
+export const LANGUAGES = ['as', 'hi', 'en', 'brx', 'mni', 'bn', 'ne', 'kha', 'lus'] as const;
 export type UILanguage = (typeof LANGUAGES)[number];
+
+/**
+ * Languages no Bhashini speech service can voice. Their text is shown, and a
+ * spoken line falls to an installed device voice or silence — never another
+ * language's audio. Nepali has translation only; Khasi and Mizo have text
+ * translation only (Bhashini's model list, checked September 2026).
+ */
+export const NO_SPEECH_SERVICE_LANGUAGES: readonly UILanguage[] = ['ne', 'kha', 'lus'];
+
+/** Languages whose text has been machine-translated only and not yet reviewed by a native speaker. */
+export const DRAFT_TRANSLATION_LANGUAGES: readonly UILanguage[] = ['kha', 'lus'];
 
 export const DEFAULT_LANGUAGE: UILanguage = 'en';
 
@@ -31,6 +54,8 @@ const LANGUAGE_ENGLISH_NAME: Record<UILanguage, string> = {
   mni: 'Manipuri',
   bn: 'Bengali',
   ne: 'Nepali',
+  kha: 'Khasi',
+  lus: 'Mizo',
 };
 
 export function languageName(code: string): string {
@@ -50,5 +75,7 @@ export const NATIVE_LANGUAGE_NAME: Record<UILanguage, string> = {
   mni: 'মৈতৈলোন্',
   bn: 'বাংলা',
   ne: 'नेपाली',
+  kha: 'Khasi',
+  lus: 'Mizo ṭawng',
 };
 

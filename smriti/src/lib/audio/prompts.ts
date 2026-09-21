@@ -33,13 +33,15 @@
  * Bundling English audio under a Bodo or Manipuri id would be the exact
  * cross-language substitution this app must not do.
  */
-import type { UILanguage } from '@/lib/i18n/languages';
+import { NO_SPEECH_SERVICE_LANGUAGES, type UILanguage } from '@/lib/i18n/languages';
 import { OBJECTS } from '@/lib/engine/objects';
 import as from '@/lib/i18n/locales/as.json';
 import en from '@/lib/i18n/locales/en.json';
 import hi from '@/lib/i18n/locales/hi.json';
 import brx from '@/lib/i18n/locales/brx.json';
 import mni from '@/lib/i18n/locales/mni.json';
+import kha from '@/lib/i18n/locales/kha.json';
+import lus from '@/lib/i18n/locales/lus.json';
 import bn from '@/lib/i18n/locales/bn.json';
 import ne from '@/lib/i18n/locales/ne.json';
 import { MEMORY_SPAN_MESSAGES } from '@/components/games/memory-span/messages';
@@ -57,7 +59,7 @@ export { normalizePromptText, promptHash };
 export const TTS_LANGUAGES: readonly UILanguage[] = ['as', 'hi', 'en', 'bn', 'brx', 'mni'];
 /** Nepali has translation only on Bhashini: no audio at all. It keeps the
  * device voice / on-screen text path until a human records it. */
-export const NO_TTS_LANGUAGES: readonly UILanguage[] = ['ne'];
+export const NO_TTS_LANGUAGES: readonly UILanguage[] = NO_SPEECH_SERVICE_LANGUAGES;
 
 export type PromptSource =
   | { type: 'locale'; key: string }
@@ -143,7 +145,7 @@ export const PROMPTS: readonly PromptDef[] = [
   })),
 ];
 
-const LOCALE_CATALOGS: Record<UILanguage, Record<string, unknown>> = { as, hi, en, brx, mni, bn, ne };
+const LOCALE_CATALOGS: Record<UILanguage, Record<string, unknown>> = { as, hi, en, brx, mni, bn, ne, kha, lus };
 
 const GAME_CATALOGS: Record<string, Partial<Record<UILanguage, unknown>>> = {
   MEMORY_SPAN_MESSAGES,

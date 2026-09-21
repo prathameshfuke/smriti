@@ -4,7 +4,8 @@ import { usePathname } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { LANGUAGES, NATIVE_LANGUAGE_NAME, type UILanguage } from '@/lib/i18n/languages';
 import { LANGUAGE_TARGET_MIN_PX } from '@/components/ui/touchTarget';
-import { useTranslation } from '@/lib/i18n/provider';
+import { isLanguageOffered, useTranslation } from '@/lib/i18n/provider';
+import { DRAFT_TRANSLATION_LANGUAGES } from '@/lib/i18n/languages';
 
 /**
  * Language names are written in their own script, never translated: a patient
@@ -40,7 +41,7 @@ export default function LanguagePicker({ onSelect }: LanguagePickerProps = {}) {
 
   return (
     <div className="flex flex-wrap gap-touch-gap" role="group" aria-label={t('common.chooseLanguage')}>
-      {LANGUAGES.map((code) => {
+      {LANGUAGES.filter(isLanguageOffered).map((code) => {
         const active = code === language;
         return (
           <button
@@ -65,6 +66,13 @@ export default function LanguagePicker({ onSelect }: LanguagePickerProps = {}) {
             }
           >
             {NATIVE_NAME[code]}
+            {DRAFT_TRANSLATION_LANGUAGES.includes(code) ? (
+              // Caregiver-only screen, English on purpose: says plainly that
+              // no native speaker has checked this translation yet.
+              <span lang="en" className="block text-patient-sm font-normal opacity-80">
+                Draft translation
+              </span>
+            ) : null}
           </button>
         );
       })}

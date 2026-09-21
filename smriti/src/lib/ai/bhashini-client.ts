@@ -42,6 +42,9 @@ export const BHASHINI_LANGUAGE: Record<UILanguage, string> = {
   // Still routed through the same call — it fails fast and narrate.ts
   // falls back to browser speech, same as any other Bhashini miss.
   ne: 'ne',
+  // Text translation only (see languages.ts); no TTS service exists.
+  kha: 'kha',
+  lus: 'lus',
 };
 
 /** Compute-call timeout — 5s shorter than the old 20s now that a config
