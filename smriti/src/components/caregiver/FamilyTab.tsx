@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Skeleton from '@/components/ui/Skeleton';
 import Panel, { buttonClass, fieldClass, labelClass } from '@/components/ui/Panel';
 import Notice from '@/components/ui/Notice';
+import CardColumns from '@/components/ui/CardColumns';
 import AccountAccessCard from '@/components/caregiver/AccountAccessCard';
 import { authedFetch } from '@/lib/api/client';
 
@@ -133,164 +134,159 @@ export default function FamilyTab({ patientId, onError }: FamilyTabProps) {
   };
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
-      <div className="flex min-w-0 flex-col gap-5">
-        <Panel
-          title="Share with family"
-          description="A read-only weekly summary and this week's activity. Games data, the Memory Bank and companion conversations are never shared. Links expire after 30 days and can be revoked any time."
-        >
-          <label htmlFor="family-share-label" className={labelClass}>
-            Who is this link for?
-          </label>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              id="family-share-label"
-              value={newShareLabel}
-              onChange={(e) => setNewShareLabel(e.target.value)}
-              placeholder="e.g. Son in Delhi"
-              className={`${fieldClass} sm:flex-1`}
-            />
-            <button
-              type="button"
-              onClick={createFamilyShare}
-              disabled={creatingShare || !newShareLabel.trim()}
-              className={`${buttonClass.primary} min-h-14`}
-            >
-              {creatingShare ? 'Creating…' : 'Create link'}
-            </button>
-          </div>
-        </Panel>
+    <CardColumns>
+      <Panel
+        title="Share with family"
+        description="A read-only weekly summary and this week's activity. Games data, the Memory Bank and companion conversations are never shared. Links expire after 30 days and can be revoked any time."
+      >
+        <label htmlFor="family-share-label" className={labelClass}>
+          Who is this link for?
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            id="family-share-label"
+            value={newShareLabel}
+            onChange={(e) => setNewShareLabel(e.target.value)}
+            placeholder="e.g. Son in Delhi"
+            className={`${fieldClass} sm:flex-1`}
+          />
+          <button
+            type="button"
+            onClick={createFamilyShare}
+            disabled={creatingShare || !newShareLabel.trim()}
+            className={`${buttonClass.primary} min-h-14`}
+          >
+            {creatingShare ? 'Creating…' : 'Create link'}
+          </button>
+        </div>
+      </Panel>
 
-        <Panel title="Post a message" description="Appears on the patient's home screen as a short card they can mark as seen.">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-4 sm:flex-row">
-              <div className="sm:flex-1">
-                <label htmlFor="message-sender-name" className={labelClass}>
-                  Your name
-                </label>
-                <input
-                  id="message-sender-name"
-                  value={newMessageSender}
-                  onChange={(e) => setNewMessageSender(e.target.value)}
-                  placeholder="Optional"
-                  className={fieldClass}
-                />
-              </div>
-              <div className="sm:flex-1">
-                <label htmlFor="message-sender-relation" className={labelClass}>
-                  Relation to patient
-                </label>
-                <input
-                  id="message-sender-relation"
-                  value={newMessageRelation}
-                  onChange={(e) => setNewMessageRelation(e.target.value)}
-                  placeholder="e.g. Daughter"
-                  className={fieldClass}
-                />
-              </div>
-            </div>
-            <div>
-              <label htmlFor="message-text" className={labelClass}>
-                Message
-              </label>
-              <textarea
-                id="message-text"
-                value={newMessageText}
-                onChange={(e) => setNewMessageText(e.target.value)}
-                placeholder="Write a short message…"
-                maxLength={280}
-                rows={3}
-                className={fieldClass}
-              />
-            </div>
-            <div>
-              <label htmlFor="message-photo-url" className={labelClass}>
-                Photo URL
+      <Panel title="Post a message" description="Appears on the patient's home screen as a short card they can mark as seen.">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row">
+            <div className="sm:flex-1">
+              <label htmlFor="message-sender-name" className={labelClass}>
+                Your name
               </label>
               <input
-                id="message-photo-url"
-                value={newMessagePhotoUrl}
-                onChange={(e) => setNewMessagePhotoUrl(e.target.value)}
+                id="message-sender-name"
+                value={newMessageSender}
+                onChange={(e) => setNewMessageSender(e.target.value)}
                 placeholder="Optional"
                 className={fieldClass}
               />
             </div>
-            <button
-              type="button"
-              onClick={postFamilyMessage}
-              disabled={postingMessage || !newMessageText.trim()}
-              className={`${buttonClass.primary} self-start`}
-            >
-              {postingMessage ? 'Posting…' : 'Post message'}
-            </button>
-            <div role="status" className="empty:hidden">
-              {messagePosted ? <Notice tone="success">Message posted. It will appear on the patient&apos;s home screen.</Notice> : null}
+            <div className="sm:flex-1">
+              <label htmlFor="message-sender-relation" className={labelClass}>
+                Relation to patient
+              </label>
+              <input
+                id="message-sender-relation"
+                value={newMessageRelation}
+                onChange={(e) => setNewMessageRelation(e.target.value)}
+                placeholder="e.g. Daughter"
+                className={fieldClass}
+              />
             </div>
           </div>
-        </Panel>
-      </div>
+          <div>
+            <label htmlFor="message-text" className={labelClass}>
+              Message
+            </label>
+            <textarea
+              id="message-text"
+              value={newMessageText}
+              onChange={(e) => setNewMessageText(e.target.value)}
+              placeholder="Write a short message…"
+              maxLength={280}
+              rows={3}
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label htmlFor="message-photo-url" className={labelClass}>
+              Photo URL
+            </label>
+            <input
+              id="message-photo-url"
+              value={newMessagePhotoUrl}
+              onChange={(e) => setNewMessagePhotoUrl(e.target.value)}
+              placeholder="Optional"
+              className={fieldClass}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={postFamilyMessage}
+            disabled={postingMessage || !newMessageText.trim()}
+            className={`${buttonClass.primary} self-start`}
+          >
+            {postingMessage ? 'Posting…' : 'Post message'}
+          </button>
+          <div role="status" className="empty:hidden">
+            {messagePosted ? <Notice tone="success">Message posted. It will appear on the patient&apos;s home screen.</Notice> : null}
+          </div>
+        </div>
+      </Panel>
+      <Panel title="Active shares" flush>
+        {familyShares === null ? (
+          <div className="px-5 pb-5">
+            <Skeleton height={80} />
+          </div>
+        ) : null}
+        {familyShares && familyShares.length === 0 ? (
+          <p className="px-5 pb-5 text-caregiver-body text-ink-muted">No family shares yet.</p>
+        ) : null}
+        {familyShares && familyShares.length > 0 ? (
+          <div className="divide-y divide-line200 border-t border-line200">
+            {familyShares.map((share) => {
+              const revoked = Boolean(share.revoked_at);
+              const expired = !revoked && share.expires_at < nowIso;
+              return (
+                <AccountAccessCard
+                  key={share.id}
+                  label={share.label}
+                  active={!revoked && !expired}
+                  statusTone={revoked ? 'danger' : expired ? 'warning' : 'success'}
+                  statusLabel={revoked ? 'Revoked' : expired ? 'Expired' : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
+                  reviewRequired={share.review_required}
+                  onReviewRequiredChange={(next) => updateShareReviewRequired(share.id, next)}
+                  onRevoke={() => revokeFamilyShare(share.id)}
+                  shareUrl={typeof window !== 'undefined' ? `${window.location.origin}/family/${share.id}` : undefined}
+                />
+              );
+            })}
+          </div>
+        ) : null}
+      </Panel>
 
-      <div className="flex min-w-0 flex-col gap-5">
-        <Panel title="Active shares" flush>
-          {familyShares === null ? (
-            <div className="px-5 pb-5">
-              <Skeleton height={80} />
-            </div>
-          ) : null}
-          {familyShares && familyShares.length === 0 ? (
-            <p className="px-5 pb-5 text-caregiver-body text-ink-muted">No family shares yet.</p>
-          ) : null}
-          {familyShares && familyShares.length > 0 ? (
-            <div className="divide-y divide-line200 border-t border-line200">
-              {familyShares.map((share) => {
-                const revoked = Boolean(share.revoked_at);
-                const expired = !revoked && share.expires_at < nowIso;
-                return (
-                  <AccountAccessCard
-                    key={share.id}
-                    label={share.label}
-                    active={!revoked && !expired}
-                    statusTone={revoked ? 'danger' : expired ? 'warning' : 'success'}
-                    statusLabel={revoked ? 'Revoked' : expired ? 'Expired' : `Expires ${new Date(share.expires_at).toLocaleDateString()}`}
-                    reviewRequired={share.review_required}
-                    onReviewRequiredChange={(next) => updateShareReviewRequired(share.id, next)}
-                    onRevoke={() => revokeFamilyShare(share.id)}
-                    shareUrl={typeof window !== 'undefined' ? `${window.location.origin}/family/${share.id}` : undefined}
-                  />
-                );
-              })}
-            </div>
-          ) : null}
-        </Panel>
-
-        <Panel title="Notes awaiting review" flush>
-          {familyNotes === null ? (
-            <div className="px-5 pb-5">
-              <Skeleton height={80} />
-            </div>
-          ) : null}
-          {familyNotes && familyNotes.length === 0 ? (
-            <p className="px-5 pb-5 text-caregiver-body text-ink-muted">Nothing waiting for review.</p>
-          ) : null}
-          {familyNotes && familyNotes.length > 0 ? (
-            <ul className="divide-y divide-line200 border-t border-line200">
-              {familyNotes.map((note) => (
-                <li key={note.id} className="flex flex-col gap-3 px-5 py-4">
-                  <p className="text-caregiver-body text-ink">&ldquo;{note.text}&rdquo;</p>
-                  <div className="flex gap-3">
-                    <button type="button" onClick={() => moderateFamilyNote(note.id, 'approve')} className={buttonClass.primary}>
-                      Approve
-                    </button>
-                    <button type="button" onClick={() => moderateFamilyNote(note.id, 'reject')} className={buttonClass.secondary}>
-                      Reject
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </Panel>
-      </div>
-    </div>
+      <Panel title="Notes awaiting review" flush>
+        {familyNotes === null ? (
+          <div className="px-5 pb-5">
+            <Skeleton height={80} />
+          </div>
+        ) : null}
+        {familyNotes && familyNotes.length === 0 ? (
+          <p className="px-5 pb-5 text-caregiver-body text-ink-muted">Nothing waiting for review.</p>
+        ) : null}
+        {familyNotes && familyNotes.length > 0 ? (
+          <ul className="divide-y divide-line200 border-t border-line200">
+            {familyNotes.map((note) => (
+              <li key={note.id} className="flex flex-col gap-3 px-5 py-4">
+                <p className="text-caregiver-body text-ink">&ldquo;{note.text}&rdquo;</p>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => moderateFamilyNote(note.id, 'approve')} className={buttonClass.primary}>
+                    Approve
+                  </button>
+                  <button type="button" onClick={() => moderateFamilyNote(note.id, 'reject')} className={buttonClass.secondary}>
+                    Reject
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </Panel>
+    </CardColumns>
   );
 }

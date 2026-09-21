@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import SyncStatus from '@/components/ui/SyncStatus';
+import { usePatientViewConfirm } from '@/components/layout/PatientViewConfirm';
 import appIcon from '@/appicon.png';
 
 const ITEMS = [
@@ -25,6 +26,7 @@ const ITEMS = [
  */
 export default function CaregiverRail() {
   const pathname = usePathname();
+  const patientView = usePatientViewConfirm();
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line200 bg-surface-card md:flex lg:w-64">
@@ -58,13 +60,15 @@ export default function CaregiverRail() {
 
       <div className="flex flex-col gap-4 border-t border-line200 px-5 py-5">
         <SyncStatus variant="rail" />
-        <Link
-          href="/app"
+        <button
+          type="button"
+          onClick={patientView.ask}
           className="flex min-h-12 items-center justify-center rounded-control bg-primary px-4 text-caregiver-body font-bold text-ink-inverse transition-colors hover:bg-primary-dark"
         >
           Patient View
-        </Link>
+        </button>
       </div>
+      {patientView.dialog}
     </aside>
   );
 }

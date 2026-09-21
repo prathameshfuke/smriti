@@ -23,6 +23,7 @@ import {
 import { formatDayDate, formatTimeOfDay } from '@/lib/dashboard/formatDate';
 import { usePatientStore } from '@/stores/patientStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { usePatientViewConfirm } from '@/components/layout/PatientViewConfirm';
 import { toHHMM, type ReminderType } from '@/lib/supabase/types';
 
 const TYPE_LABEL: Record<ReminderType, string> = {
@@ -56,6 +57,7 @@ export default function RemindersPage() {
   // `isCaregiverSessionFresh` is the same PIN-freshness signal `/app`'s PIN
   // dialog and every other caregiver-only surface already gates on.
   const [caregiverPresent, setCaregiverPresent] = useState(false);
+  const patientView = usePatientViewConfirm();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [type, setType] = useState<ReminderType>('medication');
@@ -282,7 +284,14 @@ export default function RemindersPage() {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col bg-surface">
-      <PatientNav title={tr('reminders.title')} onBack={() => router.push('/app')} />
+      {/* A caregiver managing reminders here would otherwise drop into the
+          patient's home on one tap of Back; the patient themselves never
+          sees a prompt. */}
+      <PatientNav
+        title={tr('reminders.title')}
+        onBack={() => (caregiverPresent ? patientView.ask() : router.push('/app'))}
+      />
+      {patientView.dialog}
 
       <main className="flex flex-1 flex-col gap-10 px-5 py-8">
         <section aria-labelledby="today-heading" className="flex flex-col gap-4">

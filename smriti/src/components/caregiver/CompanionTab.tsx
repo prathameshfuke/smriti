@@ -96,6 +96,7 @@ export default function CompanionTab({ patientId, onError }: CompanionTabProps) 
       </section>
 
       <Panel
+        className="lg:sticky lg:top-6"
         title="Memory quiz"
         description="The Family & Life quiz is made on the patient's phone from the Memory Bank each time they play, so it is always up to date. It needs at least 3 people or memories."
       >

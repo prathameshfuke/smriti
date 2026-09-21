@@ -146,7 +146,7 @@ export default function RemindersTab({ patientId }: RemindersTabProps) {
   return (
     <div className="flex flex-col gap-5">
       <UpcomingAppointments patientId={patientId} />
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-stretch">
         <section aria-labelledby="reminders-week-heading" className="flex flex-col gap-5 rounded-card border border-line200 bg-surface-card p-5">
           <div className="flex items-center gap-4">
             <ScoreRing value={adherence.overallPct} label={`${adherence.overallPct}% of reminders marked done this week`}>

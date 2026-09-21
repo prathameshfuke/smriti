@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { DEFAULT_LANGUAGE, type UILanguage } from '@/lib/i18n/languages';
 import { useCaregiverStore } from '@/stores/caregiverStore';
 import { DEFAULT_DISPLAY_SIZE, type DisplaySize } from '@/lib/a11y/sizing';
+import { DEFAULT_ZOOM_LOCKED } from '@/lib/a11y/zoomLock';
 
 /**
  * The caregiver PIN gates access to patient health data, so only a derived
@@ -153,9 +154,9 @@ interface SettingsState {
   textSize: DisplaySize;
   /** Device-wide icon size, independent of text size. */
   iconSize: DisplaySize;
-  /** Device-wide zoom lock (see lib/a11y/zoomLock.ts). Off by default so
-   * pinch-zoom stays available — WCAG 1.4.4, same reasoning as layout.tsx's
-   * viewport export. A caregiver opts a specific device into it. */
+  /** Device-wide zoom lock (see lib/a11y/zoomLock.ts). On by default so an
+   * accidental pinch cannot trap the patient in a zoomed screen; a caregiver
+   * turns it off for a patient who needs to magnify (WCAG 1.4.4). */
   zoomLocked: boolean;
   setTextSize: (size: DisplaySize) => void;
   setIconSize: (size: DisplaySize) => void;
@@ -205,7 +206,7 @@ export const useSettingsStore = create<SettingsState>()(
       lastActivityAt: null,
       textSize: DEFAULT_DISPLAY_SIZE,
       iconSize: DEFAULT_DISPLAY_SIZE,
-      zoomLocked: false,
+      zoomLocked: DEFAULT_ZOOM_LOCKED,
 
       setTextSize: (textSize) => set({ textSize }),
       setIconSize: (iconSize) => set({ iconSize }),

@@ -33,7 +33,7 @@ export default function GameBreakdownChart({ points, isLoading = false, height =
   }
 
   return (
-    <ul className="flex flex-col gap-4" aria-label="Accuracy by game">
+    <ul className="flex flex-col gap-4 lg:grid lg:grid-cols-2 lg:gap-x-10" aria-label="Accuracy by game">
       {rows.map((r) => {
         const pct = Math.round(r.accuracy);
         return (
