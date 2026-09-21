@@ -126,6 +126,36 @@ describe('GameTutorial', () => {
     expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
   });
 
+  it('counts a different patient as their own visit when the patient changes while the game stays open', async () => {
+    usePatientStore.setState({ currentPatient: { id: 'p-first' } as never });
+    render(
+      <I18nProvider>
+        <GameTutorial gameId="quick_tap" steps={TUTORIALS.quick_tap} />
+      </I18nProvider>,
+    );
+    await act(async () => {});
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-first.quick_tap')).toBe('1');
+
+    // The second patient has already used up their 7 visits: no walk-through, and the first patient's stays uncounted twice.
+    window.localStorage.setItem('smriti.tutorialShown.p-second.quick_tap', '7');
+    await act(async () => {
+      usePatientStore.setState({ currentPatient: { id: 'p-second' } as never });
+    });
+    await act(async () => {});
+    expect(screen.queryByTestId('tutorial-step')).not.toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-first.quick_tap')).toBe('1');
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-second.quick_tap')).toBe('7');
+
+    // A third, new patient gets their first visit counted and the walk-through opens.
+    await act(async () => {
+      usePatientStore.setState({ currentPatient: { id: 'p-third' } as never });
+    });
+    await act(async () => {});
+    expect(screen.getByTestId('tutorial-step')).toBeInTheDocument();
+    expect(window.localStorage.getItem('smriti.tutorialShown.p-third.quick_tap')).toBe('1');
+  });
+
   it('steps through to the end and closes, and reopens from How to play', async () => {
     window.localStorage.setItem('smriti.tutorialSeen.path_match', '1');
     render(

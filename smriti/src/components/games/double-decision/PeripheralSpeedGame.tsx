@@ -477,11 +477,11 @@ export function PeripheralSpeedGame({ onComplete, initialLevel }: PeripheralSpee
   // the real round. With no patient loaded it stays on, as it always was.
   const patientId = usePatientStore((s) => s.currentPatient?.id)
   const [offerPractice, setOfferPractice] = useState(true)
-  const practiceClaimedRef = useRef(false)
+  const practiceClaimedForRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!patientId || practiceClaimedRef.current) return
-    practiceClaimedRef.current = true
-    if (!claimAutoTutorial(patientId, 'double_decision')) queueMicrotask(() => setOfferPractice(false))
+    if (!patientId || practiceClaimedForRef.current === patientId) return
+    practiceClaimedForRef.current = patientId
+    queueMicrotask(() => setOfferPractice(claimAutoTutorial(patientId, 'double_decision')))
   }, [patientId])
   const [trialIndex, setTrialIndex] = useState(0)
   const [trial, setTrial] = useState<Trial>(() => createTrial(1))

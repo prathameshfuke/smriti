@@ -47,16 +47,19 @@ export default function GameTutorial({ gameId, steps, onReady }: GameTutorialPro
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState(0);
   const patientId = usePatientStore((s) => s.currentPatient?.id);
-  // One visit is one page mount: a ref survives the dev-mode effect re-run,
-  // so a single visit is never counted twice.
-  const claimedRef = useRef(false);
+  // The patient this visit was counted for. A ref survives the dev-mode
+  // effect re-run, so one visit is never counted twice, and holding the id
+  // (not a flag) means a different patient appearing while the game stays
+  // open is counted as their own visit.
+  const claimedForRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (claimedRef.current || !patientId) return;
-    claimedRef.current = true;
+    if (!patientId || claimedForRef.current === patientId) return;
+    claimedForRef.current = patientId;
     // Deferred one microtask per this codebase's effect-derived state convention.
     queueMicrotask(() => {
-      if (claimAutoTutorial(patientId, gameId)) setOpen(true);
+      setStep(0);
+      setOpen(claimAutoTutorial(patientId, gameId));
     });
   }, [gameId, patientId]);
 

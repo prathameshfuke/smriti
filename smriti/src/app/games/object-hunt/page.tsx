@@ -72,7 +72,8 @@ function ObjectHuntPageInner() {
   const [phase, setPhase] = useState<Phase>(() =>
     patientId && tutorialShownCount(patientId, 'object_hunt') >= TUTORIAL_AUTO_SHOW_LIMIT ? 'reveal' : 'instruction',
   );
-  const instructionClaimedRef = useRef(false);
+  /** The patient this visit's start screen was counted for (see tutorialExposure.ts). */
+  const instructionClaimedForRef = useRef<string | null>(null);
   const { state: difficulty, applySession } = useDifficulty('object_hunt');
   const [round, setRound] = useState(1);
   const [tiles, setTiles] = useState<(SmritiObject | null)[]>([]);
@@ -101,13 +102,16 @@ function ObjectHuntPageInner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Counted once per patient, however often this effect re-runs. Only the
+  // count follows the patient: a round already in progress is left alone.
+  useEffect(() => {
+    if (phase !== 'instruction' || !patientId || instructionClaimedForRef.current === patientId) return;
+    instructionClaimedForRef.current = patientId;
+    claimAutoTutorial(patientId, 'object_hunt');
+  }, [phase, patientId]);
+
   useEffect(() => {
     if (phase !== 'instruction') return;
-    // One visit counts once, however often this effect re-runs.
-    if (!instructionClaimedRef.current) {
-      instructionClaimedRef.current = true;
-      claimAutoTutorial(patientId, 'object_hunt');
-    }
     void narrate(t('game.objectHunt.instruction'), language, isOnline, GAME_SPEECH_RATE);
     // Patient-paced, like every other game's start screen: no timer runs out
     // under someone still reading, and the wait is never mistaken for a hang.

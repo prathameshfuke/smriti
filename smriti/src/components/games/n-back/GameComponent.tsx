@@ -458,6 +458,18 @@ export default function GameComponent({ t: propT, onComplete, initialLevel }: Ga
         return () => window.removeEventListener("keydown", handleKeyPress);
     }, [gameState, handleResponse]);
 
+    // The first few visits by this patient: open the walk-through
+    // automatically (see tutorialExposure.ts). The "How to play" button
+    // still opens it any time. Counted once per patient, so a different
+    // patient appearing while the game stays open is their own visit.
+    const tutorialPatientId = usePatientStore((s) => s.currentPatient?.id);
+    const tutorialClaimedForRef = useRef<string | null>(null);
+    useEffect(() => {
+        if (!tutorialPatientId || tutorialClaimedForRef.current === tutorialPatientId) return;
+        tutorialClaimedForRef.current = tutorialPatientId;
+        queueMicrotask(() => setShowTutorial(claimAutoTutorial(tutorialPatientId, "n_back")));
+    }, [tutorialPatientId]);
+
     // 监听外部教程按钮点击
     useEffect(() => {
         const handleTutorialClick = () => {
@@ -465,12 +477,6 @@ export default function GameComponent({ t: propT, onComplete, initialLevel }: Ga
         };
 
         const tutorialButton = document.getElementById('tutorial-trigger-howtoplay');
-        // The first few visits by this patient: open the walk-through
-        // automatically (see tutorialExposure.ts). The "How to play" button
-        // still opens it any time.
-        if (claimAutoTutorial(usePatientStore.getState().currentPatient?.id, "n_back")) {
-            queueMicrotask(() => setShowTutorial(true));
-        }
         if (tutorialButton) {
             tutorialButton.addEventListener('click', handleTutorialClick);
         }
