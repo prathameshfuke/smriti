@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import en from '@/lib/i18n/locales/en.json';
 import {
   DRIFT_THRESHOLD, MAX_CHUNK_CHARS, buildSheet, check, chunkKeys, flatten, normalizeLine, roundTripSimilarity,
-  selectKeys, splitOutput, toPasteLine, unflatten,
+  repairPlaceholders, selectKeys, splitOutput, toPasteLine, unflatten,
 } from '../../scripts/paste-translate.lib';
 
 const flat = flatten(en);
@@ -87,5 +87,24 @@ describe('review sheet', () => {
     expect(sheet).toContain('ok (drifted)');
     expect(sheet).toContain('| `c` | Correct! | Correct! | unchanged |');
     expect(sheet).toContain('meaning may have drifted on 1');
+  });
+});
+
+describe('translated placeholders', () => {
+  const aliases = { kyrteng: 'name', baroh: 'total', khein: 'count' };
+
+  it('puts back placeholder words Google translated', () => {
+    expect(repairPlaceholders('Not {name}?', 'Bad {kyrteng}?', aliases)).toBe('Bad {name}?');
+    expect(repairPlaceholders('{count} of {total}', '{khein} na ka {baroh}', aliases)).toBe('{count} na ka {total}');
+    expect(repairPlaceholders('Picture {n} of {total}', 'Ka dur {n} jong ka {baroh}', aliases)).toBe('Ka dur {n} jong ka {total}');
+  });
+
+  it('leaves a line alone when it cannot be repaired exactly', () => {
+    // Unknown word: not in the map, so the placeholder set stays wrong and the check flags it.
+    expect(repairPlaceholders('Not {name}?', 'Bad {xyz}?', aliases)).toBe('Bad {xyz}?');
+    // A placeholder missing altogether.
+    expect(repairPlaceholders('{count} of {total}', '{khein} na', aliases)).toBe('{khein} na');
+    // Already right: untouched.
+    expect(repairPlaceholders('Not {name}?', 'Bad {name}?', aliases)).toBe('Bad {name}?');
   });
 });

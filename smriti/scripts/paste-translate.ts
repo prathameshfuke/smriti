@@ -25,12 +25,20 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
-  buildSheet, check, chunkKeys, flatten, normalizeLine, roundTripSimilarity, selectKeys, splitOutput, toPasteLine,
-  unflatten, type Flat, type SheetRow,
+  buildSheet, check, chunkKeys, flatten, normalizeLine, repairPlaceholders, roundTripSimilarity, selectKeys, splitOutput,
+  toPasteLine, unflatten, type Flat, type SheetRow,
 } from './paste-translate.lib';
 
 const NAMES: Record<string, string> = { kha: 'Khasi', lus: 'Mizo', trp: 'Kokborok' };
 const APPLICABLE = new Set(['kha', 'lus']);
+
+/** Words Google put inside placeholders, mapped back to the real names (seen in a Khasi paste). */
+const PLACEHOLDER_ALIASES: Record<string, Record<string, string>> = {
+  kha: {
+    kyrteng: 'name', baroh: 'total', khein: 'count', jingkhein: 'count', jingiadei: 'relationship',
+    'kaba peit bniah': 'detail', tarik: 'date',
+  },
+};
 
 const [command, code, ...rest] = process.argv.slice(2);
 if (!command || !code) {
@@ -62,7 +70,7 @@ function readChunks(suffix: 'out' | 'back', source: (key: string) => string | un
       return;
     }
     chunk.forEach((k, j) => {
-      if (source(k) !== undefined) texts[k] = lines[j];
+      if (source(k) !== undefined) texts[k] = repairPlaceholders(en[k], lines[j], PLACEHOLDER_ALIASES[code] ?? {});
     });
   });
   return { texts, problems };
@@ -101,8 +109,8 @@ if (command === 'export') {
     process.exit(1);
   }
   chunks.forEach((chunk, i) => {
-    // Failed lines are blanked, not dropped, so line numbers stay aligned with the chunk.
-    writeFileSync(`${dir}/${i + 1}-draft.txt`, chunk.map((k) => toPasteLine(draft[k] ?? '')).join('\n') + '\n');
+    // Failed lines get a dash, not a blank: a blank line could be dropped by the pasting and shift every line after it.
+    writeFileSync(`${dir}/${i + 1}-draft.txt`, chunk.map((k) => toPasteLine(draft[k] ?? '') || '-').join('\n') + '\n');
   });
   console.log(`Paste each ${dir}/N-draft.txt into translate.google.com (${name} -> English), save as ${dir}/N-back.txt, then run: import ${code}`);
 } else if (command === 'apply') {

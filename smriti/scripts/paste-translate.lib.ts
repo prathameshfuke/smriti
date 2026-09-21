@@ -72,6 +72,23 @@ export function normalizeLine(s: string): string {
     .trim();
 }
 
+/**
+ * Google Translate sometimes translates the word inside a placeholder
+ * ({name} -> {kyrteng}). `aliases` maps each translated word back to the
+ * original name. Only names in the map are touched, and the result is kept
+ * only if it ends up with exactly the source's placeholders; otherwise the
+ * line is returned unchanged and the mechanical check flags it.
+ */
+export function repairPlaceholders(source: string, output: string, aliases: Record<string, string>): string {
+  const wanted = placeholders(source);
+  if (placeholders(output) === wanted) return output;
+  const fixed = output.replace(/\{([^{}]+)\}/g, (whole, inner: string) => {
+    const name = inner.trim();
+    return name in aliases ? `{${aliases[name]}}` : whole;
+  });
+  return placeholders(fixed) === wanted ? fixed : output;
+}
+
 export const placeholders = (s: string): string => (s.match(/\{\w+\}/g) ?? []).sort().join(',');
 
 const words = (s: string): string[] => (s.toLowerCase().match(/[a-zà-ÿ']+/g) ?? []).filter((w) => w.length > 1);
