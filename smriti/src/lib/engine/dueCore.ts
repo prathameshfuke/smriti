@@ -124,3 +124,24 @@ export function wallClockDate(now: Date, timeZone: string): Date {
     return now;
   }
 }
+
+/**
+ * Every patient this app serves is in India (no internal DST, one zone for
+ * the whole country including the NER states), so unlike reminder delivery
+ * — which already has a per-device `push_subscriptions.timezone` to read
+ * (see lib/push/tick.ts, itself defaulting to this same zone) — a
+ * day-boundary check that only needs "today" has no real per-patient value
+ * to look up: it would just re-derive this same constant from the device's
+ * own `Intl.DateTimeFormat().resolvedOptions().timeZone` almost every time,
+ * at the cost of an extra query. Threading a stored zone through here too
+ * only pays off if this product ever serves patients outside India.
+ */
+export const DEFAULT_PATIENT_TIMEZONE = 'Asia/Kolkata';
+
+/** The patient's local calendar day, `YYYY-MM-DD`, for server-side code that
+ * only has `new Date()` (the server's own clock) to start from — e.g. a
+ * day-boundary alert check. See `DEFAULT_PATIENT_TIMEZONE`'s doc comment for
+ * why this doesn't look up a per-patient zone. */
+export function patientLocalDateToday(now: Date = new Date()): string {
+  return localDate(wallClockDate(now, DEFAULT_PATIENT_TIMEZONE));
+}

@@ -34,33 +34,35 @@ export function detectLowAdherence(overallPct: number): boolean {
 }
 
 /**
- * True when the 3 most recent calendar days (referenceDate back to
- * referenceDate-2, inclusive) each have a "low" mood log. Missing a day, or
- * any non-"low" value, breaks the streak — this is a mood *log*, not a
+ * True when the 3 most recent calendar days (referenceDateStr back to
+ * referenceDateStr-2, inclusive) each have a "low" mood log. Missing a day,
+ * or any non-"low" value, breaks the streak — this is a mood *log*, not a
  * screening tool, so it never infers a day the patient didn't check in.
  *
- * `referenceDate` walks back in UTC days (`setUTCDate`), same as the sibling
- * `detectMissedSessions` above, while `log_date` (schema.ts's LocalMoodLog /
- * MIGRATION 019) is the patient's *local* calendar day. For a phone well
- * ahead of UTC (all of India, UTC+5:30) this can misalign the streak check by
- * up to a day around local midnight — a pre-existing class of limitation in
- * this file, not one introduced here; a real fix needs the patient's time
- * zone threaded through the same way lib/engine/dueCore.ts's
- * `wallClockDate()` does for reminders. The same UTC-anchored `todayStr` in
- * GET /api/patients (src/app/api/patients/route.ts) builds the caregiver's
- * 7-day mood trend window off the same mismatched clock, so the two share
- * one fix, not two.
+ * `referenceDateStr` is a plain `YYYY-MM-DD` — deliberately not a `Date`
+ * with a `new Date()` default. `log_date` (schema.ts's LocalMoodLog /
+ * MIGRATION 019) is the patient's *local* calendar day, so the caller must
+ * resolve "today" the same way lib/engine/dueCore.ts's `wallClockDate()` +
+ * `localDate()` do for reminders (see `checkLowMoodAlert`,
+ * src/app/api/sync/route.ts) rather than this function silently defaulting
+ * to the server's own UTC clock, which is what caused the original mismatch.
+ * Once given the right day, this function only does pure calendar-string
+ * arithmetic (`shiftDay`) — no further UTC/local ambiguity to get wrong.
  */
+function shiftDay(dateStr: string, days: number): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export function detectLowMoodStreak(
   logs: Array<{ date: string; value: string }>,
-  referenceDate: Date = new Date(),
+  referenceDateStr: string,
   streakLength = 3,
 ): boolean {
   const byDate = new Map(logs.map((l) => [l.date, l.value]));
   for (let i = 0; i < streakLength; i += 1) {
-    const d = new Date(referenceDate);
-    d.setUTCDate(d.getUTCDate() - i);
-    if (byDate.get(d.toISOString().slice(0, 10)) !== 'low') return false;
+    if (byDate.get(shiftDay(referenceDateStr, -i)) !== 'low') return false;
   }
   return true;
 }

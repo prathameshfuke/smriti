@@ -2,6 +2,7 @@ import { v4 as uuid } from 'uuid';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
 import { detectCognitiveDrop, detectLowAdherence, detectLowMoodStreak, detectMissedSessions } from '@/lib/engine/alerts';
 import { computeAdherence, dateRange } from '@/lib/engine/adherence';
+import { patientLocalDateToday } from '@/lib/engine/dueCore';
 import type { GameType } from '@/lib/supabase/types';
 import {
   dedupeDailySummaries,
@@ -612,7 +613,12 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
  * lib/engine/alerts.ts's doc comment on detectLowMoodStreak.
  */
 async function checkLowMoodAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
-  const since = new Date(Date.now() - 2 * DAY_MS).toISOString().slice(0, 10);
+  // Patient-local "today" (see patientLocalDateToday's doc comment), not the
+  // server's own UTC clock — mood_logs.log_date is written from the phone's
+  // local date, and comparing it against UTC could misalign the streak by up
+  // to a day around local midnight.
+  const today = patientLocalDateToday();
+  const since = new Date(new Date(`${today}T00:00:00Z`).getTime() - 2 * DAY_MS).toISOString().slice(0, 10);
   const [{ data: existing }, { data: logs }, { data: patientRow }] = await Promise.all([
     supabase
       .from('alerts')
@@ -625,7 +631,7 @@ async function checkLowMoodAlert(supabase: AuthedSupabase, patientId: string): P
     supabase.from('patients').select('caregiver_id').eq('id', patientId).single(),
   ]);
   const openAlert = existing?.[0];
-  const streak = detectLowMoodStreak((logs ?? []).map((l) => ({ date: l.log_date, value: l.value })));
+  const streak = detectLowMoodStreak((logs ?? []).map((l) => ({ date: l.log_date, value: l.value })), today);
 
   if (!streak) {
     if (openAlert) await resolveAlert(supabase, openAlert.id);

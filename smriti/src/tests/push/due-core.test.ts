@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeDueReminders, occurrenceKey, wallClockDate, type DueSchedule } from '@/lib/engine/dueCore';
+import { computeDueReminders, occurrenceKey, patientLocalDateToday, wallClockDate, type DueSchedule } from '@/lib/engine/dueCore';
 
 const base: DueSchedule = {
   id: 'r1',
@@ -95,5 +95,20 @@ describe('wallClockDate', () => {
   it('falls back to the given moment for an unknown zone', () => {
     const now = new Date(2026, 8, 19, 9, 0);
     expect(wallClockDate(now, 'Not/AZone').getTime()).toBe(now.getTime());
+  });
+});
+
+describe('patientLocalDateToday', () => {
+  it('returns the IST calendar day, not the UTC one it has already rolled past', () => {
+    // 2026-09-19 20:00 UTC is 2026-09-20 01:30 IST — this is exactly the
+    // window (past local midnight, before UTC has caught up) where naively
+    // using `new Date().toISOString().slice(0, 10)` server-side reports
+    // "2026-09-19", a day behind what mood_logs.log_date (the phone's own
+    // local date) already wrote for "today".
+    expect(patientLocalDateToday(new Date('2026-09-19T20:00:00Z'))).toBe('2026-09-20');
+  });
+
+  it('matches the UTC date for most of the day, since IST is only 5.5 hours ahead', () => {
+    expect(patientLocalDateToday(new Date('2026-09-19T03:30:00Z'))).toBe('2026-09-19');
   });
 });
