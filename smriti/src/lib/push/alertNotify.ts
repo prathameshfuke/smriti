@@ -24,7 +24,7 @@ import en from '@/lib/i18n/locales/en.json';
 import hi from '@/lib/i18n/locales/hi.json';
 import ne from '@/lib/i18n/locales/ne.json';
 
-export type AlertKind = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood';
+export type AlertKind = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood' | 'mood_today';
 export type AlertSeverity = 'red' | 'yellow';
 
 export interface NewAlert {
@@ -40,7 +40,10 @@ const CATALOGS: Record<string, AlertStrings | undefined> = { en: en.alertPush, a
 
 export function buildAlertPayload(alert: NewAlert, patientName: string, language: string | null | undefined): PushPayload {
   const s = (language ? CATALOGS[language] : undefined) ?? en.alertPush;
-  const severity = alert.severity === 'red' ? s.severityRed : s.severityYellow;
+  // mood_today is always inserted already-resolved (see raiseAlert's `resolved`
+  // doc comment) — a calm, single-day log, not a pattern to act on — so its
+  // push must not read as "Needs attention"/"Urgent" like every other alert.
+  const severity = alert.type === 'mood_today' ? s.severityInfo : alert.severity === 'red' ? s.severityRed : s.severityYellow;
   return {
     title: s.title.replace('{name}', patientName).replace('{severity}', severity),
     body: s[alert.type],

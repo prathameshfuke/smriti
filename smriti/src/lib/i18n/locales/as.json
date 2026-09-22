@@ -304,11 +304,13 @@
   "alertPush": {
     "severityRed": "জৰুৰী",
     "severityYellow": "মনোযোগ দিয়ক",
+    "severityInfo": "মনৰ আপডেট",
     "title": "{name}: {severity}",
     "cognitive_drop": "আজি খেলত ফলাফল সাধাৰণতকৈ বহুত বেয়া হৈছে। চাবলৈ SMRITI খোলক।",
     "missed_sessions": "যোৱা কেইদিনমান কোনো খেল খেলা হোৱা নাই। চাবলৈ SMRITI খোলক।",
     "low_adherence": "এই সপ্তাহত বহুত ৰিমাইণ্ডাৰ বাদ পৰিছে। চাবলৈ SMRITI খোলক।",
-    "low_mood": "যোৱা ৩ দিন ধৰি মনৰ ভাব বেয়া হৈ আছে। চাবলৈ SMRITI খোলক।"
+    "low_mood": "যোৱা ৩ দিন ধৰি মনৰ ভাব বেয়া হৈ আছে। চাবলৈ SMRITI খোলক।",
+    "mood_today": "আজি মনৰ ভাব বেয়া বুলি লিখিছে। চাবলৈ SMRITI খোলক।"
   },
   "alertOptIn": {
     "title": "এই ফোনত এলাৰ্ট",

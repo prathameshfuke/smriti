@@ -335,6 +335,13 @@ export interface LocalMoodLog {
   value: 'good' | 'okay' | 'low';
   createdAt: string;
   synced: boolean;
+  /** Which of the fixed consoling clips (lib/audio/consoling.ts) played for
+   * a "low" log, so the next "low" day's pick can avoid repeating it.
+   * Absent for good/okay logs, and for a "low" log in a language with no
+   * consoling audio yet (see hasConsolingAudio). Local-only: never synced,
+   * server-side rows have no matching column, so it is left out of
+   * toWireMoodLog on purpose. */
+  consolingClipIndex?: number;
 }
 
 export class SmritiDB extends Dexie {
@@ -439,8 +446,11 @@ export class SmritiDB extends Dexie {
       syncState: '',
     });
     // New store only. One row per patient per day — see LocalMoodLog.
+    // `&[patientId+date]` (unique): two near-simultaneous taps could each
+    // read "no existing row" before either wrote, without it. logMood
+    // catches the resulting ConstraintError and retries as an update.
     this.version(11).stores({
-      moodLogs: 'id, patientId, [patientId+date], synced',
+      moodLogs: 'id, patientId, &[patientId+date], synced',
     });
 
     // Personal and health fields are encrypted before they reach IndexedDB
