@@ -60,7 +60,11 @@ export default function MoodCheckIn({ patientId }: { patientId: string }) {
   const answer = async (value: MoodValue) => {
     await logMood(patientId, value);
     setToday(value);
-    speak(t(value === 'low' ? 'mood.thanksLow' : 'mood.thanksPositive'), language);
+    // One neutral acknowledgment for every answer, "low" included: this is a
+    // mood log, not a screening tool, and the caregiver alert only ever
+    // fires after 3 consecutive low days (checkLowMoodAlert) — never after
+    // one entry, so the acknowledgment must never imply otherwise.
+    speak(t('mood.thanksPositive'), language);
   };
 
   return (
@@ -69,7 +73,7 @@ export default function MoodCheckIn({ patientId }: { patientId: string }) {
         {t('mood.title')}
       </h2>
       {today ? (
-        <p className="mt-3 text-patient-body font-bold text-ink">{t(today === 'low' ? 'mood.thanksLow' : 'mood.thanksPositive')}</p>
+        <p className="mt-3 text-patient-body font-bold text-ink">{t('mood.thanksPositive')}</p>
       ) : (
         <div className="mt-4 grid grid-cols-3 gap-touch-gap">
           {OPTIONS.map((option) => (

@@ -130,7 +130,6 @@ const LOCALE_KEYS: [string, string[]][] = [
   ['mood', [
     'mood.title',
     'mood.thanksPositive',
-    'mood.thanksLow',
   ]],
 ];
 
