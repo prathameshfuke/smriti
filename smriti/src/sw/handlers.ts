@@ -101,10 +101,10 @@ function scheduledAtFor(d: DueReminder<DueSchedule>, now: Date): string {
  * app window needed. `ackMethod: 'touch'` — a notification tap is the same
  * input class as tapping the in-app card.
  */
-async function acknowledgeFromNotification(data: { reminderId?: unknown; patientId?: unknown; scheduledAt?: unknown }): Promise<void> {
+async function acknowledgeFromNotification(data: { reminderId?: unknown; patientId?: unknown; scheduledAt?: unknown }): Promise<boolean> {
   const { reminderId, patientId, scheduledAt } = data;
-  if (typeof reminderId !== 'string' || typeof patientId !== 'string' || typeof scheduledAt !== 'string') return;
-  await writeReminderAck({
+  if (typeof reminderId !== 'string' || typeof patientId !== 'string' || typeof scheduledAt !== 'string') return false;
+  const written = await writeReminderAck({
     id: crypto.randomUUID(),
     reminderId,
     patientId,
@@ -113,6 +113,14 @@ async function acknowledgeFromNotification(data: { reminderId?: unknown; patient
     ackMethod: 'touch',
     synced: false,
   });
+  // No window is open to show a retry, and the notification is already
+  // closed by the time this runs — so the one thing a failed write can still
+  // do is stay loud in the worker's own console instead of vanishing
+  // silently. It isn't a stuck acknowledgment either way: with no ack row
+  // written, computeDueReminders (dueCore.ts) still counts this occurrence
+  // as due, so it surfaces again on the next check rather than being lost.
+  if (!written) console.error('SMRITI: notification "Done" tap failed to write locally', reminderId);
+  return written;
 }
 
 /** Same-origin path only. Anything else falls back to the home screen. */
