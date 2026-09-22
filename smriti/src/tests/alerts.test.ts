@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { detectLowAdherence, detectMissedSessions } from '@/lib/engine/alerts';
+import { detectLowAdherence, detectLowMoodStreak, detectMissedSessions } from '@/lib/engine/alerts';
 
 describe('detectMissedSessions', () => {
   it('returns true when the 3 days before referenceDate have no summary', () => {
@@ -29,5 +29,42 @@ describe('detectLowAdherence', () => {
   it('returns false at or above the 50% threshold', () => {
     expect(detectLowAdherence(50)).toBe(false);
     expect(detectLowAdherence(100)).toBe(false);
+  });
+});
+
+describe('detectLowMoodStreak', () => {
+  const reference = '2026-09-08';
+
+  it('returns true when today and the 2 prior days are all "low"', () => {
+    const logs = [
+      { date: '2026-09-08', value: 'low' },
+      { date: '2026-09-07', value: 'low' },
+      { date: '2026-09-06', value: 'low' },
+    ];
+    expect(detectLowMoodStreak(logs, reference)).toBe(true);
+  });
+
+  it('returns false when a day in the streak is missing', () => {
+    const logs = [
+      { date: '2026-09-08', value: 'low' },
+      { date: '2026-09-06', value: 'low' },
+    ];
+    expect(detectLowMoodStreak(logs, reference)).toBe(false);
+  });
+
+  it('returns false when a day in the streak is not "low"', () => {
+    const logs = [
+      { date: '2026-09-08', value: 'low' },
+      { date: '2026-09-07', value: 'okay' },
+      { date: '2026-09-06', value: 'low' },
+    ];
+    expect(detectLowMoodStreak(logs, reference)).toBe(false);
+  });
+
+  it('takes the reference date as-is, with no implicit "now" default (the bug this replaced)', () => {
+    // A caller MUST resolve "today" itself (patient-local, via wallClockDate)
+    // — there is no `= new Date()` fallback to silently reach for the
+    // server's own UTC clock instead.
+    expect(detectLowMoodStreak.length).toBe(2);
   });
 });

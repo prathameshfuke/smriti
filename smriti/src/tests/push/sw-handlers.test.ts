@@ -102,6 +102,21 @@ describe('service worker: offline due-reminder check (reads IndexedDB, no networ
     expect(await notifyDueFromLocalDb(reg, at(9, 1))).toBe(0);
   });
 
+  it('puts a Done and a Later action, plus the ack fields, on every reminder notification', async () => {
+    await db.reminderSchedules.put(sched());
+    const reg = fakeRegistration();
+    await notifyDueFromLocalDb(reg, at(9, 0));
+    const opts = reg.shown[0].options as NotificationOptions & {
+      actions?: Array<{ action: string; title: string }>;
+      data: { reminderId: string; patientId: string; scheduledAt: string; occurrenceKey: string };
+    };
+    expect(opts.actions).toEqual([
+      { action: 'ack', title: 'Done' },
+      { action: 'snooze', title: 'Later' },
+    ]);
+    expect(opts.data).toMatchObject({ reminderId: 'r1', patientId: 'p1', scheduledAt: '2026-09-19T09:00:00.000Z' });
+  });
+
   it('describes a due appointment prompt with its time, still without the facility name', async () => {
     await db.reminderSchedules.put(
       sched({
@@ -167,5 +182,32 @@ describe('service worker: notification click', () => {
     const clients = { matchAll: vi.fn(async () => []), openWindow: vi.fn(async () => null) };
     await handleNotificationClick({ close: vi.fn(), data: { url: '/reminders' } }, clients as never, 'http://localhost');
     expect(clients.openWindow).toHaveBeenCalledWith('http://localhost/reminders');
+  });
+
+  it('"ack" action writes the reminder done, straight to IndexedDB, without opening any window', async () => {
+    await reset();
+    const clients = { matchAll: vi.fn(async () => []), openWindow: vi.fn() };
+    const data = { url: '/app', reminderId: 'r1', patientId: 'p1', scheduledAt: '2026-09-19T09:00:00.000Z', occurrenceKey: 'r1:2026-09-19' };
+    const notification = { close: vi.fn(), data };
+    await handleNotificationClick(notification, clients as never, 'http://localhost', 'ack');
+    expect(notification.close).toHaveBeenCalled();
+    expect(clients.matchAll).not.toHaveBeenCalled();
+    expect(clients.openWindow).not.toHaveBeenCalled();
+    const acks = await db.reminderAcks.where('reminderId').equals('r1').toArray();
+    expect(acks).toHaveLength(1);
+    expect(acks[0]).toMatchObject({ patientId: 'p1', scheduledAt: '2026-09-19T09:00:00.000Z', ackMethod: 'touch', synced: false });
+    expect(acks[0].acknowledgedAt).not.toBeNull();
+  });
+
+  it('"snooze" action un-claims the occurrence so it counts as due again, without opening any window', async () => {
+    await reset();
+    await claimNotification('r1:2026-09-19');
+    const clients = { matchAll: vi.fn(async () => []), openWindow: vi.fn() };
+    const notification = { close: vi.fn(), data: { url: '/app', occurrenceKey: 'r1:2026-09-19' } };
+    await handleNotificationClick(notification, clients as never, 'http://localhost', 'snooze');
+    expect(notification.close).toHaveBeenCalled();
+    expect(clients.openWindow).not.toHaveBeenCalled();
+    // Un-claimed: the same occurrence can be claimed (and so notified) again.
+    expect(await claimNotification('r1:2026-09-19')).toBe(true);
   });
 });

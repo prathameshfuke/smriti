@@ -35,6 +35,46 @@ function getAll<T>(db: IDBDatabase, store: string): Promise<T[]> {
   });
 }
 
+/** Same shape as LocalReminderAck (lib/db/schema.ts) — not imported directly,
+ * since that file pulls in the Dexie/crypto stack the worker must stay free of. */
+export interface WorkerReminderAck {
+  id: string;
+  reminderId: string;
+  patientId: string;
+  scheduledAt: string;
+  acknowledgedAt: string | null;
+  ackMethod: 'touch' | 'voice' | 'caregiver' | null;
+  synced: boolean;
+}
+
+/**
+ * Writes an ack straight into the `reminderAcks` store — the "Done" action
+ * button on a reminder notification (sw/handlers.ts), so acknowledging never
+ * needs to open the app. `reminderAcks` has no encrypted fields (see
+ * lib/db/crypto/fields.ts), so a plain IndexedDB `put` is a faithful write:
+ * the next `/api/sync` picks it up via its `synced: false` flag exactly like
+ * one written in-app.
+ */
+export async function writeReminderAck(ack: WorkerReminderAck): Promise<boolean> {
+  const db = await openExisting();
+  if (!db) return false;
+  try {
+    if (!db.objectStoreNames.contains('reminderAcks')) return false;
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('reminderAcks', 'readwrite');
+      tx.objectStore('reminderAcks').put(ack);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+    return true;
+  } catch {
+    return false;
+  } finally {
+    db.close();
+  }
+}
+
 export async function readReminderRows(): Promise<{ schedules: DueSchedule[]; acks: DueAck[] } | null> {
   const db = await openExisting();
   if (!db) return null;

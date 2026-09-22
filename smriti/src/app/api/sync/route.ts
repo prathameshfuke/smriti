@@ -1,7 +1,8 @@
 import { v4 as uuid } from 'uuid';
 import { authenticateRequest } from '@/lib/supabase/server-auth';
-import { detectCognitiveDrop, detectLowAdherence, detectMissedSessions } from '@/lib/engine/alerts';
+import { detectCognitiveDrop, detectLowAdherence, detectLowMoodStreak, detectMissedSessions } from '@/lib/engine/alerts';
 import { computeAdherence, dateRange } from '@/lib/engine/adherence';
+import { patientLocalDateToday } from '@/lib/engine/dueCore';
 import type { GameType } from '@/lib/supabase/types';
 import {
   dedupeDailySummaries,
@@ -10,6 +11,7 @@ import {
   toWireDailySummary,
   toWireEvent,
   toWireReminderAck,
+  toWireMoodLog,
   toWireReminderSchedule,
   toWireSession,
 } from '@/lib/db/wire';
@@ -45,6 +47,7 @@ interface PatientSyncPayload {
   events: Array<Record<string, unknown> & { id: string }>;
   dailySummaries: Array<Record<string, unknown> & { id: string; gameType: string }>;
   reminderAcks: Array<Record<string, unknown> & { id: string }>;
+  moodLogs?: Array<Record<string, unknown> & { id: string }>;
   /** Already snake_case (mapped client-side in lib/db/sync.ts) — safe to
    * upsert directly, unlike the categories above. */
   memoryBankEntries: Array<Record<string, unknown> & { id: string }>;
@@ -73,6 +76,7 @@ interface PatientSyncErrors {
   memoryBankEntries?: string;
   consent?: string;
   aiConversationLogs?: string;
+  moodLogs?: string;
 }
 
 interface SyncRequestBody {
@@ -208,6 +212,24 @@ export async function POST(request: Request) {
         );
       if (error) errors.reminderAcks = error.message;
     }
+    if (patient.moodLogs?.length) {
+      // One row per (patient, day) — MIGRATION 019's real UNIQUE constraint,
+      // not `id`. Two devices logging the same patient's same day mint two
+      // different local ids; conflicting on `id` let both inserts through
+      // and the second one broke the table's unique constraint, so that
+      // patient's mood_logs category failed — and retried — on every sync
+      // afterward. Conflicting on the real key instead replaces the row:
+      // whichever device's answer for that day synced last wins, the same
+      // last-write-wins rule daily_summaries already uses for its own
+      // one-row-per-(patient,day,game) upsert.
+      const { error } = await supabase
+        .from('mood_logs')
+        .upsert(
+          patient.moodLogs.map((m) => own(toWireMoodLog(m))).filter((m) => hasValidIds(m, ['id'])) as never[],
+          { onConflict: 'patient_id,log_date' },
+        );
+      if (error) errors.moodLogs = error.message;
+    }
     if (patient.memoryBankEntries?.length) {
       const incoming = patient.memoryBankEntries.map((e) => ({ ...e, patient_id: patient.patientId }));
       if (!incoming.every(isEncryptedMemoryBankRow)) {
@@ -261,6 +283,7 @@ export async function POST(request: Request) {
     // Patient-level, not per-game-type: one check each per patient per sync.
     await checkMissedSessionsAlert(supabase, patient.patientId);
     await checkLowAdherenceAlert(supabase, patient.patientId);
+    if (!errors.moodLogs) await checkLowMoodAlert(supabase, patient.patientId);
   }
 
   const patientIds = ownedPatients.map((p) => p.patientId);
@@ -580,6 +603,49 @@ async function checkLowAdherenceAlert(supabase: AuthedSupabase, patientId: strin
     severity: 'yellow',
     title: 'Low reminder adherence',
     description: `Only ${overallPct}% of reminders were marked done in the last 7 days.`,
+  });
+}
+
+/**
+ * Keeps one `low_mood` (yellow) alert in step with the last 3 days of mood
+ * logs: raised when today and the 2 days before it were all logged "low",
+ * resolved again once that streak breaks. Informational only — see
+ * lib/engine/alerts.ts's doc comment on detectLowMoodStreak.
+ */
+async function checkLowMoodAlert(supabase: AuthedSupabase, patientId: string): Promise<void> {
+  // Patient-local "today" (see patientLocalDateToday's doc comment), not the
+  // server's own UTC clock — mood_logs.log_date is written from the phone's
+  // local date, and comparing it against UTC could misalign the streak by up
+  // to a day around local midnight.
+  const today = patientLocalDateToday();
+  const since = new Date(new Date(`${today}T00:00:00Z`).getTime() - 2 * DAY_MS).toISOString().slice(0, 10);
+  const [{ data: existing }, { data: logs }, { data: patientRow }] = await Promise.all([
+    supabase
+      .from('alerts')
+      .select('id')
+      .eq('patient_id', patientId)
+      .eq('alert_type', 'low_mood')
+      .eq('is_resolved', false)
+      .limit(1),
+    supabase.from('mood_logs').select('log_date, value').eq('patient_id', patientId).gte('log_date', since),
+    supabase.from('patients').select('caregiver_id').eq('id', patientId).single(),
+  ]);
+  const openAlert = existing?.[0];
+  const streak = detectLowMoodStreak((logs ?? []).map((l) => ({ date: l.log_date, value: l.value })), today);
+
+  if (!streak) {
+    if (openAlert) await resolveAlert(supabase, openAlert.id);
+    return;
+  }
+  if (openAlert || !patientRow) return;
+
+  await raiseAlert(supabase, {
+    patient_id: patientId,
+    caregiver_id: patientRow.caregiver_id,
+    alert_type: 'low_mood',
+    severity: 'yellow',
+    title: 'Mood has been low for 3 days in a row',
+    description: 'The patient logged "Not so good" for the last 3 days in their daily mood check-in.',
   });
 }
 

@@ -323,6 +323,20 @@ export interface LocalCloudKey {
   savedAt: string;
 }
 
+/**
+ * One tap-to-log mood entry per patient per calendar day (`date` is the
+ * patient's local `YYYY-MM-DD`, not a timestamp, so "already answered
+ * today" is a single indexed lookup — same shape as `dailySummaries`).
+ */
+export interface LocalMoodLog {
+  id: string;
+  patientId: string;
+  date: string;
+  value: 'good' | 'okay' | 'low';
+  createdAt: string;
+  synced: boolean;
+}
+
 export class SmritiDB extends Dexie {
   patientPhotos!: Table<LocalPatientPhoto, string>;
   caregivers!: Table<LocalCaregiver>;
@@ -353,6 +367,7 @@ export class SmritiDB extends Dexie {
   /** Out-of-line keys (caregiver id). The unwrapped Memory Bank cloud key,
    * encrypted at rest by the device key — see lib/memoryBank/cloudKey.ts. */
   cloudKeys!: Table<LocalCloudKey, string>;
+  moodLogs!: Table<LocalMoodLog>;
 
   /** The unsealed field-encryption key. Memory only, loaded on every open. */
   private storageKey: Uint8Array | null = null;
@@ -422,6 +437,10 @@ export class SmritiDB extends Dexie {
     // last worked, and why it last failed — is not lost with React state.
     this.version(10).stores({
       syncState: '',
+    });
+    // New store only. One row per patient per day — see LocalMoodLog.
+    this.version(11).stores({
+      moodLogs: 'id, patientId, [patientId+date], synced',
     });
 
     // Personal and health fields are encrypted before they reach IndexedDB

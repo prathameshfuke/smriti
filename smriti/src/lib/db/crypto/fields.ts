@@ -29,4 +29,5 @@ export const ENCRYPTED_FIELDS: Readonly<Record<string, readonly string[]>> = {
   deviceTrust: ['signature'],
   apiCache: ['body'],
   cloudKeys: ['key'],
+  moodLogs: ['value'],
 };

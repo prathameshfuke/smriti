@@ -38,7 +38,7 @@ export type GameType =
   | 'routine_recall';
 export type ReminderType = 'medication' | 'hydration' | 'activity' | 'appointment';
 export type AckMethod = 'touch' | 'voice' | 'caregiver';
-export type AlertType = 'cognitive_drop' | 'missed_sessions' | 'low_adherence';
+export type AlertType = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood';
 export type AlertSeverity = 'red' | 'yellow' | 'green';
 export type MemoryBankCategory = 'person' | 'schedule' | 'life_fact' | 'medication';
 
@@ -139,6 +139,15 @@ export type ReminderSchedule = {
   bring_notes?: string | null;
   remind_day_before_time?: TimeOfDay | null;
   remind_day_of_time?: TimeOfDay | null;
+}
+
+/** MIGRATION 019 — one optional mood entry per patient per calendar day. */
+export type MoodLog = {
+  id: string;
+  patient_id: string;
+  log_date: DateOnly;
+  value: 'good' | 'okay' | 'low';
+  created_at: Timestamptz;
 }
 
 export type ReminderAck = {
@@ -317,6 +326,7 @@ export interface Database {
       daily_summaries: TableShape<DailySummary>;
       reminder_schedules: TableShape<ReminderSchedule>;
       reminder_acks: TableShape<ReminderAck>;
+      mood_logs: TableShape<MoodLog>;
       alerts: TableShape<Alert>;
       memory_bank_entries: TableShape<MemoryBankEntry>;
       memory_bank_keys: TableShape<MemoryBankKey>;
