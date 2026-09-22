@@ -32,9 +32,11 @@ export async function GET(request: Request) {
   const todayStr = new Date().toISOString().slice(0, 10);
   const scoreFrom = shiftDate(todayStr, -(2 * SCORE_WINDOW_DAYS - 1));
 
+  const moodFrom = shiftDate(todayStr, -6);
+
   const results = await Promise.all(
     (patients ?? []).map(async (patient) => {
-      const [{ data: summaries }, { data: alerts }] = await Promise.all([
+      const [{ data: summaries }, { data: alerts }, { data: moodLogs }] = await Promise.all([
         // Two score windows (this fortnight and the one before, for the
         // change arrow). One row per game per day, so bounded by date, not
         // by row count: the old `.limit(7)` could cover a single busy day.
@@ -50,6 +52,11 @@ export async function GET(request: Request) {
           .select('severity, is_read')
           .eq('patient_id', patient.id)
           .eq('is_resolved', false),
+        // A missing table (MIGRATION 019 not yet applied) comes back as
+        // `{ data: null, error }`, not a rejection — `moodLogs ?? []` below
+        // already degrades to an empty trend strip rather than failing the
+        // whole patient card.
+        supabase.from('mood_logs').select('log_date, value').eq('patient_id', patient.id).gte('log_date', moodFrom),
       ]);
 
       const alertStatus = reduceAlertStatus((alerts ?? []).map((a) => a.severity));
@@ -71,6 +78,11 @@ export async function GET(request: Request) {
       });
       const activity = summarizeActivity(scoreRows, todayStr);
       const score = activity.score;
+      const moodByDate = new Map((moodLogs ?? []).map((m) => [m.log_date, m.value]));
+      const moodWeek: Array<'good' | 'okay' | 'low' | null> = Array.from({ length: 7 }, (_, i) => {
+        const date = shiftDate(todayStr, i - 6);
+        return (moodByDate.get(date) as 'good' | 'okay' | 'low' | undefined) ?? null;
+      });
 
       return {
         id: patient.id,
@@ -92,6 +104,7 @@ export async function GET(request: Request) {
           ? { score: score.score, band: score.band, delta: score.delta, enoughData: score.enoughData }
           : null,
         week: activity.week,
+        moodWeek,
         alertStatus,
         unreadAlertCount,
       };

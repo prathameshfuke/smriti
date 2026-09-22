@@ -41,6 +41,9 @@
       "whichItems": "Which items did we show you?",
       "imDone": "I am done!"
     },
+    "marketRecall": {
+      "name": "Local Market Recall"
+    },
     "quickTap": {
       "name": "Quick Tap",
       "instruction": "Tap the picture as soon as you see it.",
@@ -62,6 +65,9 @@
       "tryAnotherOne": "Let's try another one",
       "progress": "{count} of {total} pairs found",
       "done": "All {total} pairs found!"
+    },
+    "festivalMatch": {
+      "name": "Festival Match"
     },
     "memoryBlocks": {
       "name": "Memory Blocks"
@@ -301,7 +307,8 @@
     "title": "{name}: {severity}",
     "cognitive_drop": "Games went much worse than usual today. Open SMRITI to see.",
     "missed_sessions": "No games played for the last few days. Open SMRITI to see.",
-    "low_adherence": "Many reminders were missed this week. Open SMRITI to see."
+    "low_adherence": "Many reminders were missed this week. Open SMRITI to see.",
+    "low_mood": "Mood has been low for 3 days in a row. Open SMRITI to see."
   },
   "alertOptIn": {
     "title": "Alerts on this phone",
@@ -327,5 +334,13 @@
     "patientHint": "Play games and see my reminders",
     "caregiver": "I am the Caregiver",
     "caregiverHint": "Check progress and set things up"
+  },
+  "mood": {
+    "title": "How are you feeling today?",
+    "good": "Good",
+    "okay": "Okay",
+    "low": "Not so good",
+    "thanksPositive": "Thank you for sharing!",
+    "thanksLow": "Thank you for telling us. Your family will know."
   }
 }

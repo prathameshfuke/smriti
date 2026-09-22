@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
@@ -10,7 +10,7 @@ import SessionComplete from '@/components/games/SessionComplete';
 import { useDifficulty } from '@/hooks/useDifficulty';
 import { starsFromRate } from '@/lib/engine/scoring';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
-import { OBJECTS } from '@/lib/engine/objects';
+import { pickObjects, packPoolSize, toContentPack, type SmritiObject } from '@/lib/engine/objects';
 import { speak, GAME_SPEECH_RATE } from '@/lib/audio/speech';
 import { narrate } from '@/lib/audio/narrate';
 import { useTranslation } from '@/lib/i18n/provider';
@@ -51,8 +51,8 @@ function shuffle<T>(items: T[]): T[] {
   return arr;
 }
 
-function buildTiles(pairs: number): MemoryTile[] {
-  const chosen = shuffle(OBJECTS).slice(0, pairs);
+function buildTiles(pairs: number, pack?: SmritiObject['pack']): MemoryTile[] {
+  const chosen = pickObjects(pairs, [], pack);
   const doubled = chosen.flatMap((object, pairId) => [
     { object, pairId, matched: false },
     { object, pairId, matched: false },
@@ -63,13 +63,22 @@ function buildTiles(pairs: number): MemoryTile[] {
 export default function MemoryMatchPage() {
   return (
     <ErrorBoundary>
-      <MemoryMatchPageInner />
+      <Suspense fallback={null}>
+        <MemoryMatchPageInner />
+      </Suspense>
     </ErrorBoundary>
   );
 }
 
 function MemoryMatchPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Only 'festival' is a Memory Match pack; 'market' (Word Stream's own) is
+  // sized for that game's larger recall grid, not this one's pair boards —
+  // an errant `?pack=market` here falls back to the general pool instead.
+  const requestedPack = toContentPack(searchParams.get('pack'));
+  const pack = requestedPack === 'festival' ? requestedPack : undefined;
+  const nameKey = pack === 'festival' ? 'game.festivalMatch.name' : 'game.memoryMatch.name';
   const { t, language } = useTranslation();
   const { isOnline } = useOfflineStatus();
   const currentPatient = usePatientStore((s) => s.currentPatient);
@@ -87,7 +96,9 @@ function MemoryMatchPageInner() {
   const [wrongAttempts, setWrongAttempts] = useState(0);
   const [playStartedAt, setPlayStartedAt] = useState(0);
 
-  const level = LEVELS[difficulty.currentLevel] ?? LEVELS[1];
+  // A small pack (e.g. 6 festivals) can't fill a level that wants more pairs
+  // than it has objects — clamp rather than repeat a face on one board.
+  const level = { pairs: Math.min((LEVELS[difficulty.currentLevel] ?? LEVELS[1]).pairs, packPoolSize(pack)) };
 
   useEffect(() => {
     if (currentPatient) startSession(currentPatient.id);
@@ -128,7 +139,7 @@ function MemoryMatchPageInner() {
   );
 
   const startPlaying = () => {
-    setTiles(buildTiles(level.pairs));
+    setTiles(buildTiles(level.pairs, pack));
     setFaceUpIndices([]);
     setInputLocked(false);
     setMatchedCount(0);
@@ -205,7 +216,7 @@ function MemoryMatchPageInner() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col">
       <PatientNav
-        title={t('game.memoryMatch.name')}
+        title={t(nameKey)}
         onBack={() => {
           void endSession();
           router.push('/app');

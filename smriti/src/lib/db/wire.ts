@@ -112,6 +112,16 @@ export function toWireReminderAck(row: Row) {
   };
 }
 
+export function toWireMoodLog(row: Row) {
+  return {
+    id: row.id as string,
+    patient_id: pick(row, 'patientId', 'patient_id') as string,
+    log_date: pick(row, 'date', 'log_date') as string,
+    value: row.value as string,
+    created_at: (pick(row, 'createdAt', 'created_at') as string | undefined) ?? new Date().toISOString(),
+  };
+}
+
 export function toWireReminderSchedule(row: Row) {
   const base = {
     id: row.id as string,

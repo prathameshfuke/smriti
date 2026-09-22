@@ -43,10 +43,11 @@ sw.addEventListener('push', ((event: PushEventLike) => {
 }) as (event: never) => void);
 
 sw.addEventListener('notificationclick', ((event: {
-  notification: { close(): void; data?: { url?: unknown } };
+  notification: Parameters<typeof handleNotificationClick>[0];
+  action?: string;
   waitUntil(p: Promise<unknown>): void;
 }) => {
-  event.waitUntil(handleNotificationClick(event.notification, sw.clients, sw.location.origin));
+  event.waitUntil(handleNotificationClick(event.notification, sw.clients, sw.location.origin, event.action));
 }) as (event: never) => void);
 
 sw.addEventListener('periodicsync', ((event: { tag: string; waitUntil(p: Promise<unknown>): void }) => {

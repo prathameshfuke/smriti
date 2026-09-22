@@ -23,6 +23,10 @@ export const DEFAULT_NOTIFICATION_STRINGS: Record<string, string> = {
   appointment: 'Time for your appointment',
   appointmentTomorrow: 'You have an appointment tomorrow at {time}',
   appointmentToday: 'You have an appointment today at {time}',
+  /** Labels for the notification's own action buttons (see sw/handlers.ts) —
+   * reuses the exact same in-app button wording (reminder.done/reminder.snooze). */
+  done: 'Done',
+  snooze: 'Later',
 };
 
 /** The keys of `strings` a notification can use. */

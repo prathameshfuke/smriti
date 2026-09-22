@@ -25,6 +25,7 @@ interface DetailPatient {
   alertStatus: TriageStatus;
   /** Synced game-days from the server, merged with this phone's own. */
   scoreRows?: ScoreRow[];
+  moodWeek?: Array<'good' | 'okay' | 'low' | null>;
 }
 
 const TABS: Tab[] = ['cognitive', 'reminders', 'companion', 'family'];
@@ -241,6 +242,7 @@ export default function PatientDetailPage({ params }: { params: Promise<{ id: st
             serverScoreRows={patient?.scoreRows}
             serverRowsLoading={!patientSettled}
             serverRowsFailed={patientFetchFailed}
+            moodWeek={patient?.moodWeek}
           />
         ) : null}
         {patientId && tab === 'reminders' ? <RemindersTab patientId={patientId} /> : null}

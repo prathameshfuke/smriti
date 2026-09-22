@@ -24,7 +24,7 @@ import en from '@/lib/i18n/locales/en.json';
 import hi from '@/lib/i18n/locales/hi.json';
 import ne from '@/lib/i18n/locales/ne.json';
 
-export type AlertKind = 'cognitive_drop' | 'missed_sessions' | 'low_adherence';
+export type AlertKind = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood';
 export type AlertSeverity = 'red' | 'yellow';
 
 export interface NewAlert {

@@ -75,6 +75,25 @@ export async function claimNotification(key: string, at: number = Date.now()): P
   }
 }
 
+/**
+ * Forgets one occurrence's claim — the "Later" action on a reminder
+ * notification (sw/handlers.ts). Matches the in-app Snooze card exactly
+ * (ReminderCard's own doc comment: it only dismisses, the reminder stays
+ * unacknowledged): there is no reliable way to fire a delayed re-notification
+ * from a service worker, so "snooze" means "stop claiming this occurrence,
+ * so it counts as still-due again" rather than a guaranteed timer.
+ */
+export async function unclaimNotification(key: string): Promise<void> {
+  const db = await open();
+  try {
+    const tx = db.transaction(CLAIMS, 'readwrite');
+    tx.objectStore(CLAIMS).delete(key);
+    await done(tx);
+  } finally {
+    db.close();
+  }
+}
+
 /** Forgets claims older than three days. */
 export async function pruneClaims(now: number = Date.now()): Promise<void> {
   const db = await open();

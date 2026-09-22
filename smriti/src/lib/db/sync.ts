@@ -7,6 +7,7 @@ import {
   type LocalTelemetryEvent,
   type LocalDailySummary,
   type LocalReminderAck,
+  type LocalMoodLog,
   type LocalMemoryBankEntry,
   type LocalAiConversationLog,
   type LocalConsent,
@@ -151,6 +152,7 @@ interface PatientSyncErrors {
   memoryBankEntries?: string;
   consent?: string;
   aiConversationLogs?: string;
+  moodLogs?: string;
 }
 
 /** Wire shape for `memory_bank_entries` (snake_case). Personal fields are
@@ -191,6 +193,7 @@ interface PatientSyncPayload {
   events: LocalTelemetryEvent[];
   dailySummaries: LocalDailySummary[];
   reminderAcks: LocalReminderAck[];
+  moodLogs: LocalMoodLog[];
   /** Local entries being uploaded, and their encrypted wire copies. Both
    * empty when no Memory Bank key is unlocked on this phone: entries then
    * stay local and are never sent in plain text. */
@@ -272,6 +275,7 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     events,
     dailySummaries,
     reminderAcks,
+    moodLogs,
     memoryBankEntries,
     scheduleQueue,
     profileQueue,
@@ -286,6 +290,7 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     // [patientId+summaryDate+gameType]), so `.where('patientId')` isn't valid here.
     db.dailySummaries.toCollection().filter((r) => r.patientId === patientId && !r.synced).toArray(),
     db.reminderAcks.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
+    db.moodLogs.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     db.memoryBankEntries.where('patientId').equals(patientId).filter((r) => !r.synced).toArray(),
     // Schedules have no `synced` flag; edits made on the Reminders page are
     // recorded in syncQueue instead, which nothing used to send.
@@ -316,6 +321,7 @@ async function gatherUnsyncedRows(patientId: string): Promise<PatientSyncPayload
     events,
     dailySummaries,
     reminderAcks,
+    moodLogs,
     ...(await encryptForUpload(memoryBankEntries)),
     reminderSchedules: schedules,
     scheduleQueueIds: scheduleQueue.filter((q) => scheduleIds.has(q.recordId)).map((q) => q.id),
@@ -398,6 +404,7 @@ async function applySyncResponse(
       db.telemetryEvents,
       db.dailySummaries,
       db.reminderAcks,
+      db.moodLogs,
       db.memoryBankEntries,
       db.patients,
       db.reminderSchedules,
@@ -420,6 +427,7 @@ async function applySyncResponse(
         if (!errors.events) await markSyncedIfUnchanged(db.telemetryEvents, payload.events);
         if (!errors.dailySummaries) await markSyncedIfUnchanged(db.dailySummaries, payload.dailySummaries);
         if (!errors.reminderAcks) await markSyncedIfUnchanged(db.reminderAcks, payload.reminderAcks);
+        if (!errors.moodLogs) await markSyncedIfUnchanged(db.moodLogs, payload.moodLogs);
         const delivered: string[] = [];
         if (!errors.sessions) delivered.push('game_sessions');
         if (!errors.events) delivered.push('telemetry_events');
@@ -525,6 +533,7 @@ async function postSync(payloads: PatientSyncPayload[], accessToken: string, ret
           events: p.events,
           dailySummaries: p.dailySummaries,
           reminderAcks: p.reminderAcks,
+          moodLogs: p.moodLogs,
           reminderSchedules: p.reminderSchedules,
           profile: p.profile,
           memoryBankEntries: p.memoryBankWire,

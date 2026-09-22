@@ -6,6 +6,7 @@ import TrafficLight, { type TriageStatus } from '@/components/ui/TrafficLight';
 import StreakFlame from '@/components/ui/StreakFlame';
 import CognitiveScoreCard from '@/components/caregiver/CognitiveScoreCard';
 import WeekActivity from '@/components/caregiver/WeekActivity';
+import MoodTrend from '@/components/caregiver/MoodTrend';
 import Panel, { buttonClass } from '@/components/ui/Panel';
 import Notice from '@/components/ui/Notice';
 import CognitiveTrendChart from '@/components/caregiver/CognitiveTrendChart';
@@ -49,6 +50,8 @@ export interface CognitiveTabProps {
   serverRowsLoading?: boolean;
   /** The `/api/patients` fetch failed: show a message, not a forever-skeleton. */
   serverRowsFailed?: boolean;
+  /** Seven days, oldest first, of the patient's daily mood check-in. */
+  moodWeek?: Array<'good' | 'okay' | 'low' | null>;
 }
 
 /**
@@ -67,6 +70,7 @@ export default function CognitiveTab({
   serverScoreRows,
   serverRowsLoading = false,
   serverRowsFailed = false,
+  moodWeek,
 }: CognitiveTabProps) {
   const [range, setRange] = useState<TrendRange>('30d');
   const [digests, setDigests] = useState<DigestEntry[] | null>(null);
@@ -230,6 +234,12 @@ export default function CognitiveTab({
           >
             <WeekActivity variant="full" days={lastSevenDays.map((d) => d.accuracy)} dates={lastSevenDays.map((d) => d.date)} />
           </Panel>
+
+          {moodWeek ? (
+            <Panel title="Mood check-ins" description="What the patient logged in their daily 'How are you feeling?' check-in.">
+              <MoodTrend days={moodWeek} />
+            </Panel>
+          ) : null}
         </div>
       </div>
 

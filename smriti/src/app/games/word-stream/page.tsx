@@ -1,12 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import BigButton from '@/components/ui/BigButton';
 import PatientNav from '@/components/layout/PatientNav';
 import SessionComplete from '@/components/games/SessionComplete';
-import { OBJECTS, pickObjects, objectName, type SmritiObject } from '@/lib/engine/objects';
+import { OBJECTS, pickObjects, objectName, toContentPack, type SmritiObject } from '@/lib/engine/objects';
 import { useDifficulty } from '@/hooks/useDifficulty';
 import { buildDailySummary, logEvent } from '@/lib/engine/telemetry';
 import { penalizedAccuracy, scoreRecall, starsFromRate, type RecallScore } from '@/lib/engine/scoring';
@@ -36,13 +36,23 @@ function objectFor(id: string): SmritiObject {
 export default function WordStreamPage() {
   return (
     <ErrorBoundary>
-      <WordStreamPageInner />
+      <Suspense fallback={null}>
+        <WordStreamPageInner />
+      </Suspense>
     </ErrorBoundary>
   );
 }
 
 function WordStreamPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Only 'market' is a Word Stream pack; 'festival' (Memory Match's own) has
+  // just 6 objects, fewer than this game's recall grid needs at higher
+  // levels (up to 12) — an errant `?pack=festival` here falls back to the
+  // general pool instead of under-filling the grid.
+  const requestedPack = toContentPack(searchParams.get('pack'));
+  const pack = requestedPack === 'market' ? requestedPack : undefined;
+  const nameKey = pack === 'market' ? 'game.marketRecall.name' : 'game.wordStream.name';
   const { t, language } = useTranslation();
   const { isOnline } = useOfflineStatus();
   const tapSelect = useTapSelect();
@@ -74,7 +84,7 @@ function WordStreamPageInner() {
   const [startItems, setStartItems] = useState<SmritiObject[]>([]);
 
   useEffect(() => {
-    const items = pickObjects(ITEM_COUNT_BY_LEVEL[level] ?? 3);
+    const items = pickObjects(ITEM_COUNT_BY_LEVEL[level] ?? 3, [], pack);
     queueMicrotask(() => {
       setStartItems(items);
       setShowIndex(0);
@@ -124,7 +134,7 @@ function WordStreamPageInner() {
     if (phase !== 'recall') return;
     void narrate(t('game.wordStream.whichItems'), language, isOnline, GAME_SPEECH_RATE);
     const total = GRID_TOTAL_BY_LEVEL[level] ?? 8;
-    const distractors = pickObjects(total - itemsToRecall.length, itemsToRecall);
+    const distractors = pickObjects(total - itemsToRecall.length, itemsToRecall, pack);
     const all = [...itemsToRecall.map(objectFor), ...distractors];
     for (let i = all.length - 1; i > 0; i -= 1) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -182,7 +192,7 @@ function WordStreamPageInner() {
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-patient flex-col">
       <PatientNav
-        title={t('game.wordStream.name')}
+        title={t(nameKey)}
         onBack={() => {
           void endSession();
           router.push('/app');

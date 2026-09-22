@@ -13,6 +13,7 @@ import PinDots from '@/components/ui/PinDots';
 import StreakFlame from '@/components/ui/StreakFlame';
 import Skeleton from '@/components/ui/Skeleton';
 import FamilyMessageBoard from '@/components/patient/FamilyMessageBoard';
+import MoodCheckIn from '@/components/patient/MoodCheckIn';
 import { useReminders } from '@/hooks/useReminders';
 import { useEscapeKey } from '@/hooks/useEscapeKey';
 import { useGameStreak } from '@/hooks/useGameStreak';
@@ -35,9 +36,11 @@ import { useTranslation } from '@/lib/i18n/provider';
 const GAMES = [
   { nameKey: 'game.objectHunt.name', gameType: 'object_hunt', href: '/games/object-hunt', illustrationSrc: '/images/game-object-hunt.png' },
   { nameKey: 'game.wordStream.name', gameType: 'word_stream', href: '/games/word-stream', illustrationSrc: '/images/game-word-stream.png' },
+  { nameKey: 'game.marketRecall.name', gameType: 'word_stream', href: '/games/word-stream?pack=market', illustrationSrc: '/images/game-word-stream.png' },
   { nameKey: 'game.quickTap.name', gameType: 'quick_tap', href: '/games/quick-tap', illustrationSrc: '/images/game-quick-tap.png' },
   { nameKey: 'game.pathMatch.name', gameType: 'path_match', href: '/games/path-match', illustrationSrc: '/images/game-path-match.png' },
   { nameKey: 'game.memoryMatch.name', gameType: 'memory_match', href: '/games/memory-match', illustrationSrc: '/images/game-memory-match.png' },
+  { nameKey: 'game.festivalMatch.name', gameType: 'memory_match', href: '/games/memory-match?pack=festival', illustrationSrc: '/images/game-memory-match.png' },
   { nameKey: 'game.memoryBlocks.name', gameType: 'memory_blocks', href: '/games/memory-blocks', illustrationSrc: '/images/game-memory-blocks.png' },
   { nameKey: 'game.frogLeap.name', gameType: 'frog_leap', href: '/games/frog-leap', illustrationSrc: '/images/game-frog-leap.png' },
   { nameKey: 'game.countingBoxes.name', gameType: 'counting_boxes', href: '/games/counting-boxes', illustrationSrc: '/images/game-counting-boxes.png' },
@@ -502,6 +505,8 @@ export default function HomePage() {
           />
         </section>
       )}
+
+      {currentPatient ? <MoodCheckIn patientId={currentPatient.id} /> : null}
 
       <div className="mt-8 flex flex-col gap-touch-gap">
         <BigButton

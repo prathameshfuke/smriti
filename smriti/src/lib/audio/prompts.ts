@@ -127,6 +127,11 @@ const LOCALE_KEYS: [string, string[]][] = [
     'reminder.activity',
     'reminder.appointment',
   ]],
+  ['mood', [
+    'mood.title',
+    'mood.thanksPositive',
+    'mood.thanksLow',
+  ]],
 ];
 
 export const PROMPTS: readonly PromptDef[] = [

@@ -1133,3 +1133,40 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER trg_memory_bank_keys_keep_recovery BEFORE UPDATE ON memory_bank_keys
   FOR EACH ROW EXECUTE FUNCTION memory_bank_keys_keep_recovery();
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 019: Daily mood check-in
+-- =============================================
+
+-- One optional tap-to-log mood entry per patient per calendar day, from the
+-- patient home screen (src/components/patient/MoodCheckIn.tsx). This is a
+-- mood log, not a screening tool: no diagnosis or clinical inference is
+-- stored or derived beyond the plain 3-day-low streak check below.
+CREATE TABLE mood_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+  log_date DATE NOT NULL,             -- patient's local calendar day
+  value TEXT NOT NULL CHECK (value IN ('good', 'okay', 'low')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (patient_id, log_date)
+);
+
+CREATE INDEX idx_mood_logs_patient_date ON mood_logs(patient_id, log_date);
+
+ALTER TABLE mood_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY caregiver_mood_logs ON mood_logs
+  FOR ALL USING (patient_id IN (
+    SELECT id FROM patients WHERE caregiver_id IN (
+      SELECT id FROM caregivers WHERE auth_id = auth.uid()
+    )
+  ));
+
+-- Widens MIGRATION 001's alerts.alert_type CHECK to add the "3 low days in a
+-- row" alert (checkLowMoodAlert, src/app/api/sync/route.ts). Postgres names
+-- an inline column CHECK `<table>_<column>_check` when none is given.
+ALTER TABLE alerts DROP CONSTRAINT alerts_alert_type_check;
+ALTER TABLE alerts ADD CONSTRAINT alerts_alert_type_check
+  CHECK (alert_type IN ('cognitive_drop', 'missed_sessions', 'low_adherence', 'low_mood'));
+```
