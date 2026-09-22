@@ -159,7 +159,14 @@ export async function handleNotificationClick(
   notification.close();
 
   if (action === 'ack') {
-    await acknowledgeFromNotification(notification.data ?? {});
+    const written = await acknowledgeFromNotification(notification.data ?? {});
+    // A failed write leaves nothing recorded, so the occurrence must not stay
+    // claimed either — otherwise it never re-shows, and "Done" quietly did
+    // nothing instead of the reminder self-healing on the next due-check.
+    if (!written) {
+      const key = notification.data?.occurrenceKey;
+      if (typeof key === 'string') await unclaimNotification(key).catch(() => undefined);
+    }
     return;
   }
   if (action === 'snooze') {

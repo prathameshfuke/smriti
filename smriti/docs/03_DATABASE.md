@@ -1170,3 +1170,21 @@ ALTER TABLE alerts DROP CONSTRAINT alerts_alert_type_check;
 ALTER TABLE alerts ADD CONSTRAINT alerts_alert_type_check
   CHECK (alert_type IN ('cognitive_drop', 'missed_sessions', 'low_adherence', 'low_mood'));
 ```
+
+```sql
+-- =============================================
+-- MIGRATION 020: Same-day "logged feeling low" caregiver notification
+-- =============================================
+
+-- Widens MIGRATION 019's alert_type CHECK again to add `mood_today`:
+-- notifySameDayLowMood (src/app/api/sync/route.ts) fires once per day a
+-- single "Not so good" mood log lands, separate from — and in addition to —
+-- `low_mood`'s 3-consecutive-day streak alert above. Always inserted
+-- already `is_resolved`, so it still reaches the caregiver as a push (see
+-- raiseAlert) but never sits in the "Needs your attention" list: a single
+-- low day is routine, not a pattern the caregiver needs to act on or
+-- dismiss a card for.
+ALTER TABLE alerts DROP CONSTRAINT alerts_alert_type_check;
+ALTER TABLE alerts ADD CONSTRAINT alerts_alert_type_check
+  CHECK (alert_type IN ('cognitive_drop', 'missed_sessions', 'low_adherence', 'low_mood', 'mood_today'));
+```

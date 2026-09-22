@@ -38,7 +38,7 @@ export type GameType =
   | 'routine_recall';
 export type ReminderType = 'medication' | 'hydration' | 'activity' | 'appointment';
 export type AckMethod = 'touch' | 'voice' | 'caregiver';
-export type AlertType = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood';
+export type AlertType = 'cognitive_drop' | 'missed_sessions' | 'low_adherence' | 'low_mood' | 'mood_today';
 export type AlertSeverity = 'red' | 'yellow' | 'green';
 export type MemoryBankCategory = 'person' | 'schedule' | 'life_fact' | 'medication';
 

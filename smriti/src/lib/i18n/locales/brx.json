@@ -316,11 +316,13 @@
   "alertPush": {
     "severityRed": "जरुरि",
     "severityYellow": "नाजानो नुनाय",
+    "severityInfo": "मोन अपडेट",
     "title": "{name}: {severity}",
     "cognitive_drop": "दिनै खेलानि फल गोनां सिथ्रा खम। नुनो SMRITI खेवलाय।",
     "missed_sessions": "आबुं सोदोबनि दिनफोरआव खेला खेलायाखै। नुनो SMRITI खेवलाय।",
     "low_adherence": "बे सप्ताहआव जोबोर रिमाइन्डार गोख्रों जादों। नुनो SMRITI खेवलाय।",
-    "low_mood": "सोदोब ३ सानाव मोन गोबां जायाखै दं। नुनो SMRITI खेवलाय।"
+    "low_mood": "सोदोब ३ सानाव मोन गोबां जायाखै दं। नुनो SMRITI खेवलाय।",
+    "mood_today": "दिनै मोन गोबां जायाखै होननानै लिरबाय। नुनो SMRITI खेवलाय।"
   },
   "alertOptIn": {
     "title": "बे फोनआव जागायनाय",

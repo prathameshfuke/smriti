@@ -304,11 +304,13 @@
   "alertPush": {
     "severityRed": "Urgent",
     "severityYellow": "Needs attention",
+    "severityInfo": "Mood update",
     "title": "{name}: {severity}",
     "cognitive_drop": "Games went much worse than usual today. Open SMRITI to see.",
     "missed_sessions": "No games played for the last few days. Open SMRITI to see.",
     "low_adherence": "Many reminders were missed this week. Open SMRITI to see.",
-    "low_mood": "Mood has been low for 3 days in a row. Open SMRITI to see."
+    "low_mood": "Mood has been low for 3 days in a row. Open SMRITI to see.",
+    "mood_today": "Logged feeling low today. Open SMRITI to see."
   },
   "alertOptIn": {
     "title": "Alerts on this phone",

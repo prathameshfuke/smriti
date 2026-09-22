@@ -304,11 +304,13 @@
   "alertPush": {
     "severityRed": "जरूरी",
     "severityYellow": "ध्यान दें",
+    "severityInfo": "मूड अपडेट",
     "title": "{name}: {severity}",
     "cognitive_drop": "आज खेलों में प्रदर्शन सामान्य से काफ़ी खराब रहा। देखने के लिए SMRITI खोलें।",
     "missed_sessions": "पिछले कुछ दिनों से कोई खेल नहीं खेला गया। देखने के लिए SMRITI खोलें।",
     "low_adherence": "इस सप्ताह कई रिमाइंडर छूट गए। देखने के लिए SMRITI खोलें।",
-    "low_mood": "पिछले 3 दिनों से मन उदास रहा है। देखने के लिए SMRITI खोलें।"
+    "low_mood": "पिछले 3 दिनों से मन उदास रहा है। देखने के लिए SMRITI खोलें।",
+    "mood_today": "आज मन उदास होने की जानकारी दी। देखने के लिए SMRITI खोलें।"
   },
   "alertOptIn": {
     "title": "इस फ़ोन पर अलर्ट",

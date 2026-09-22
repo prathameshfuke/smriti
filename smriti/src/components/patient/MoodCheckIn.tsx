@@ -5,8 +5,10 @@ import { BIG_TARGET_MIN_PX } from '@/components/ui/touchTarget';
 import { useTranslation } from '@/lib/i18n/provider';
 import { narrate } from '@/lib/audio/narrate';
 import { speak } from '@/lib/audio/speech';
+import { playOnChannel } from '@/lib/audio/channel';
+import { CONSOLING_CLIP_COUNT, consolingClipPath, hasConsolingAudio } from '@/lib/audio/consoling';
 import { useOfflineStatus } from '@/hooks/useOfflineStatus';
-import { getTodayMood, logMood, todayLocalDate, type MoodValue } from '@/lib/engine/mood';
+import { getTodayMood, logMood, pickConsolingClipIndex, todayLocalDate, type MoodValue } from '@/lib/engine/mood';
 
 const OPTIONS: Array<{ value: MoodValue; image: string; labelKey: string }> = [
   { value: 'good', image: '/images/moods/good.png', labelKey: 'mood.good' },
@@ -58,12 +60,24 @@ export default function MoodCheckIn({ patientId }: { patientId: string }) {
   if (today === undefined) return null;
 
   const answer = async (value: MoodValue) => {
+    // A "low" answer, in a language with reviewed consoling audio, plays a
+    // short pre-recorded breathing/grounding clip instead of the plain
+    // acknowledgment — picked from a fixed cached set (never a live TTS
+    // call at this moment) and rotated so it doesn't repeat two low days
+    // running. The on-screen text stays the same neutral line either way:
+    // richer audio for "low" is not the same thing as different, riskier
+    // wording, which is exactly what the plain thanksPositive text avoids.
+    if (value === 'low' && hasConsolingAudio(language)) {
+      const clipIndex = await pickConsolingClipIndex(patientId, CONSOLING_CLIP_COUNT);
+      await logMood(patientId, value, clipIndex);
+      setToday(value);
+      playOnChannel(new Audio(consolingClipPath(language, clipIndex))).catch(() =>
+        speak(t('mood.thanksPositive'), language),
+      );
+      return;
+    }
     await logMood(patientId, value);
     setToday(value);
-    // One neutral acknowledgment for every answer, "low" included: this is a
-    // mood log, not a screening tool, and the caregiver alert only ever
-    // fires after 3 consecutive low days (checkLowMoodAlert) — never after
-    // one entry, so the acknowledgment must never imply otherwise.
     speak(t('mood.thanksPositive'), language);
   };
 

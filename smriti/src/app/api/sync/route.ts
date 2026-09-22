@@ -481,12 +481,25 @@ async function raiseAlert(
     severity: AlertSeverity;
     title: string;
     description: string;
+    /** True for a same-day informational notification (e.g. one "Not so
+     * good" mood log) that should still push but never sit in the
+     * caregiver's unresolved "Needs your attention" list — that list is for
+     * the sustained-pattern alerts (3-day mood streak, missed sessions, ...),
+     * not routine day-to-day variation. Defaults to false, matching every
+     * existing caller's behavior unchanged. */
+    resolved?: boolean;
   },
 ): Promise<void> {
   const id = uuid();
-  const { error } = await supabase
-    .from('alerts')
-    .insert({ id, ...row, is_read: false, is_resolved: false, resolved_at: null });
+  const { resolved: shouldResolve, ...alertFields } = row;
+  const resolved = shouldResolve ?? false;
+  const { error } = await supabase.from('alerts').insert({
+    id,
+    ...alertFields,
+    is_read: false,
+    is_resolved: resolved,
+    resolved_at: resolved ? new Date().toISOString() : null,
+  });
   if (error) return;
   scheduleAlertPush({
     alertId: id,
@@ -633,6 +646,8 @@ async function checkLowMoodAlert(supabase: AuthedSupabase, patientId: string): P
   const openAlert = existing?.[0];
   const streak = detectLowMoodStreak((logs ?? []).map((l) => ({ date: l.log_date, value: l.value })), today);
 
+  if (patientRow) await notifySameDayLowMood(supabase, patientId, patientRow.caregiver_id, logs ?? [], today);
+
   if (!streak) {
     if (openAlert) await resolveAlert(supabase, openAlert.id);
     return;
@@ -646,6 +661,62 @@ async function checkLowMoodAlert(supabase: AuthedSupabase, patientId: string): P
     severity: 'yellow',
     title: 'Mood has been low for 3 days in a row',
     description: 'The patient logged "Not so good" for the last 3 days in their daily mood check-in.',
+  });
+}
+
+/**
+ * A same-day, informational-only notification for a single "Not so good"
+ * log — separate from the 3-day streak alert above, never instead of it.
+ * Always inserted already resolved (see raiseAlert's `resolved` doc
+ * comment), so it pushes once and never sits in "Needs your attention": a
+ * single low day is routine, worth telling the caregiver, not worth asking
+ * them to dismiss a card for. Deliberately not the crisis pathway — that
+ * stays reserved for the companion's own distress-keyword detection
+ * (lib/ai/companion*, a different and more serious signal); routine
+ * same-day mood logging must never auto-escalate there.
+ *
+ * The dedupe read below and raiseAlert's insert are not one atomic
+ * operation, so two syncs landing in the same instant could still both pass
+ * the check and each push once — a pre-existing shape shared by every other
+ * check-then-raiseAlert call in this file (checkCognitiveDropAlert,
+ * checkMissedSessionsAlert, checkLowAdherenceAlert), not something specific
+ * to this one. A real fix (a DB-level unique constraint plus an
+ * insert-with-conflict-handling) belongs to all four together, not bolted
+ * onto just this one.
+ */
+async function notifySameDayLowMood(
+  supabase: AuthedSupabase,
+  patientId: string,
+  caregiverId: string,
+  logs: Array<{ log_date: string; value: string }>,
+  today: string,
+): Promise<void> {
+  if (logs.find((l) => l.log_date === today)?.value !== 'low') return;
+
+  // `created_at` is a real UTC instant, not a patient-local date — comparing
+  // it against a `${today}T00:00:00.000Z` string assumes patient-local
+  // midnight IS UTC midnight, exactly the mismatch patientLocalDateToday
+  // exists to avoid (see its doc comment). Over-fetch a window wide enough
+  // to cover any zone (36h) and filter precisely in code instead of trying
+  // to construct the right UTC boundary in the query.
+  const since = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+  const { data: recent } = await supabase
+    .from('alerts')
+    .select('id, created_at')
+    .eq('patient_id', patientId)
+    .eq('alert_type', 'mood_today')
+    .gte('created_at', since);
+  const existing = (recent ?? []).some((a) => patientLocalDateToday(new Date(a.created_at)) === today);
+  if (existing) return;
+
+  await raiseAlert(supabase, {
+    patient_id: patientId,
+    caregiver_id: caregiverId,
+    alert_type: 'mood_today',
+    severity: 'yellow',
+    title: 'Logged feeling low today',
+    description: 'The patient selected "Not so good" in today\'s mood check-in.',
+    resolved: true,
   });
 }
 
